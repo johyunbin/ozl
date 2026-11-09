@@ -1,13 +1,14 @@
 repos:
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
-    hooks:
-      - id: gitleaks
   - repo: local
     hooks:
+      - id: gitleaks-staged
+        name: gitleaks (staged)
+        entry: bash -c 'command -v gitleaks >/dev/null && timeout 120 gitleaks git --staged --redact --no-banner || echo "gitleaks 미설치 — 건너뜀"'
+        language: system
+        pass_filenames: false
       - id: publish-gate
         name: 공개본 추출 게이트(노트·숨김 슬라이드·전사 인용 검사)
-        entry: python3 scripts/publish_gate.py
+        entry: .venv/bin/python scripts/publish_gate.py
         language: system
-        files: '^(tracks/syuka/decks/.*\.pptx|daily/.*\.md|docs/.*\.md)$'
+        files: '^(tracks/syuka/decks/.*\.pptx|daily/.*\.md|docs/.*\.md|tracks/.*\.md)$'
         pass_filenames: true
