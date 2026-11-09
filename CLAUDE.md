@@ -24,6 +24,9 @@
 - 다글로 제출: 동시 1건·완료 후 다음·간격 ≥ 60초·일일 상한(초기 100)·402/429 즉시 중단. Trading 데몬 우선(계정 락 `~/.cache/daglo_submit.lock`).
 - Whisper: `nice -n 19`·1프로세스·메모리 상한. yt-dlp: sleep 간격·프레임용 영상은 추출 후 삭제.
 
+## Notion 미러
+- Notion 미러: 페이지 「OZL — 오늘의 즐길거리」 아래 DB 「OZL 소재 카드」(식별자·속성 목록 = `private/notion.json`, 비공개). 루틴은 MCP(Notion 커넥터)로 upsert·상태 읽기 — 토큰 파일 없음. Notion은 `card_id`+`revision` 이벤트만 전달하고 정본 처리는 git md.
+
 ## 파일 규약
 - 일일 보고서 `daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md` · 주간 `daily/YYYY/weekly_YYYY-Www.md` · 카드 ID `YYYY-MM-DD-{am|pm|wk}-NN`(불변).
 - 클레임 `claims/YYYY-MM-DD/<card_id>-cN.yaml` · 덱 `tracks/syuka/decks/YYYYMMDD_<slug>.pptx|pdf` + `sources.md`.
