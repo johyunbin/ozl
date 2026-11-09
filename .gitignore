@@ -1,0 +1,24 @@
+# 비공개(저작권·API 정책·작업본) — 절대 추적하지 않는다
+private/
+# 비밀
+.env
+.env.*
+*.pem
+*.key
+# 파이썬
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+# 빌드 산출
+site/
+build/
+dist/
+# 임시 PPT·오피스 락파일
+~$*.pptx
+*.tmp.pptx
+# 시스템
+.DS_Store
+node_modules/

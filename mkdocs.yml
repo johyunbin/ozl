@@ -1,0 +1,19 @@
+site_name: OZL — 오늘의 즐길거리
+site_description: 매일 이슈를 발굴·검증·브리핑합니다
+site_url: https://johyunbin.github.io/ozl/
+repo_url: https://github.com/johyunbin/ozl
+theme:
+  name: material
+  language: ko
+  features: [navigation.sections, navigation.top, search.suggest, content.tabs.link]
+  palette:
+    - scheme: default
+      primary: deep orange
+nav:
+  - 홈: index.md
+  - 검증 방법론: methodology.md
+  - 소스 카탈로그: sources.md
+  - 도구: tooling.md
+  - 정정 기록: corrections.md
+  - 일일 데스크: daily/
+markdown_extensions: [tables, admonition, toc, attr_list, pymdownx.superfences]

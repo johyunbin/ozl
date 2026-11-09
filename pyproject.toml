@@ -1,0 +1,30 @@
+[project]
+name = "ozl"
+version = "0.1.0"
+description = "OZL — 오늘의 즐길거리: 매일 이슈 발굴·검증·브리핑 파이프라인"
+requires-python = ">=3.11"
+dependencies = [
+  "yt-dlp",
+  "python-pptx>=1.0.2",
+  "pyyaml",
+  "feedparser",
+  "trafilatura",
+  "imagehash",
+  "scenedetect[opencv]",
+  "savepagenow",
+  "notion-client",
+  "requests",
+  "kiwipiepy",
+  "mkdocs-material",
+]
+
+[project.optional-dependencies]
+ml = ["bertopic", "FlagEmbedding", "sentence-transformers"]
+dev = ["pytest", "pre-commit"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
