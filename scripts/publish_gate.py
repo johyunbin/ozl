@@ -9,11 +9,17 @@ Phase 4 에서 내장 미디어 출처 메타 검사 추가 예정.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 import pickle
 import re
 import sys
+
+
+def h64(s: str) -> int:
+    """프로세스 간 안정적인 64비트 해시 — 내장 hash()는 솔트가 매 프로세스 달라 캐시와 불일치(2026-11-09 자가검증에서 적발)."""
+    return int.from_bytes(hashlib.blake2b(s.encode("utf-8"), digest_size=8).digest(), "little")
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TRANS = ROOT / "private" / "transcripts"
@@ -45,7 +51,7 @@ def check_pptx(p: pathlib.Path) -> list[str]:
 
 def _corpus_signature() -> str:
     idx = TRANS / "trading_export" / "index.csv"
-    parts = [str(idx.stat().st_mtime_ns) if idx.exists() else "0"]
+    parts = ["v2-blake2b", str(idx.stat().st_mtime_ns) if idx.exists() else "0"]
     parts.append(str(sum(1 for _ in PILOT.rglob("*.txt")) if PILOT.exists() else 0))
     return "|".join(parts)
 
@@ -59,12 +65,12 @@ def _build_shingles() -> set[int]:
         except Exception:  # noqa: BLE001
             continue
         for k in range(0, max(0, len(t) - N), STRIDE):
-            sh.add(hash(t[k:k + N]))
+            sh.add(h64(t[k:k + N]))
     if PILOT.exists():
         for f in PILOT.rglob("*.txt"):
             t = norm(f.read_text(encoding="utf-8", errors="ignore"))
             for k in range(0, max(0, len(t) - N), STRIDE):
-                sh.add(hash(t[k:k + N]))
+                sh.add(h64(t[k:k + N]))
     return sh
 
 
@@ -92,7 +98,7 @@ def check_md(p: pathlib.Path, sh: set[int]) -> list[str]:
     t = norm(p.read_text(encoding="utf-8", errors="ignore"))
     hits = []
     for k in range(0, max(0, len(t) - N)):
-        if hash(t[k:k + N]) in sh:
+        if h64(t[k:k + N]) in sh:
             hits.append(t[k:k + N])
             if len(hits) >= 5:
                 break
