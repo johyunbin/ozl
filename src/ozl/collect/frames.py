@@ -33,8 +33,11 @@ def download(vid: str) -> pathlib.Path | None:
     out = TMP / f"{vid}.mp4"
     if out.exists():
         return out
+    # avc1(h264) 1080p 우선 — f616 '프리미엄' VP9는 편당 800MB+ 로 스로틀 시 수십 분. 스로틀(<150KB/s) 감지 시 재추출.
     r = sh(["yt-dlp", "-q", "--no-warnings", "--sleep-requests", "2", "--sleep-interval", "3",
-            "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b", "--merge-output-format", "mp4",
+            "--throttled-rate", "150K", "--concurrent-fragments", "3",
+            "-f", "bv*[height<=1080][vcodec^=avc1][ext=mp4]+ba[ext=m4a]/bv*[height<=1080][ext=mp4][format_id!=616]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b",
+            "--merge-output-format", "mp4",
             "-o", str(TMP / f"{vid}.%(ext)s"), f"https://www.youtube.com/watch?v={vid}"])
     if r.returncode != 0:
         print(f"[{vid}] yt-dlp 실패: {r.stderr[-200:]}", file=sys.stderr)
