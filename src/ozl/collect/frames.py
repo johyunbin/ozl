@@ -117,7 +117,7 @@ def process(vid: str, cw: float, ch: float, threshold: float, meta: dict) -> dic
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("csv")
-    ap.add_argument("--crop", default="0.56x0.65")
+    ap.add_argument("--crop", default="0.60x0.63")
     ap.add_argument("--threshold", type=float, default=12.0)
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
