@@ -49,7 +49,8 @@ def numbers(s: str) -> list[str]:
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, text=True, capture_output=True, **kw)
+    # whisper-cli stdout 에 깨진 UTF-8 바이트가 섞일 수 있다 → errors="replace"
+    return subprocess.run(cmd, text=True, capture_output=True, errors="replace", **kw)
 
 
 def transcribe(vid: str, d: pathlib.Path) -> dict:
@@ -101,12 +102,17 @@ def main() -> int:
         d.mkdir(exist_ok=True)
         daglo = json.loads((EXPORT / "syuka" / f"{vid}.json").read_text(encoding="utf-8"))["text"]
         (d / "daglo.txt").write_text(daglo, encoding="utf-8")
-        print(f"[{vid}] {r['upload_at'][:10]} {int(r['duration_sec'])//60}분 — 전사 시작", file=sys.stderr, flush=True)
-        meta = transcribe(vid, d)
+        if (d / "whisper.txt").exists():  # 멱등: 이미 전사됨 → 기존 측정치 재사용
+            prev = json.loads((d / "compare.json").read_text(encoding="utf-8")) if (d / "compare.json").exists() else {}
+            meta = {"elapsed_sec": prev.get("elapsed_sec"), "max_rss_gb": prev.get("max_rss_gb"), "rc": 0}
+            print(f"[{vid}] 기존 전사 재사용", file=sys.stderr, flush=True)
+        else:
+            print(f"[{vid}] {r['upload_at'][:10]} {int(r['duration_sec'])//60}분 — 전사 시작", file=sys.stderr, flush=True)
+            meta = transcribe(vid, d)
         if "error" in meta:
             report.append({"video_id": vid, **meta})
             continue
-        wtxt = (d / "whisper.txt").read_text(encoding="utf-8") if (d / "whisper.txt").exists() else ""
+        wtxt = (d / "whisper.txt").read_text(encoding="utf-8", errors="replace") if (d / "whisper.txt").exists() else ""
         cmp_ = compare(wtxt, daglo)
         rt = int(r["duration_sec"]) / meta["elapsed_sec"] if meta["elapsed_sec"] else None
         row = {"video_id": vid, "upload_at": r["upload_at"], "duration_sec": int(r["duration_sec"]), "title": r["title"],
