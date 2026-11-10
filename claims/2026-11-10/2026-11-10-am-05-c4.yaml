@@ -7,7 +7,7 @@ source:
   tier: T1
   publisher: Internal Revenue Service
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110083415/https://www.irs.gov/credits-deductions/credits-for-new-clean-vehicles-purchased-in-2023-or-after
 cross_check: []
 status: verified
 checks:

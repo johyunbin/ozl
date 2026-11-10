@@ -7,7 +7,7 @@ source:
   tier: T1
   publisher: Eurostat
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110082933/https://ec.europa.eu/eurostat/en/web/products-eurostat-news/w/ddn-20261109-1
 cross_check: []
 status: verified
 checks:

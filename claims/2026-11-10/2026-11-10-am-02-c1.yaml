@@ -7,7 +7,7 @@ source:
   tier: T1
   publisher: U.S. Energy Information Administration
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110082334/https://www.eia.gov/todayinenergy/detail.php?id=68425
 cross_check: []
 status: verified
 checks:

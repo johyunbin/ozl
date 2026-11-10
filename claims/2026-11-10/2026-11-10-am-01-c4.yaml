@@ -7,7 +7,7 @@ source:
   tier: T1
   publisher: U.S. Bureau of Labor Statistics
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110082125/https://www.bls.gov/news.release/archives/cpi_10142026.htm
 cross_check: []
 status: verified
 checks:

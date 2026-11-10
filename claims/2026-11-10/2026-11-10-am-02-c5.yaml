@@ -7,7 +7,7 @@ source:
   tier: T1
   publisher: U.S. Department of the Treasury, Office of Foreign Assets Control
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110082558/https://ofac.treasury.gov/media/936831/download
 cross_check: []
 status: verified
 checks:

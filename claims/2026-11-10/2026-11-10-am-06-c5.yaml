@@ -7,7 +7,7 @@ source:
   tier: T2
   publisher: 캔자스시티 연방준비은행 경제 회보
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110083744/https://www.kansascityfed.org/research/economic-bulletin/beyond-valuations-long-term-financial-risks-from-the-ai-build-out/
 cross_check: []
 status: verified
 checks:

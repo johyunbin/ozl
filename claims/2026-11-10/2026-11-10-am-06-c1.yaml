@@ -7,7 +7,7 @@ source:
   tier: T2
   publisher: 국제통화기금(IMF) 글로벌 금융안정보고서(2026-10)
   accessed: '2026-11-10'
-  archived: ''
+  archived: https://web.archive.org/web/20261110083544/https://www.imf.org/-/media/files/publications/gfsr/2026/october/english/ch1.pdf
 cross_check: []
 status: verified
 checks:
