@@ -394,7 +394,7 @@ NUMBER_TABLE = [
     ("가상 300만", "3천3백만", ("300만", "3백만"), False), ("가상 3천", "3천3백만", None, False),
     ("가상 999억", "통계 확인", ("999억", "통계"), False),
     # 3차: 달력은 면제 · 기간은 대조
-    ("2020-2022", None, None, True), ("2004~2025년", None, None, True), ("1~9월", None, None, True), ("3분기", None, None, True),
+    ("2020~2022년", None, None, True), ("2004~2025년", None, None, True), ("1~9월", None, None, True), ("3분기", None, None, True),
     ("2026년 1분기", None, None, True), ("1998년→2013년", None, None, True),
     ("100년 만의 변화", None, None, False), ("1000년 만의 변화", None, None, False), ("반년 동안", None, None, False),
     ("23년 만에", None, None, False), ("6년 9개월", None, None, False), ("세계 1위", None, None, False),
@@ -432,6 +432,73 @@ NUMBER_TABLE = [
     ("가상 12% −3%", "12% 및 3%", None, False), ("가상 12% −3%", "12% 및 −3%", None, True),
     # 5차 9: 탭·개행 뒤 범위
     ("가상 3일\t-4일", "3일 및 4일", None, True), ("가상 3일\n-4일", "3일 및 4일", None, True),
+    # 6차: '년' 없는 연도 범위는 수량 범위와 가를 수 없어 근거를 요구한다(기록에 있으면 통과)
+    ("2020-2022", None, None, False), ("가상 2020-2022", "between 2020 and 2022", None, True),
+    ("생산량 2004~2025 kg으로", None, None, False), ("생산량 2004~2025 kg을", None, None, False), ("생산량 2004~2025 million달러", None, None, False),
+    # 6차: 복합 수량의 마지막 자리(크기 단위 없음) — 조각은 근거가 못 되고, 붙여 쓴 것과 띄어 쓴 것은 같다
+    ("예산 1억", "1억 2,345원", None, False), ("예산 2,345원", "1억 2,345원", None, False),
+    ("예산 1억 2,345원", "1억2345원", None, True), ("예산 1억2345원", "1억 2,345원", None, True),
+    # 6차: 분모의 쉼표
+    ("발생률 1/2", "1/2,000", None, False), ("발생률 1/2,000", "1/2000", None, True),
+    # 6차: 판독하지 못한 이음은 뒤의 %·크기 단위까지 같은 표기여야 한다
+    ("가상 1/2/3%", "1/2/3", None, False), ("가상 1/2/3", "1/2/3%", None, False), ("가상 1/2/3 million", "1/2/3 billion", None, False),
+    ("가상 1/2/3%", "1/2/3%", None, True),
+    # 6차: 달력 꼬리말 뒤의 조사
+    ("3월말까지 발표", None, None, True), ("2026년판은 개정됐다", None, None, True),
+    # 경계 그물: 판독부가 통째로 읽지 못한 표기는 조각으로 근거가 되지 않고, 같은 표기 전체로만 맞는다
+    ("가상 1억", "1억 2,345.5원", None, False), ("가상 2,345.5원", "1억 2,345.5원", None, False),
+    ("가상 1억 2,345.5원", "1억 2,345.5원", None, True),
+    ("가상 1", "1,23", None, False), ("가상 23", "1,23", None, False), ("가상 1,23", "1,23", None, True), ("가상 1,23", "1,23,45", None, False),
+    ("가상 5", "5 %", None, False), ("가상 100", "100 million", None, False),
+    # 7차: 복합 분모(1만분의 1) · 숫자와 크기 단위 사이 공백 · 떨어진 부호 · 단위로 닫힌 수량의 나열
+    ("발생 확률은 1이다", "발생 확률은 1만분의 1이다", None, False), ("발생 확률은 1만분의 1이다", "발생 확률은 1만분의 1이다", None, True),
+    ("가상 1", "1만 5천분의 1", None, False), ("가상 1만 5천", "1만 5천분의 1", None, False), ("가상 1만 5천분의 1", "1만 5천분의 1", None, True),
+    ("생산량 70 배럴", "생산량 70 만 배럴", None, False), ("생산량 70만 배럴", "생산량 70 만 배럴", None, True),
+    ("수익률 3%", "수익률 − 3%", None, False), ("수익률 -3%", "수익률 − 3%", None, True),
+    ("이익 변동 3.5 billion", "이익 변동 -$3.5 billion", None, False), ("이익 변동 -3.5 billion", "이익 변동 -$3.5 billion", None, True),
+    ("지지율 10%,20%", "10% 및 20%", None, True), ("소요 기간 3일/4일", "3일 및 4일", None, True), ("소요 기간 6년9개월", "6년 9개월", None, True),
+    ("가상 1/2/3", "1/2/3 만", None, False), ("가상 지표 - 3% 상승", "3%", None, True),
+    # 영문 percent · percentage points
+    ("가상 12%", "up 12 percent", None, True), ("가상 12", "up 12 percent", None, False),
+    ("가상 3%p", "rose 3 percentage points", None, True), ("가상 3%", "rose 3 percentage points", None, False),
+    # 숫자에 영문자가 바로 붙은 표기는 글자까지 한 토큰이다(52C 의 52 · 3.5B 의 3.5 는 근거가 못 된다)
+    ("가상 52", "GENERAL LICENSE NO. 52C", None, False), ("가상 52C", "GENERAL LICENSE NO. 52C", None, True),
+    ("가상 3.5", "worth $3.5B", None, False), ("가상 701", "about 701k barrels", None, False), ("가상 5 kg", "5kg", ("5 kg", "5kg"), True),
+    ("3/4분기 실적", None, None, True),
+    # 8차: 떨어진 부호 경로도 같은 뒤처리(붙은 영문자) · 통화 기호가 낀 범위는 부호가 아니다
+    ("이익 변동 -3.5", "이익 변동 -$3.5B", None, False), ("이익 변동 -$3.5B", "이익 변동 -$3.5B", None, True),
+    ("투자액 -4 billion", "투자액 범위 $3 billion–$4 billion", None, False), ("투자액 4 billion", "투자액 범위 $3 billion–$4 billion", None, True),
+    ("유가 -80달러", "유가 예상 범위 $70 –$80", None, False), ("유가 80달러", "유가 예상 범위 $70 –$80", None, True),
+    # 8차: 띄어 쓴 복합 크기 단위 · 측정 단위 뒤에 어미가 붙은 꼴
+    ("예산 3 달러", "예산 3 백만 달러", None, False), ("예산 3백만 달러", "예산 3 백만 달러", None, True), ("예산 5 원", "예산 5 천만 원", None, False),
+    ("생산량 70 배럴", "생산량 70 만 배럴가량", None, False), ("매출 70 달러", "매출 70 만 달러였다", None, False),
+    ("발생 확률 1", "발생 확률 1 만분의 1", None, False), ("가상 1/2/3", "1/2/3 백만", None, False), ("생산량 1.2.3", "생산량 1.2.3B", None, False),
+    ("수익률 3.5 billion", "수익률 − $ 3.5 billion", None, False),
+    # 8차: 단위로 닫힌 수량 뒤의 영문 낱말·구분자는 다른 말이다 / 분모의 크기 단위와 분자 뒤 크기 단위는 다른 자리다
+    ("성장률 3%YoY", "성장률 3% YoY", None, True), ("생산량 70만,80만", "70만 및 80만", None, True), ("찬성/반대 10%/20%", "찬성 10% 및 반대 20%", None, True),
+    ("확률 2분의 1만", "확률 2만분의 1", None, False), ("확률 2만분의 1", "확률 2만분의 1", None, True),
+    # 범위의 앞 수는 뒤 수의 단위를 같이 쓴다 — 단위를 뗀 앞 수는 근거가 못 된다
+    ("가상 3 배럴", "3~5% 범위", None, False), ("가상 3%", "3~5% 범위", None, True), ("가상 3~5%", "3~5% 범위", None, True),
+    ("가상 70 배럴", "70~80만 배럴", None, False), ("가상 70만 배럴", "70~80만 배럴", None, True), ("가상 3 billion", "$3–4 billion", None, True),
+    ("가상 3 배럴", "3~5년 걸린다", None, False), ("가상 3년", "3~5년 걸린다", None, True), ("가상 2일", "2~3일 뒤", None, True),
+    ("가상 70 배럴", "70~80만5천 배럴", None, False),                      # 단위를 나눠 줄 수 없는 범위의 앞 수는 근거가 못 된다
+    ("가상 100", "매출 100 - 3% 감소", None, True),                        # 공백으로 둘러싼 '-' 는 줄표 — 앞 수에 % 를 붙이지 않는다
+    ("가상 1위", "1~3위", None, True),                                     # 둘 다 단위 없는 수는 그대로
+    # 9차: 금액 – 비율은 범위가 아니다 · 일반 낱말의 첫 글자는 크기 단위가 아니다 · 단위 낱말을 사이에 둔 범위는 부호가 아니다
+    ("할인율 100%", "가격 $100 – 20% 할인", None, False), ("가격 100달러", "가격 $100 – 20% 할인", None, True),
+    ("가상 100%", "할인 계산: $100 - 20% = $80", None, False),
+    ("매출 3조 원", "표 3 조명시장 전망", None, False), ("표 3: 조명시장 전망", "표 3 조명시장 전망", None, True), ("매출 3조 원", "표 3 조원태 회장 발언", None, False),
+    ("유가 -80달러", "유가 전망 $70/bbl–$ 80/bbl", None, False), ("유가 80달러", "유가 전망 $70/bbl–$ 80/bbl", None, True),
+    ("유가 -80달러", "$70/bbl–$80/bbl", None, False), ("하루 80만 배럴", "하루 70만 배럴-80만 배럴", None, True),
+    ("가상 -3%", "매출 100억 원 -3% 감소", None, True),
+    # 9차: 띄어 쓴 크기 단위 뒤의 측정 단위 낱말 · 처리하지 못한 범위의 앞 수 · 부호 붙은 기간 · 지수 표기
+    ("개발 부지 3평", "개발 부지 3 만평", None, False), ("저장량 70리터", "저장량 70 만리터", None, False), ("예산 3불", "예산 3 백만불", None, False),
+    ("투자 규모 3달러", "투자 규모 $3–5B", None, False), ("개발 기간 3", "개발 기간 3~5개월", None, False),
+    ("투자 규모 70달러", "투자 규모 $70–$ 80 million", None, False),
+    ("기간 변동 −1.5개월", "기간 변동 −1.5년", None, False), ("기간 변동 −1.5년", "기간 변동 −1.5년", None, True),
+    ("생산량 1.2.3만", "생산량 1.2.3만B", None, False), ("가상 3%", "1.2e-3%", None, False), ("기간 .5년", "기간 0.5년", None, True),
+    # 소수 기간
+    ("가상 1.5 배럴", "1.5년 걸렸다", None, False), ("가상 1.5년", "1.5년 걸렸다", None, True),
     # 정상 환산(원문 표기를 그대로 source 에)
     ("가상 311만 9천 배럴", "3,119", ("311만 9천", "3,119"), True), ("가상 94만 배럴", "0.94", ("94만", "0.94"), True),
     ("가상 11만 배럴", "110", ("11만", "110"), True), ("가상 71.5%", "736,192 / 1,029,398", ("71.5%", "736,192"), True),
@@ -494,6 +561,11 @@ IDENT_TABLE = [
     # 5차 5·8: 식별자 뒤의 소수점·연속 공백 크기 단위는 수량 / 조사·일반 낱말은 식별자 유지
     ("매출 USD100  million", ["USD100"], False), ("매출 USD100.5 million", ["USD100"], False),
     ("허가 49B만으로", ["49B"], True), ("49B 조사", ["49B"], True),
+    # 6차: 보조사 '만' 뒤에 낱말이 이어져도 식별자 / 쉼표로 이어진 숫자는 수량
+    ("허가 49B만 남았다", ["49B"], True), ("매출 USD100,500 million", ["USD100"], False), ("매출 USD100만 달러", ["USD100"], False),
+    ("허가 49B만 3월까지 유효하다", ["49B"], True),  # 7차: '만' 뒤가 달력이면 보조사
+    ("지분 49 percent", ["49"], False),  # 8차: 식별자 뒤의 % 낱말도 수량의 이음
+    ("생산량 49 백만 달러", ["49"], False),  # 9차: 식별자 뒤에 띄어 쓴 복합 크기 단위
 ]
 
 
@@ -558,6 +630,31 @@ def test_r5_5_identifier_does_not_cover_longer_quantity_even_with_record():
     assert not rep.ok and "USD100" not in rep.exempt_idents
 
 
+def test_r6_identifier_does_not_cover_comma_joined_quantity_even_with_record():
+    cid = _with_observed("500 million")
+    sp = spec_of([slide(body=["가상 USD100,500 million"], claim_ids=[cid])])
+    sp["identifiers"] = ["USD100"]
+    rep = S.check(sp, CLAIMS_X, TEMPLATE)
+    assert not rep.ok and "USD100" not in rep.exempt_idents
+
+
+def test_r6_fragment_tokens_never_enter_the_pool_or_match():
+    """경계 그물 자체: 앞뒤에 숫자 이음이 남은 토큰은 기록 쪽에서는 근거 목록에 들지 않고, 화면 쪽에서는 따로 오류가 난다."""
+    N = S.N
+    assert N.pool("1억 2,345.5원") == {"raw:1억2,345.5"}          # 이어진 토큰은 통째로 하나
+    assert N.pool("가상 12 .5") == {"12", "0.5"}                    # 공백으로 떨어진 것은 따로
+    toks = N.scan("가상 x9,5")                                        # 쉼표로 이어진 둘은 하나의 raw 토큰이 된다
+    assert [(t.canon, t.fragment) for t in toks] == [("raw:9,5", False)]
+    frag = [t for t in N.scan("가상 3.5.") if t.fragment]            # 문장 끝 마침표는 이음이 아니다
+    assert frag == []
+    cid = _with_observed("7")
+    sl = slide(body=["가상 7 billion"], claim_ids=[cid])              # 기록의 7 은 화면의 7 billion 을 받치지 못한다
+    assert S.number_errors(sl, CLAIMS_X)
+    cid = _with_observed("7 billion")
+    sl = slide(body=["가상 7"], claim_ids=[cid])                      # 기록의 7 billion 은 화면의 7 을 받치지 못한다
+    assert S.number_errors(sl, CLAIMS_X)
+
+
 def test_r5_7_appendix_general_text_numbers_are_checked():
     cid = _with_observed("12%")
     c = dict(CLAIMS_X[cid])
@@ -602,3 +699,91 @@ def test_r5_normalize_collapses_all_whitespace():
     from ozl.render import numbers as N
     assert N.normalize("3천\t\n  3백만\u00a0배럴") == "3천 3백만 배럴"
     assert [t.canon for t in N.scan("3천\t3백만")] == ["3천3백만"]
+
+
+# ── 무작위 시험: 수량 표현의 일부만 떼어 쓴 화면 글은 통과하지 못한다(지어낸 숫자 · 씨앗 고정) ─────────────
+def _fz_digits(rnd, lo=1, hi=6, comma=None, dec=None):
+    n = str(rnd.randint(1, 9)) + "".join(str(rnd.randint(0, 9)) for _ in range(rnd.randint(lo, hi) - 1))
+    comma = rnd.random() < 0.5 if comma is None else comma
+    if comma and len(n) > 3:
+        n = f"{int(n):,}"
+    dec = rnd.random() < 0.3 if dec is None else dec
+    return n + ("." + "".join(str(rnd.randint(0, 9)) for _ in range(rnd.randint(1, 2))) if dec else "")
+
+
+def _fz_expr(rnd):
+    k = rnd.random()
+    if k < 0.24:
+        parts = [_fz_digits(rnd, 1, 4, dec=False) + u for u in "조억만천백십" if rnd.random() < 0.45] or [_fz_digits(rnd, 1, 4, dec=False) + "만"]
+        if rnd.random() < 0.4:
+            parts.append(_fz_digits(rnd, 1, 4, dec=rnd.random() < 0.2))   # 크기 단위 없는 마지막 자리
+        e = (" " if rnd.random() < 0.6 else "").join(parts)
+    elif k < 0.30:
+        e = _fz_digits(rnd, 1, 3, dec=False) + rnd.choice(["만", "천", "백만", "만 5천", ""]) + rnd.choice(["분의 ", "분의"]) + _fz_digits(rnd, 1, 2, dec=False)
+    elif k < 0.36:
+        e = _fz_digits(rnd, 1, 4) + rnd.choice(["B", "k", "C", "kg", "Q", "bbl"])                 # 숫자에 붙은 영문자
+    elif k < 0.50:
+        e = _fz_digits(rnd) + "/" + _fz_digits(rnd, 1, 5)
+    elif k < 0.70:
+        e = _fz_digits(rnd, 1, 4) + rnd.choice([" million", " billion", "million", " trillion", " bn"])
+    elif k < 0.80:
+        e = ".".join(_fz_digits(rnd, 1, 2, False, False) for _ in range(rnd.randint(3, 4)))   # 판독하지 못하는 이음
+    else:
+        e = _fz_digits(rnd)
+    if rnd.random() < 0.35 and not e[-1].isalpha():
+        e += rnd.choice(["%", " %", "%p", "퍼센트", " percent", " percentage points"])
+    if rnd.random() < 0.2:
+        e = rnd.choice(["-", "−", "+", "− ", "-$", "−$"]) + e                                      # 붙은 부호 · 떨어진 부호 · 통화 기호 건너 부호
+    return e
+
+
+def _fz_spaced_mag(rnd):
+    """숫자와 한글 크기 단위 사이에 공백이 있는 표기 — 뒤에 측정 단위가 올 때만 크기 단위로 읽는다."""
+    return _fz_digits(rnd, 1, 4, dec=False) + " " + rnd.choice("만억천"), rnd.choice(["원", "달러", " 배럴", "명", "톤"])
+
+
+def test_fuzz_fragments_of_a_quantity_never_pass():
+    import random
+    import re as _re
+    N = S.N
+    rnd = random.Random(20261111)
+
+    def canon(t):
+        return [(x.kind, x.canon) for x in N.scan(t) if x.needs_claim]
+
+    def plain(t):  # 판독부와 독립인 비교: 공백과 쉼표만 지운 글자열(percentage point 의 단수·복수는 같은 말)
+        return _re.sub(r"[\s,]", "", t.replace("percentage points", "percentage point"))
+
+    tried = 0
+    for _ in range(220):
+        if rnd.random() < 0.1:
+            e, unit = _fz_spaced_mag(rnd)
+        else:
+            e, unit = _fz_expr(rnd), rnd.choice(["원", "달러", " 배럴", "명", "", " t", "톤"])
+        if e[-1].isalpha() and e[-1].isascii() and unit[:1].isascii() and unit[:1].isalpha():
+            unit = " " + unit
+        rec = f"가상 지표는 {e}{unit}이다" if unit.strip() and unit[-1] >= "가" else f"가상 지표는 {e}{unit} 수준"
+        claims = {CX: claim(CX, text="가상의 섬 통계.", observed=rec)}
+        whole = f"가상 {e}{unit} 값"
+        assert S.number_errors(slide(body=[whole], claim_ids=[CX]), claims) == [], (e, unit)   # 같은 표기는 통과
+        subs = {e[a:b].strip() for a in range(len(e)) for b in range(a + 1, len(e) + 1)}
+        for sub in sorted(subs):
+            if not sub or plain(sub) == plain(e) or not _re.search(r"\d", sub) or not (sub[0].isdigit() or sub[0] in "-−+"):
+                continue
+            for tail in (unit, ""):
+                body = f"가상 {sub}{tail} 값"
+                mine = canon(body)
+                assert mine, ("숫자를 못 봄", e, sub + tail)
+                tried += 1   # 진부분 문자열은 모두 조각이다 — 판독부가 원래 표현과 같은 수로 읽었더라도 통과하면 안 된다
+                assert S.number_errors(slide(body=[body], claim_ids=[CX]), claims), ("조각이 통과", e, sub + tail, mine, canon(rec))
+    assert tried > 8000
+
+
+@pytest.mark.parametrize("shown,recorded", [
+    ("70만 1천 5백 배럴", "70만1천5백 배럴"), ("1억 2,345원", "1억2345원"), ("3,300만 개", "3300만 개"), ("1.5 million", "1.5million"),
+    ("12 %", "12%"), ("12퍼센트", "12%"), ("2분의 1", "1/2"), ("1/2,000", "1/2000"), ("−3%", "-3%"), ("1.2 bn", "1.2 billion"),
+])
+def test_same_quantity_in_different_spacing_passes_both_ways(shown, recorded):
+    for a, b in ((shown, recorded), (recorded, shown)):
+        claims = {CX: claim(CX, text="가상의 섬 통계.", observed=f"가상 지표 {b}")}
+        assert S.number_errors(slide(body=[f"가상 {a}"], claim_ids=[CX]), claims) == [], (a, b)

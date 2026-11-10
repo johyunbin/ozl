@@ -151,6 +151,12 @@ def number_errors(sl: dict, claims: dict[str, dict], draft: bool = False, staged
         toks = list(dict.fromkeys(t.canon for t in N.claim_tokens(text, identifiers)))
         if not toks:
             continue
+        frag = [t[1:] for t in toks if t.startswith("?")]
+        if frag:  # 판독부가 통째로 읽지 못한 표기 — 근거가 있어도 맞춰 볼 수 없다
+            errs.append(f"{label}의 숫자 표기 {frag} 를 온전한 수량으로 읽지 못했다 — 앞뒤에 숫자 이음이 남았다. 표기를 한 덩어리로 고쳐 쓰거나 나눠 쓴다")
+        toks = [t for t in toks if not t.startswith("?")]
+        if not toks:
+            continue
         if not ids:
             errs.append(f"{label}에 숫자·수량({', '.join(toks)})이 있는데 claim_ids 가 없다")
             continue
