@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-01-c6
+card_id: 2026-11-10-am-01
+text: 2013년 셧다운 때 BLS 는 2013년 9월 CPI 발표를 10월 16일에서 10월 30일로 미뤘고, 10월분도 11월 20일에 발표해 빠진 달이 없었다. 다만 2013년 10월 지수는 평소 표본의 약 75% 로 계산됐다.
+observed: Original Wednesday, October 16, 2013 · Revised Wednesday, October 30, 2013 · about 75 percent
+source:
+  url: https://www.bls.gov/bls/updated_release_schedule.htm
+  tier: T1
+  publisher: U.S. Bureau of Labor Statistics
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 2013-09
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: final
+  primary_doc_locator: '수정 발표일정표 CPI 행 · 보조: 2013년 10월분 보도자료(cpi_11202013) 셧다운 문단'
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 이번처럼 한 달이 통째로 빠진 것은 2013년 셧다운 때와 다르다
+  strongest_counter: 2013년에도 10월 지수는 표본의 75% 로만 계산됐다 — '그때는 아무 문제 없었다'고 하면 과장이다
+  denominator_check: 비교 대상은 2013년 한 번 — 다른 셧다운(1995~96 등)은 보지 않았다
+  residual_uncertainty: 9월분 보도자료 본문의 지연 설명 문장은 확인하지 못했다(발표일 차이로만 확인)
+verifiers:
+  claude: 독립 조사 에이전트가 BLS 원문(수정 일정표·보도자료)을 열어 확인한 표를 받아 작성(2026-11-10 15:37 KST) — 작성 세션은 원문을 직접 열지 않았다
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 15:45~15:47 KST)
+  gemini: ''
+  chatgpt: ''
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T15:53:49+09:00'
+human_verified_by: johyunbin

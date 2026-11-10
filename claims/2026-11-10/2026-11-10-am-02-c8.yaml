@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-02-c8
+card_id: 2026-11-10-am-02
+text: 2009년 이라크 1차 유전 입찰에서 서방 대형사들은 생산 원유 배럴당 정액 보수를 받는 기술서비스 계약을 맺었다 — 최대 보수 Rumaila(BP 컨소시엄) 배럴당 2.00달러, West Qurna I(엑슨모빌 컨소시엄) 1.90달러.
+observed: technical service contracts provide a fee per barrel of oil produced · Rumaila 2.00 · West Qurna (I) 1.90 (Max. fee)
+source:
+  url: https://iea.blob.core.windows.net/assets/defc91da-512b-41ca-b4c1-fde8f8aba682/WEO_2012_Iraq_Energy_OutlookFINAL.pdf
+  tier: T2
+  publisher: International Energy Agency
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: '2009'
+  real_vs_nominal: nominal
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: final
+  primary_doc_locator: Iraq Energy Outlook(2012) Box 1.2 · 37쪽 계약 표
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 매장량 대국에 다시 들어갈 때 서방 석유회사가 받은 조건은 '지분'이 아니라 '수수료'였다
+  strongest_counter: 이라크와 베네수엘라는 법·계약 체계가 달라 같은 조건이 반복된다는 근거는 없다
+  denominator_check: 표의 값은 최대 보수이고 단위는 석유환산 배럴당 달러
+  residual_uncertainty: 이라크 석유부 원문은 열지 못했다(미러 사이트 인증서 만료) — IEA 표 기준
+verifiers:
+  claude: 독립 조사 에이전트가 IEA 보고서 PDF 를 열어 확인한 표로 작성(2026-11-10 15:39 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 15:45~15:47 KST)
+  gemini: ''
+  chatgpt: ''
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T15:53:49+09:00'
+human_verified_by: johyunbin

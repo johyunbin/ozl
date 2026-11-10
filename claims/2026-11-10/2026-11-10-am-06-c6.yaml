@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-06-c6
+card_id: 2026-11-10-am-06
+text: 댈러스 연은에 따르면 미국 통신업계는 1997~2001년 900억 달러어치 광케이블을 깔았고, 장거리 백본 사용률은 1988년 15% 에서 2001년 4월 3% 아래로 떨어졌다.
+observed: laying $90 billion worth of fiber-optic cable between 1997 and 2001 · usage of the long-distance backbone below 3 percent in April 2001, down from 15 percent in 1988
+source:
+  url: https://www.dallasfed.org/~/media/documents/research/swe/2002/swe0201c.pdf
+  tier: T2
+  publisher: 댈러스 연방준비은행 Southwest Economy
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 1997~2001
+  real_vs_nominal: nominal
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: final
+  primary_doc_locator: '''Is Telecom Disconnected or Just on Hold?''(2002년 1·2월호) 본문 2쪽 부근 · 주석 1·2'
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 닷컴 때도 '계약과 수요가 있다'며 깐 설비가 대부분 놀았다
+  strongest_counter: 원문은 '백본 사용률'이지 'dark fiber 비율'이 아니다 · 수치는 연은 자체 추산이 아니라 인용일 수 있다
+  denominator_check: 장거리 백본 기준
+  residual_uncertainty: 통신업 회사채 부도 규모(FDIC)는 원문을 열지 못해 쓰지 않는다
+verifiers:
+  claude: 독립 조사 에이전트가 댈러스 연은 PDF 텍스트를 직접 추출해 확인한 표로 작성(2026-11-10 15:40 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 15:45~15:47 KST)
+  gemini: ''
+  chatgpt: ''
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T15:53:49+09:00'
+human_verified_by: johyunbin
