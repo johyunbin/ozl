@@ -18,9 +18,10 @@ OZL의 모든 소재 카드와 슬라이드는 이 문서의 규칙을 따른다
 claim_id: 2026-11-09-am-03-c2
 card_id: 2026-11-09-am-03
 text: "중국 고속철 총연장 5만 km 돌파(2025년 말)"
+observed: "50,000 km"          # 원문에 적힌 값 그대로 — 사람이 눈으로 대조할 문자열
 source: {url:, tier: T1, publisher:, accessed:, archived: <wayback url>}
 cross_check: [{url:, tier: T3, publisher:, same_origin_as_source: false}]
-status: verified | credible_estimate | single_source | unverified_rumor
+status: pending | verified | credible_estimate | single_source | unverified_rumor
 checks:
   unit_ok: true                # 단위·자릿수
   base_period: "2025-12"       # 기준시점
@@ -38,9 +39,13 @@ counter:                       # 반증 — 수치가 맞아도 해석이 틀릴
   residual_uncertainty:
 verifiers: {claude:, codex:, gemini:}   # 모델 교차 = 보조 신호
 human_verified: false          # 사람이 원문 캡처와 육안 대조 — true 전에는 슬라이드 반입 불가
+human_verified_at:             # 대조한 시각·사람(true 일 때 필수)
+human_verified_by:
 links: {video_id:, time_range:, slide_id:}   # 전사·클레임·슬라이드 역추적
 revision: 1
 ```
+
+`pending` 은 "아직 사람 대조 전"이라는 뜻이다. 모델이 원문을 열어 값을 맞춰 본 클레임도 사람이 눈으로 대조하기 전에는 `pending` 에 머문다(`verifiers` 칸에 누가 무엇을 봤는지 적는다). 카드의 배지는 그 카드 클레임 가운데 가장 약한 상태를 따른다.
 
 ## 3. `verified` 의 정의 (3차원)
 
@@ -77,6 +82,8 @@ revision: 1
 ## 8. 공개 발행·정정
 
 - 공개(Pages)에는 배지 ①②이고 발행 승인된 카드만. `pending`·③④는 비공개 뷰에만.
+- 그래서 보고서는 두 벌이다. **전체본**(모든 카드 · 비공개)과 **발행본**(`daily/` · 공개). 발행본은 승인된 카드만 전문을 싣고, 나머지는 카드 번호·분야·계기·상태만 남긴다. 검증이 끝나 승인되면 같은 번호 자리에 전문이 들어간다.
+- 발행 승인은 사람이 한다. 순서: 검증 시트에서 클레임마다 원문 표기와 원문을 눈으로 대조 → `human_verified` → 배지 ① → 발행 승인. 예약 루틴과 모델은 `human_verified` 도 발행 승인도 스스로 올리지 않는다.
 - 발행 직전 재확인(링크 생존·수치 재대조). 오류 발견 시 `docs/corrections.md`에 정정·철회 기록 — 원문은 지우지 않고 취소선 + 정정문.
 - 전사 전문·추출 프레임·원시 메타는 어떤 형태로도 공개하지 않는다(집계만).
 
