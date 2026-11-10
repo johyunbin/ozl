@@ -2,8 +2,9 @@
 """덱 사양의 숫자 판독부 — 원칙 하나: **확신이 없으면 수량으로 보고 근거를 요구한다.**
 
 판독 앞에 입력을 정규화한다(모든 공백 문자 — 탭·개행·연속 공백·줄바꿈 없는 공백 — 을 공백 한 칸으로. 숫자와 한글 크기 단위 사이의
-공백은, 크기 단위 글자들이 따로 선 낱말이거나 '분의' 가 붙었을 때 붙인다: '70 만 배럴' · '3 백만 달러' · '1 만분의 1'. 다른 한글이 바로
-붙은 꼴('3 만원' · '표 3 조명 산업')은 크기 단위인지 낱말인지 가를 수 없어 붙이지 않고, 경계 그물이 앞의 숫자를 조각으로 둔다).
+공백은, 크기 단위 글자들 뒤가 글 끝·문장부호·숫자이거나 공백 뒤에 목록의 측정 단위 낱말이 오거나 '분의' 가 붙었을 때 붙인다:
+'70 만 배럴' · '3 백만 달러' · '1 만분의 1'. 그 밖의 꼴('3 만원' · '표 3 조명 산업' · '표 3 조 바이든' · '70 만 수준')은 크기 단위인지 낱말인지
+가를 수 없어 붙이지 않고, 경계 그물이 앞의 숫자를 조각으로 둔다).
 그다음 왼쪽부터 한 번 훑어 토큰 종류를 가르고, 직접 대조와 환산 경계 검사가 같은 결과를 쓴다.
 
 토큰 종류
@@ -58,8 +59,8 @@
   - 공백을 둔 슬래시('736,192 / 1,029,398')는 두 수의 구분으로 본다. 그렇게 적힌 분수('1 / 2')의 분자나 분모만 떼어 써도 통과한다.
   - 괄호로 적은 음수('(3.5)')의 부호는 읽지 못한다.
   - 공백으로 자릿수를 끊은 표기('1 234')는 두 수로 읽는다. 한글로 쓴 수('삼천억')는 읽지 못한다.
-  - 숫자 뒤에 띄어 쓴 '크기 단위 글자 + 한글'('3 만원' · '표 3 조명 산업' · 'SGLT2 억제제')은 조각으로 둔다. 맞는 표기도 막는 쪽이다 —
-    크기 단위면 붙여 쓰고, 낱말이면 문장부호를 넣거나(표 3: 조명 산업) 식별자로 적는다(SGLT2).
+  - 숫자 뒤에 띄어 쓴 크기 단위 글자가 위 조건에 들지 않으면('3 만원' · '70 만 수준' · '표 3 조명 산업' · 'SGLT2 억제제') 앞의 숫자를 조각으로
+    둔다. 맞는 표기도 막는 쪽이다 — 크기 단위면 붙여 쓰고, 낱말이면 문장부호를 넣거나(표 3: 조명 산업) 식별자로 적는다(SGLT2).
   - 범위 연결로 보는 측정 단위는 목록에 있는 것뿐이다. 목록 밖 단위에 붙은 '-'('70만 가마-80만 가마')는 뒤 수의 부호로 읽는다.
   - 공백을 둔 줄표(–) 앞이 단위 없는 수이고 뒤가 % 이면 범위로 읽어 앞 수에도 % 를 붙인다('100 – 20%' — 통화 기호가 없을 때).
   - 세 자리 이하 연도('918년')는 달력으로 보지 않는다(수량으로 보고 근거를 요구한다).
@@ -69,7 +70,7 @@
     기관 이름과 교차 출처 기관 이름은 대조한다(build.APPX_CHECKED).
   - 정해 둔 조사 목록 밖의 어미가 달력에 붙으면('3월 18일이니') 수량으로 보고 근거를 요구한다(오실패 쪽으로 틀린다).
 
-열 번의 코드 검토에서 나온 재현 입력은 tests/test_deck_spec.py 에 들어 있고, 조각 무작위 시험이 같이 돈다. 그래도 이 검사만으로 덱의 숫자를 믿지 않는다 —
+열한 번의 코드 검토에서 나온 재현 입력은 tests/test_deck_spec.py 에 들어 있고, 조각 무작위 시험이 같이 돈다. 그래도 이 검사만으로 덱의 숫자를 믿지 않는다 —
 사양을 쓴 쪽과 다른 눈의 문장 대조, 사람의 원문 대조가 따로 있다.
 """
 from __future__ import annotations
@@ -143,9 +144,10 @@ _RAW_TAIL = re.compile(r"[./]\d")                            # 판독하지 못�
 # ('49B만 남았다' · '49B만으로' · '49B 조사' 의 '만'·'조' 는 조사·낱말).
 _UNITS = ("배럴|달러|파운드|유로|위안|루블|리터|가구|세대|마리|원|불|엔|명|개|톤|건|대|척|곳|배|평|주|표|석|권|편|장|호"
           "|kg|km|MW|GW|TEU")
-_UNIT_END = "(?:가량|였다|이었다|이다|입니다|이며|이고|이라|쯤|씩|어치|짜리|으로|에서|까지|부터|보다|이나|[은는이가을를의로에와과도만])?(?![가-힣A-Za-z])"
+_UNIT_END = ("(?:가량|였다|이었다|이다|입니다|이며|이고|이라도|이라|쯤|씩|어치|짜리|으로는|으로도|으로|에서는|에서|까지는|까지|부터는|부터|보다|이나|에는|에도"
+             "|[은는이가을를의로에와과도만])?(?![가-힣A-Za-z])")
 _UNITW = r"(?:" + _UNITS + r")" + _UNIT_END   # 측정 단위 낱말 하나(뒤에 조사·어미가 붙을 수 있고, 다른 낱말로 이어지지 않는다)
-_QTY_TAIL = re.compile(r"[.,]\d| ?" + _PCT + r"| ?" + _SCALE + r"| ?[" + _MAGC + r"]+(?:$|(?= ?\d)|(?= ?" + _UNITW + r")|(?=[^ 가-힣])|(?= [A-Za-z]))",
+_QTY_TAIL = re.compile(r"[.,]\d| ?" + _PCT + r"| ?" + _SCALE + r"|(?:개월|년|일|주|시간)(?![가-힣])| ?[" + _MAGC + r"]+(?:$|(?= ?\d)|(?= ?" + _UNITW + r")|(?=[^ 가-힣])|(?= [A-Za-z]))",
                        re.IGNORECASE)
 _LASTGRP = re.compile(r" (\d+(?:,\d{3})*)(?!\d|[.,/]\d)")   # 복합 수량의 마지막 자리: '1억 2,345' 의 ' 2,345'
 _TAIL_UNIT = re.compile(r"(?P<scale> ?" + _SCALE + r")?(?P<pct> ?" + _PCT + r")?", re.IGNORECASE)
@@ -158,10 +160,10 @@ _SIGN = "-–−+"        # 그 밖에는 부호. U+2212(−)는 언제나 부�
 _UNIT_NORM = {"%포인트": "%p", "퍼센트포인트": "%p", "퍼센트": "%", "bn": "billion", "mn": "million"}
 
 
-# 숫자 뒤에 공백을 두고 온 한글 크기 단위: 크기 단위 글자들이 따로 선 낱말이거나(뒤가 공백·숫자·문장부호·글 끝) '분의' 가 붙었을 때만
-# 크기 단위로 본다. 다른 한글이 바로 붙은 꼴('3 만원' · '3 만평' · '표 3 조명 산업' · '표 3 만주 지역')은 크기 단위인지 낱말인지 가를 수 없어
-# 붙이지 않고, 경계 그물이 앞의 숫자를 조각으로 둔다(근거가 되지도, 근거를 얻지도 못한다).
-_MAG_WORD = r"[" + _MAGC + r"]+(?:$|[^가-힣A-Za-z]|분의)"
+# 숫자 뒤에 공백을 두고 온 한글 크기 단위: 크기 단위 글자들 뒤가 글 끝·문장부호·숫자이거나, 공백 뒤에 목록에 있는 측정 단위 낱말이 오거나
+# ('70 만 배럴' · '3 백만 달러'), '분의' 가 붙었을 때만 크기 단위로 본다. 그 밖의 꼴('3 만원' · '3 만평' · '표 3 조명 산업' · '표 3 만주 지역' ·
+# '표 3 조 바이든' · '70 만 수준')은 크기 단위인지 낱말인지 가를 수 없어 붙이지 않고, 경계 그물이 앞의 숫자를 조각으로 둔다.
+_MAG_WORD = r"[" + _MAGC + r"]+(?:$|[^가-힣A-Za-z ]| ?\d| " + _UNITW + r"|분의)"
 _SQUEEZE = re.compile(r"(?<=\d) (?=" + _MAG_WORD + r")")
 
 
@@ -268,7 +270,8 @@ def _qty_tail(s: str, b: int) -> bool:
     if not m:
         return False
     e = m.end()
-    if s[e - 1:e] in tuple(_MAGC) and s[e:e + 1] == " " and s[e + 1:e + 2].isdigit() and (_starts_cal(s, e + 1) or _DUR.match(s, e + 1)):
+    if s[e - 1:e] == "만" and s[e - 2:e - 1] not in tuple(_MAGC) and s[e:e + 1] == " " and s[e + 1:e + 2].isdigit() \
+            and (_starts_cal(s, e + 1) or _DUR.match(s, e + 1)):
         return False
     return True
 
@@ -376,7 +379,7 @@ def scan(text, identifiers=()) -> list[Token]:
 
 
 # 앞 수량과 이음표 사이에 올 수 있는 측정 단위(목록에 있는 것만). 설명하는 말('전년비-3%' · 'YoY-3%')은 단위가 아니라서 그 뒤의 '-' 는 부호다
-_UNIT_ASCII = r"(?:/[A-Za-z]+|per barrel|barrels?|bbl|b/d|bpd|tonnes?|tons?|kg|km|dollars?|usd)"
+_UNIT_ASCII = r"(?:/(?:bbl|barrel|b|d|day|t|ton|tonne|kg|km|yr|year|mo|month|kWh|MWh|MMBtu)|per barrel|barrels?|bbl|b/d|bpd|tonnes?|tons?|kg|km|dollars?|usd)"
 _UNIT_GAP = re.compile(r" ?(?:(?:" + _UNITS + r")|" + _UNIT_ASCII + r")", re.IGNORECASE)
 _PLAIN_NUM = re.compile(r"[+-]?\d+(?:\.\d+)?")
 _NUM_UNIT = re.compile(r"[+-]?\d+(?:\.\d+)?(?P<unit>(?:[" + _MAGC + r"]+|thousand|million|billion|trillion)?(?:%p|%)?)")
@@ -403,8 +406,8 @@ def _share_range_unit(s: str, toks: list[Token]) -> list[Token]:
             continue                                    # 둘 다 단위 없는 수(1~3) · 뒤가 달력·식별자 — 그대로 둔다
         m = _NUM_UNIT.fullmatch(b.canon)
         gap = s[a.end:b.start]
-        if m and m.group("unit") in ("%", "%p") and re.search(r"[" + re.escape(_CUR) + r"] ?$", s[max(0, a.start - 2):a.start]) \
-                and not any(c in gap for c in _CUR):
+        money = re.search(r"[" + re.escape(_CUR) + r"] ?$", s[max(0, a.start - 2):a.start]) or any(c in s[a.start:a.end] for c in _CUR)
+        if m and m.group("unit") in ("%", "%p") and money and not any(c in gap for c in _CUR):
             continue                                    # '$100 – 20% 할인' — 금액과 비율은 범위가 아니다. 앞 수는 그대로 둔다
         if m and m.group("unit"):
             out[n] = Token("qty", a.canon + m.group("unit"), a.start, a.end)
@@ -489,7 +492,7 @@ def _mark_fragments(s: str, toks: list[Token]) -> list[Token]:
             return True
         if closed(t):
             return False
-        if ch(b - 1).isdigit() and re.match(r" [" + _MAGC + r"]+[가-힣]| ?" + _MAG_WORD, rest):
+        if ch(b - 1).isdigit() and re.match(r" [" + _MAGC + r"]| ?" + _MAG_WORD, rest):
             return True     # 읽지 못한 한글 크기 단위, 또는 크기 단위인지 낱말인지 가를 수 없는 꼴('3 만원' · '3 조명') — 추측하지 않는다
         if ch(b).isdigit():
             return True                                                         # 바로 붙은 숫자는 언제나 같은 수의 나머지다
