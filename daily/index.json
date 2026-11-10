@@ -1,0 +1,59 @@
+{
+ "schema": 1,
+ "reports": [
+  {
+   "date": "2026-11-10",
+   "slot": "am",
+   "file": "daily/2026/11/2026-11-10_am.md",
+   "cards": 6,
+   "published": 5
+  }
+ ],
+ "cards": [
+  {
+   "card_id": "2026-11-10-am-01",
+   "date": "2026-11-10",
+   "slot": "am",
+   "title": "오늘 밤 미국 물가 발표에는 '1년 전보다 몇 % 올랐다'가 없습니다",
+   "category": "금융·증시",
+   "badge": "확인",
+   "url": "https://johyunbin.github.io/ozl/daily/2026-11-10_am/#am-01"
+  },
+  {
+   "card_id": "2026-11-10-am-02",
+   "date": "2026-11-10",
+   "slot": "am",
+   "title": "국유화로 떠났던 엑슨이 베네수엘라와 다시 서류에 서명했습니다",
+   "category": "국제·지정학",
+   "badge": "확인",
+   "url": "https://johyunbin.github.io/ozl/daily/2026-11-10_am/#am-02"
+  },
+  {
+   "card_id": "2026-11-10-am-03",
+   "date": "2026-11-10",
+   "slot": "am",
+   "title": "유럽 집값이 소득보다 6.8% 더 올랐다는데, 포르투갈은 60% 입니다",
+   "category": "사회·문화",
+   "badge": "확인",
+   "url": "https://johyunbin.github.io/ozl/daily/2026-11-10_am/#am-03"
+  },
+  {
+   "card_id": "2026-11-10-am-05",
+   "date": "2026-11-10",
+   "slot": "am",
+   "title": "혼다가 미국에 30억 달러짜리 공장을 짓습니다 — 무엇을 만들지는 아직 모릅니다",
+   "category": "국제·지정학",
+   "badge": "확인",
+   "url": "https://johyunbin.github.io/ozl/daily/2026-11-10_am/#am-05"
+  },
+  {
+   "card_id": "2026-11-10-am-06",
+   "date": "2026-11-10",
+   "slot": "am",
+   "title": "AI 데이터센터는 누구 돈으로 짓고 있을까",
+   "category": "금융·증시",
+   "badge": "확인",
+   "url": "https://johyunbin.github.io/ozl/daily/2026-11-10_am/#am-06"
+  }
+ ]
+}
