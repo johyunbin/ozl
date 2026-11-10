@@ -1,7 +1,7 @@
 [project]
 name = "ozl"
 version = "0.1.0"
-description = "OZL — 오늘의 즐길거리: 매일 이슈 발굴·검증·브리핑 파이프라인"
+description = "OZL — 오늘의 즐길거리: 뉴스에서 방송 소재를 골라 숫자를 원문과 맞춰 보는 작업 기록"
 requires-python = ">=3.11"
 dependencies = [
   "yt-dlp",

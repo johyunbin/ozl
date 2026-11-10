@@ -1,10 +1,10 @@
 # OZL — 작업영역 SOP (규범만 · 전역 지침 `~/.claude/CLAUDE.md`는 자동 로드)
 
-태그라인: **OZL — 오늘의 즐길거리. 매일 이슈를 발굴·검증·브리핑합니다.** 모든 일일 문서·사이트·README 상단에 고정.
+이름은 **OZL — 오늘의 즐길거리**. 문서 첫머리에 구호를 붙이지 않고, 무엇을 하는 곳인지 한두 문장으로 적는다(README 첫 문단이 기준).
 
 ## 진입 순서
-1. 이 문서 → `README.md`(방법론 요약) → `docs/methodology.md`(검증 체계 정본)
-2. 계획·결정 이력: `private/plan/`(비공개 사본) · 원본 `~/.claude/plans/ozl_plan_20261109_164333.md`
+1. 이 문서 → `README.md` → `docs/how-it-works.md`(하루의 흐름, 자동과 사람의 경계) → `docs/methodology.md`(검증 규칙 정본)
+2. 계획·결정 이력: `private/plan/`(비공개 사본) · 원본 `~/.claude/plans/ozl_plan_20261109_164333.md` · 정리 계획 `~/.claude/plans/ozl_tidy_plan_20261110_164038.md`
 3. 오늘 할 일: 최신 전체본 `private/daily/YYYY/MM/<날짜>_<회차>.md` 의 "채택 대기"(또는 `.venv/bin/python -m ozl.research status`) + Notion DB 「OZL 소재 카드」
 
 ## 공개/비공개 경계 (사용자 결정 2026-11-09)
@@ -13,7 +13,7 @@
 - 공개 산출물은 **공개본 추출 게이트**(`scripts/publish_gate.py` — 발표자 노트·숨김 슬라이드 제거, 전사 연속 20자·슬라이드 문구 연속 15자 인용 차단 · md 뿐 아니라 `src/`·`tests/`·json 도 검사)를 통과한 것만 커밋. 게이트를 고치면 양성 반례(비공개 문구 한 줄 삽입)로 발화를 확인한다.
 
 ## 슬라이드 분석 파이프라인 (Phase 2A 정본 · 2026-11-10)
-- 장수·구성: `slide_dense`(3초 표본 + 문자 인식 + 제목 묶음) → `slide_dense rebuild` → `slide_structure` → `compose_aggregate holdout`. ⛔ `collect/frames.py`(장면 전환 + pHash) 프레임으로 장수를 세지 않는다 — 슬라이드의 44%를 놓친다(색·폰트 측정에만 유효).
+- 장수·구성: `slide_dense`(3초 표본 + 문자 인식 + 제목 묶음) → `slide_dense rebuild` → `slide_structure` → `compose_aggregate holdout`. `collect/frames.py`(장면 전환 + pHash) 프레임으로 장수를 세지 않는다 — 슬라이드의 44%를 놓친다(색·폰트 측정에만 유효).
 - 구성 라벨의 번호는 `private/slides_label_r2/`(고정본)와 맞는다. `slide_structure` 가 다시 쓰는 `slides_label/` 은 번호가 달라질 수 있다.
 - 렌더 검증의 정본 = 파워포인트 내보내기(`src/ozl/render/ppt_export.py`). LibreOffice 는 맑은 고딕·줄 간격이 달라 대체 경로로만.
 
@@ -34,10 +34,22 @@
 - 절차의 정본 = `skills/ozl/SKILL.md`(`/ozl am|pm|weekly|pick|verify|publish|status`). 결정적 단계는 `python -m ozl.research …` 가 한다(수집·커버리지 대조·ID 발급·검사·렌더·Notion 속성).
 - 카드·클레임의 정본 = `private/desk/cards/<card_id>.yaml` · `private/desk/claims/<날짜>/…`(비공개). 보고서는 두 벌 — **전체본** `private/daily/…`(모든 카드 · PDF 쌍)과 **발행본** `daily/…`(공개 · 승인된 카드만 전문, 나머지는 번호·분야·계기·상태만).
 - **공개 여부를 묻는 코드는 `cards.publishable()` 하나만 쓴다**: 승인이 참이고, 지금 클레임으로 다시 계산한 배지가 확인·추정이며, 승인 때의 내용 지문이 지금과 같을 때만 참. 승인 뒤에 카드나 클레임을 고치면 승인은 무효가 된다(다시 승인하거나 `withdraw`).
-- ⛔ `human-verify`(사람 육안 대조 기록)와 `publish`(발행 승인)는 **사용자가 그렇게 말했을 때만** 실행한다. 예약 루틴·모델이 스스로 올리지 않는다.
+- `human-verify`(사람 육안 대조 기록)와 `publish`(발행 승인)는 **사용자가 그렇게 말했을 때만** 실행한다. 예약 루틴·모델이 스스로 올리지 않는다.
 - 카드 ID 는 `ids` 명령으로만 받는다(발급 대장 `private/desk/issued_ids.json` — 지운 번호도 재사용하지 않는다).
 - 피드 = `src/ozl/research/feeds.yaml`, 발표 일정 = `calendar.yaml`. 일정은 **공식 일정 페이지를 직접 열어 확인한 날짜만** 적는다(35일 지나면 재확인 표시가 뜬다).
 - 수치는 1차 출처를 직접 열어 본 것만 클레임으로 만들고, 작성한 세션과 다른 에이전트가 원문을 다시 열어 대조한다. 검색 요약만 본 값은 "확인 필요"로 리스크에 적는다.
+
+## 공개 문서 문체 (2026-11-10)
+- 한 일을 적고 꾸미는 말을 뺀다. 구호, 이모지, 가운뎃점으로 명사를 길게 잇는 나열, 근거 없는 형용사를 쓰지 않는다.
+- 구현된 것만 현재형으로 쓴다. 아직 손으로 하는 일은 손으로 한다고 적는다. 쓰지 않는 도구와 소스는 적지 않는다(`docs/sources.md` 는 `scripts/build_sources.py` 로 만든다. 피드나 일정을 고치면 다시 돌린다).
+- 규모 숫자(피드 수, 모델 수)를 앞세우지 않는다. 첫 화면에는 결과물 하나와 그 검증 기록을 둔다.
+- 자동으로 한 일과 사람이 한 일을 섞어 쓰지 않는다. 모델을 쓴 사실은 숨기지 않는다.
+- 승인 전 카드의 제목이나 소재를 공개 문서에 적지 않는다(번호와 분야까지만).
+
+## 비공개 기록 백업 (2026-11-10)
+- `private/` 는 별도 git 저장소이고 비공개 원격 `ozl-private` 로 올린다. 무엇이 올라가는지는 `private/.gitignore` 의 허용 목록이 정한다(카드·클레임 정본, 수집 원본, 전체본·검증 시트, 계획, 설명서, 태그 파일). 영상·전사·프레임은 올라가지 않는다.
+- 올릴 때는 `scripts/backup_private.sh` 만 쓴다(원격이 비공개인지 확인한 뒤 올린다). 회차가 끝날 때마다 돌린다.
+- 정본은 `private/desk/` 의 카드·클레임 파일 하나뿐이다. 공개 저장소, 사이트, Notion 은 거기서 한 방향으로 만든다. Notion 에서 거꾸로 받는 것은 `상태`뿐이다.
 
 ## Notion 미러
 - Notion 미러: 페이지 「OZL — 오늘의 즐길거리」 아래 DB 「OZL 소재 카드」(식별자·속성 목록 = `private/notion.json`, 비공개). 루틴은 MCP(Notion 커넥터)로 upsert·상태 읽기 — 토큰 파일 없음. Notion은 `card_id`+`revision` 이벤트만 전달한다 — 카드의 정본은 `private/desk/cards/`, 공개분의 정본은 git 의 `daily/`·`claims/` 다. Notion 에서 사용자가 `상태`를 바꾸면 그것이 채택·보류·반려 결정이다.
