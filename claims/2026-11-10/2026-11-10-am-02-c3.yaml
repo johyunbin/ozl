@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-02-c3
+card_id: 2026-11-10-am-02
+text: 2023년 베네수엘라의 원유 생산량은 하루 742,000배럴로 2013년 수준에서 누적 70% 감소했으며, 세계 원유 생산의 0.8% 였다.
+observed: 742,000 b/d · a 70% cumulative decline from production levels in 2013 · 0.8%
+source:
+  url: https://www.eia.gov/international/content/analysis/countries_long/Venezuela/pdf/venezuela_2024.pdf
+  tier: T1
+  publisher: U.S. Energy Information Administration
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: '2023'
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: final
+  primary_doc_locator: '''Petroleum and Other Liquids'' 첫째 글머리(0.8%)·셋째 글머리(742,000 b/d·70%)'
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 매장량 1위 나라가 실제로는 세계 생산의 1% 도 못 낸다
+  strongest_counter: 2023년 값이다. 2026년에는 늘었다는 보도가 있으나(국영사 자체 발표 등) 1차 통계로 확인하지 못했다
+  denominator_check: 감소의 원인을 제재 하나로 돌리면 틀린다 — 보고서는 투자 부족과 설비 노후를 함께 든다
+  residual_uncertainty: 2021·2022년에는 각각 13%·18% 늘었다 — 바닥을 지난 뒤의 수치다
+verifiers:
+  claude: PDF 를 내려받아 본문 'Petroleum and Other Liquids' 글머리에서 확인(2026-11-10)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 생산 급감 원인은 기름 성질이 아니라 투자·제재 / 2023년 생산과 2026년 수입의 시점 분리'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: 매장량의 검증 한계 / 양해각서·수입 증가·생산을 별개 사건으로'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin

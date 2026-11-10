@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-01-c4
+card_id: 2026-11-10-am-01
+text: 2026년 9월 미국 CPI 는 전월 대비 0.6%(계절조정), 전년 동월 대비 3.7%(비계절조정) 올랐다. 근원 CPI 는 전월 대비 0.3%, 전년 동월 대비 2.6%.
+observed: 3.7 percent / 2.6 percent (12개월) · 0.6 percent / 0.3 percent (1개월)
+source:
+  url: https://www.bls.gov/news.release/archives/cpi_10142026.htm
+  tier: T1
+  publisher: U.S. Bureau of Labor Statistics
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 2026-09
+  real_vs_nominal: n/a
+  seasonally_adjusted: 전월비 계절조정·전년비 비계절조정
+  methodology_match: n/a
+  revision_status: preliminary
+  primary_doc_locator: 보도자료 첫 문단·근원 지수 문단 (2026-10-14 발표)
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 오늘 발표 직전의 물가 수준 — 헤드라인과 근원의 차이가 1.1%p 로 벌어져 있다
+  strongest_counter: 한 달 치다. 9월 헤드라인을 끌어올린 항목(에너지 등)이 무엇인지는 이 카드에서 확인하지 않았다
+  denominator_check: 전월비는 계절조정, 전년비는 비계절조정이라 두 숫자를 섞어 계산하면 안 된다
+  residual_uncertainty: 잠정치이며 이후 계절조정 계수 개정으로 전월비가 바뀔 수 있다
+verifiers:
+  claude: 원문을 직접 열어 값 확인(2026-11-10 13시대 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 전월비·지수 수준은 정상 발표 / 연준 목표는 PCE'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: 결측 범위를 ''값이 없는 지수의 전년 동월 대비''로 한정 / 계절조정·비계절조정 구분 / 2025년 11월 지수의 이월 영향'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin

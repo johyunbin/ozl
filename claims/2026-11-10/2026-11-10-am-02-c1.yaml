@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-02-c1
+card_id: 2026-11-10-am-02
+text: 2026년 7월 미국의 베네수엘라산 원유 수입은 하루 평균 701,000배럴로 2017년 5월 이후 가장 많았다. 연초에는 200,000배럴, 8월에는 655,000배럴.
+observed: 701,000 b/d · since May 2017 · 655,000 b/d · 200,000 b/d
+source:
+  url: https://www.eia.gov/todayinenergy/detail.php?id=68425
+  tier: T1
+  publisher: U.S. Energy Information Administration
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 2026-07
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: preliminary
+  primary_doc_locator: 본문 첫 문단 (2026-11-06 게재)
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 제재가 풀린 뒤 미국으로 들어오는 베네수엘라 원유가 반년 만에 세 배 넘게 늘었다
+  strongest_counter: 8월에는 이미 줄었다(655,000배럴) — '계속 늘고 있다'고 하면 틀린다
+  denominator_check: 미국 전체 원유 수입에서 차지하는 비중은 이 글에서 확인하지 않았다
+  residual_uncertainty: 월간 잠정치(Petroleum Supply Monthly 기반)라 개정될 수 있다
+verifiers:
+  claude: 원문을 직접 열어 값 확인(2026-11-10 13시대 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 생산 급감 원인은 기름 성질이 아니라 투자·제재 / 2023년 생산과 2026년 수입의 시점 분리'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: 매장량의 검증 한계 / 양해각서·수입 증가·생산을 별개 사건으로'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin

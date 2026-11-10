@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-01-c5
+card_id: 2026-11-10-am-01
+text: 미 연준의 연방기금금리 목표 범위는 3.75~4.00% 이고, 마지막 변경은 2026-09-17 의 25bp 인상이다(그 전은 2025-12-11 의 25bp 인하로 3.50~3.75%).
+observed: September 17 · Increase 25 · 3.75-4.00
+source:
+  url: https://www.federalreserve.gov/monetarypolicy/openmarket.htm
+  tier: T1
+  publisher: Board of Governors of the Federal Reserve System
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: '2026-09-17'
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: final
+  primary_doc_locator: 금리 변경 표의 2026년 첫 행
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 연준은 지금 금리를 올리는 쪽에 서 있다 — 오늘 숫자가 12월 9일 결정의 재료다
+  strongest_counter: 10월 28일 회의에서는 동결했다. 한 번의 인상으로 '인상 기조'라고 단정하기는 이르다
+  denominator_check: 표의 날짜는 시행일이고 회의는 9월 15~16일이다
+  residual_uncertainty: 해당 페이지의 '최종 갱신일'이 2026-09-16 으로 적혀 있어 표와 하루 어긋난다 — 10월 28일 성명으로 교차 확인함
+verifiers:
+  claude: 원문을 직접 열어 값 확인(2026-11-10 13시대 KST) · 10월 28일 FOMC 성명(동결)은 조사 에이전트가 확인
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 전월비·지수 수준은 정상 발표 / 연준 목표는 PCE'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: 결측 범위를 ''값이 없는 지수의 전년 동월 대비''로 한정 / 계절조정·비계절조정 구분 / 2025년 11월 지수의 이월 영향'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin
