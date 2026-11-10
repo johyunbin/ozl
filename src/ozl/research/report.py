@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 from collections import Counter
 from datetime import datetime
 
@@ -20,6 +21,7 @@ SITE ="https://johyunbin.github.io/ozl"
 REPO = "https://github.com/johyunbin/ozl"  # 발행본은 저장소 화면과 사이트 양쪽에서 읽히므로 링크를 절대 주소로 쓴다
 SLOT_KO = {"am": "아침", "pm": "저녁", "wk": "주간"}
 DOW = "월화수목금토일"
+_ANCHOR = re.compile(r'<a id="((?:am|pm|wk)-\d{2})"></a>')   # 발행본에 실린 카드 자리표
 
 
 def paths(date: str, slot: str) -> dict[str, pathlib.Path]:
@@ -161,9 +163,10 @@ def render_sheet(date: str, slot: str) -> str:
 
 def render_public(date: str, slot: str) -> str:
     cards = C.cards_for(date, slot)
-    pub = [c for c in cards if C.publishable(c, C.claims_for(c["card_id"]))]
-    gone = [c for c in cards if c not in pub and (c.get("publish") or {}).get("withdrawn_at")]
-    hold = [c for c in cards if c not in pub and c not in gone and c["state"] != "반려"]
+    status = {c["card_id"]: C.publish_status(c, C.claims_for(c["card_id"])) for c in cards}
+    pub = [c for c in cards if status[c["card_id"]] == "발행"]
+    gone = [c for c in cards if status[c["card_id"]] == "철회"]
+    hold = [c for c in cards if status[c["card_id"]] == "미발행" and c["state"] != "반려"]
     st = _stats(date, slot)
     L = _head(date, slot, "OZL 일일 데스크")
     L += ["| 항목 | 값 |", "|---|---|", f"| 회차 | {SLOT_KO[slot]}({slot}) |",
@@ -218,12 +221,20 @@ def notion_rows(date: str, slot: str) -> list[dict]:
         approved = C.publishable(c, C.claims_for(c["card_id"]))
         cov = c["coverage"]["summary"]
         n_src = len({d["url"] for d in (c.get("data") or [])} | {s["url"] for s in (c.get("sources") or [])})
-        rows.append({"card_id": c["card_id"], "content": notion_content(c, C.claims_for(c["card_id"])), "properties": {
+        props = {
             "제목": c["titles"][0], "card_id": c["card_id"], "date:날짜:start": c["date"], "date:날짜:is_datetime": 0,
             "회차": c["slot"], "상태": c["state"], "주제": c["category"], "민감도": c["sensitivity"]["level"],
             "배지": C.BADGE_KO[c["badge"]], "출처 수": n_src, "왜 오늘인가": c["why_today"]["text"][:1900],
             "반전 포인트": c["angles"]["twist"][:1900], "기존 커버리지": cov[:1900],
-            "Pages 링크": page_url(c["card_id"]) if approved else None, "revision": c["revision"]}})
+            "Pages 링크": page_url(c["card_id"]) if approved else None, "revision": c["revision"]}
+        ev = C.event_times(c)
+        props["발행"] = C.publish_status(c, C.claims_for(c["card_id"]))
+        props["세부 주제"] = c.get("topic", "")
+        if ev["picked_at"]:
+            props["date:채택일:start"] = ev["picked_at"][:10]   # 날짜 값이 없으면 키를 넣지 않는다(빈 날짜로 덮어쓰지 않게)
+        if ev["published_at"]:
+            props["date:발행일:start"] = ev["published_at"][:10]
+        rows.append({"card_id": c["card_id"], "content": notion_content(c, C.claims_for(c["card_id"])), "properties": props})
     return rows
 
 
@@ -236,9 +247,26 @@ def render_all(date: str, slot: str) -> dict:
         errs += C.validate_card(c, C.claims_for(c["card_id"]))
     if errs:
         raise ValueError("검증 오류 — 렌더 중단:\n" + "\n".join(f"  - {e}" for e in errs))
+    from . import archive   # archive 가 이 모듈을 불러 쓰므로 여기서 늦게 부른다
+    archive.build_index(include=[(date, slot)])   # 미리 실패만 걸러낸다 — 여기서 예외가 나면 파일을 하나도 쓰지 않는다
     P = paths(date, slot)
-    for k, fn in (("private", render_private), ("sheet", render_sheet), ("public", render_public)):
-        P[k].parent.mkdir(parents=True, exist_ok=True)
-        P[k].write_text(fn(date, slot), encoding="utf-8")
-    return {"paths": {k: str(v) for k, v in P.items()}, "cards": len(cards), "summary": summary_counts(cards),
-            "published": sum(C.publishable(c, C.claims_for(c["card_id"])) for c in cards)}
+    for _ in range(3):
+        written = ""
+        for k, fn in (("private", render_private), ("sheet", render_sheet), ("public", render_public)):
+            text = fn(date, slot)
+            P[k].parent.mkdir(parents=True, exist_ok=True)
+            P[k].write_text(text, encoding="utf-8")
+            written = text if k == "public" else written
+        index = archive.build_index(include=[(date, slot)])   # 보고서를 다 쓴 뒤 다시 계산한다 — 색인은 늘 보고서와 같거나 더 나중 상태
+        # 실제로 쓴 발행본의 자리표와 색인의 이 회차 발행 카드가 같아야 저장한다. 그 사이 승인·철회가 끼어들었으면 다시 쓴다
+        in_report = {f"{date}-{a}" for a in _ANCHOR.findall(written)}
+        in_index = {c["card_id"] for c in index["cards"] if (c["date"], c["slot"]) == (date, slot)}
+        if in_report == in_index:
+            break
+    else:
+        raise RuntimeError(f"{date} {slot}: 보고서를 3번 다시 써도 발행 카드가 색인과 맞지 않는다 — 색인은 저장하지 않았다")
+    idx, _ = archive.save_index(index)
+    out = {k: str(v) for k, v in P.items()}
+    out["index"] = str(idx)
+    mine = next(r for r in index["reports"] if (r["date"], r["slot"]) == (date, slot))
+    return {"paths": out, "cards": len(cards), "summary": summary_counts(cards), "published": mine["published"]}

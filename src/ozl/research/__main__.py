@@ -8,6 +8,7 @@
     python -m ozl.research render --slot am                   # 전체본·검증 시트(비공개) + 발행본(공개) 쓰기
     python -m ozl.research notion --slot am                   # Notion upsert 용 속성 JSON
     python -m ozl.research status                             # 채택 대기·검증 대기 목록
+    python -m ozl.research ledger                             # 카드 원장 private/desk/ledger.csv 쓰기(전체 카드 한 줄씩)
     python -m ozl.research pick <card_id>                     # 채택(상태만 바꾼다)
     python -m ozl.research human-verify <claim_id>… --by 이름  # 사람이 원문을 대조했다고 말한 클레임만
     python -m ozl.research publish <card_id>… --by 이름        # 공개 발행 승인(배지 조건 통과 시)
@@ -62,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         if cmd == "render":
             try:
                 r = report.render_all(a.date, a.slot)
-            except (ValueError, FileNotFoundError) as e:
+            except (ValueError, FileNotFoundError, RuntimeError) as e:
                 print(e)
                 return 1
             print(json.dumps(r, ensure_ascii=False, indent=1))
@@ -79,8 +80,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"카드 {len(rows)}장 · 채택 대기 {len(wait)} · 채택 {len(picked)}")
         for c in rows[-30:]:
             hv = [x.get("human_verified") for x in C.claims_for(c["card_id"])]
-            pub = "발행" if C.publishable(c, C.claims_for(c["card_id"])) else "철회" if (c.get("publish") or {}).get("withdrawn_at") else "미발행"
+            pub = C.publish_status(c, C.claims_for(c["card_id"]))
             print(f"- {c['card_id']} [{c['state']}] {C.BADGE_KO[c['badge']]} · 사람 확인 {sum(bool(h) for h in hv)}/{len(hv)} · {pub} · {c['titles'][0]}")
+        return 0
+    if cmd == "ledger":
+        a = ap.parse_args(rest)
+        from . import archive
+        p, n = archive.write_ledger()
+        print(f"{p} · {n}행")
         return 0
     if cmd == "pick":
         ap.add_argument("card_id")

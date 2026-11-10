@@ -11,7 +11,7 @@ theme:
       primary: deep orange
 nav:
   - 홈: index.md
-  - 일일 데스크: daily/
+  - 기록: daily/
   - 작업 방식: how-it-works.md
   - 검증 방법: methodology.md
   - 쓰는 소스: sources.md

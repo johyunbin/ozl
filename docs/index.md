@@ -10,7 +10,7 @@
 
 ## 문서
 
-- [일일 데스크](daily/index.md): 날짜별 보고서
+- [기록](daily/index.md): 날짜별 보고서와 공개한 카드 목록
 - [검증 방법](methodology.md): 출처 등급, 배지, 공개 규칙
 - [쓰는 소스](sources.md): 매일 읽는 피드와 인용한 기관
 - [도구](tooling.md)

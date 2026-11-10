@@ -240,6 +240,40 @@ def publishable(card: dict, claims: list[dict]) -> bool:
     return pub.get("digest") == content_digest(card, claims)
 
 
+def publish_status(card: dict, claims: list[dict]) -> str:
+    """발행 상태 한 낱말 — 발행·철회·미발행. 판정은 `publishable()` 에 맡기고, 철회는 승인이 내려간 뒤 남은 철회 시각으로 가른다."""
+    if publishable(card, claims):
+        return "발행"
+    if (card.get("publish") or {}).get("withdrawn_at"):
+        return "철회"
+    return "미발행"
+
+
+def event_times(card: dict) -> dict:
+    """카드 history 에서 채택·첫 발행·마지막 재승인·철회 시각을 뽑는다. 없는 것은 빈 문자열이다.
+    재승인 시각은 마지막 승인이 첫 승인과 다를 때만 적는다. 철회 시각은 history 의 마지막 철회 이벤트를 먼저 본다
+    (철회 뒤 재승인하면 publish 칸이 통째로 바뀌어 publish.withdrawn_at 이 사라진다)."""
+    picked, withdrawn, approvals = "", "", []
+    for h in card.get("history") or []:
+        ev, at = str(h.get("event", "")), str(h.get("at") or "")
+        if ev == "state → 채택" or ev.startswith("state → 채택 "):
+            picked = at
+        elif ev == "공개 발행 승인":
+            approvals.append(at)
+        elif ev.startswith("발행 철회"):
+            withdrawn = at
+    first = approvals[0] if approvals else ""
+    last = approvals[-1] if approvals else ""
+    return {"picked_at": picked, "published_at": first, "republished_at": last if last != first else "",
+            "withdrawn_at": withdrawn or str((card.get("publish") or {}).get("withdrawn_at") or "")}
+
+
+def all_cards() -> list[dict]:
+    """비공개 카드 전부를 card_id 순으로."""
+    out = [load_yaml(p) for p in CARDS.glob("*.yaml")] if CARDS.exists() else []
+    return sorted(out, key=lambda c: str(c.get("card_id", "")))
+
+
 def validate_card(card: dict, claims: list[dict]) -> list[str]:
     e: list[str] = []
     cid = card.get("card_id", "")

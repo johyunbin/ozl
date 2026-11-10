@@ -57,5 +57,7 @@
 ## 파일 규약
 - 일일 보고서 = 발행본 `daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(공개) + 전체본 `private/daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(비공개) · 주간 `daily/YYYY/weekly_YYYY-Www.md` · 카드 ID `YYYY-MM-DD-{am|pm|wk}-NN`(불변).
 - 클레임 `claims/YYYY-MM-DD/<card_id>-cN.yaml` · 덱 `tracks/syuka/decks/YYYYMMDD_<slug>.pptx|pdf` + `sources.md`.
+- 지난 카드를 찾는 길: 카드 원장 `private/desk/ledger.csv`(비공개 · `python -m ozl.research ledger` · 채택·발행 시각은 카드의 `history` 에서 뽑는다)와 발행 카드 색인 `daily/index.json`(공개 · 렌더가 함께 쓴다 · `publishable()` 통과분만). `scripts/build_site.py` 가 색인으로 사이트 「기록」 쪽을 만들고, 색인이 가리키는 카드 자리표가 발행본에 없으면 빌드를 실패시킨다. 카드 원본이 없는 기기에서는 색인을 다시 쓰지 않는다(예외로 멈춘다).
+- 카드 YAML 에 새 칸을 더하지 않는다. 승인이 카드 내용 전체의 지문에 묶여 있어서 칸 하나만 더해도 발행한 카드의 승인이 풀린다. 필요한 값은 이미 있는 `topic`·`category`·`history` 에서 꺼낸다.
 - 산출물 타임코드 `_YYYYMMDD_HHMMSS`, 버전 넘버 금지. 사용자 열람용 md는 PDF 쌍(전역 규칙).
 - 외부 모델 디스패치 컨텍스트에 인증·스크래핑 코드 투입 금지(다글로 인증은 `~/Trading` 모듈이 관리 — 호출만).
