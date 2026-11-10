@@ -17,6 +17,15 @@
 - 구성 라벨의 번호는 `private/slides_label_r2/`(고정본)와 맞는다. `slide_structure` 가 다시 쓰는 `slides_label/` 은 번호가 달라질 수 있다.
 - 렌더 검증의 정본 = 파워포인트 내보내기(`src/ozl/render/ppt_export.py`). LibreOffice 는 맑은 고딕·줄 간격이 달라 대체 경로로만.
 
+## 덱 초안 생성기 (Phase 4 · 2026-11-10)
+- 두 단계다. 카드와 검증 기록을 읽고 덱 사양(`private/decks/specs/<card_id>_<타임코드>.yaml`)을 쓰는 일은 사람이나 세션이 하고, `python -m ozl.render check|build <사양>` 은 그 사양을 검사해 `pptx` 로 만든다. 코드는 문장을 짓지 않는다.
+- 숫자 규칙: 화면 글과 말로 할 문장의 수량은 인용한 검증 기록의 `observed`·`text` 에 같은 표기로 있어야 한다(환산해 적었으면 `conversions` 에 원문 표기). 엄격 모드는 `human_verified: true` 인 기록만 받는다. 판독 규칙과 못 잡는 것은 `src/ozl/render/numbers.py` 머리말에 있다.
+- 초안 모드(`build --draft --claims-dir private/desk/staging/<card_id>/`)는 사람 대조 전 기록으로 미리 만들어 보는 용도다. 해당 쪽에 [검증 대기] 가 찍히고 산출물 이름에 `_draft` 가 붙는다. 마감·공개에 쓰는 판은 엄격 모드로만 만든다.
+- 발행한 카드에 기록을 더하거나 문구를 고칠 때는 `private/desk/staging/<card_id>/` 에 모아 둔다(기록 초안과 반영 스크립트). 사용자가 눈 대조를 마친 자리에서 한 번에 옮기고, 반영 스크립트는 그 전에 임시 사본에서 끝까지 돌려 본다.
+- 검사기가 통과시켜도 문장은 따로 본다. 인과, 선후, 범위, 주체는 숫자 검사로 잡히지 않는다. 사양을 쓴 쪽과 다른 에이전트의 문장 대조, 다른 모델 계열의 검토를 거친 뒤에 사용자에게 넘긴다.
+- 문장 대조의 기준: 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 `text`·`observed` 로 받쳐져야 한다. 반론 칸(`counter`)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다. 대조를 맡길 때 이 기준을 프롬프트에 그대로 적는다(적지 않은 대조는 반론 칸을 근거로 인정하고 넘어갔다).
+- 산출물은 `private/decks/drafts/`(비공개)에 둔다. `tracks/syuka/decks/` 로 옮기는 것은 사용자가 마감하고 승인한 뒤다.
+
 ## 검증 규칙 (정본 = docs/methodology.md)
 - 모든 수치·주장은 `claims/` YAML 레코드(출처 티어·checks·counter·human_verified).
 - `verified` = 원본성·정확성·해석 3차원 통과 + 사람 육안 대조. 모델 2/3 합의는 후보 승격 조건일 뿐.

@@ -26,7 +26,7 @@ PRIVATE="$(gh repo view "$SLUG" --json isPrivate -q .isPrivate 2>/dev/null)" || 
 [ "$PRIVATE" = "true" ] || die "원격 저장소가 비공개가 아니다 — 올리지 않는다" 3
 
 # 허용 목록에 든 폴더만 이름으로 올린다(없는 폴더는 건너뛴다).
-for p in .gitignore README.md notion.json desk daily plan guide research meta; do
+for p in .gitignore README.md notion.json desk daily plan guide research meta decks; do
   [ -e "$p" ] && git add -- "$p"
 done
 

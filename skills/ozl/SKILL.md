@@ -39,7 +39,7 @@ description: OZL 이슈 데스크 — 소재 발굴·검증·기록. "오늘 소
 6. **검사** — `PY -m ozl.research validate --slot am` 이 오류 0건이어야 한다.
 7. **독립 검증** — 새 서브에이전트(`Explore`·Opus)에게 카드 문장이 아니라 **클레임 표(주장·원문 표기·URL·원문 위치)만** 주고, 원문을 다시 열어 일치·불일치·열지 못함으로 판정하게 한다. 불일치는 고치고, 열지 못한 클레임은 `verifiers` 에 그 사실을 적는다. 작성한 세션이 스스로 채점하지 않는다. Gemini·ChatGPT 교차는 여력이 있을 때 `multimodel_request` 로 한 번 시도하고, 실패해도 이 단계를 대신하지 않는다.
 8. **렌더** — `PY -m ozl.research render --slot am` → 전체본·검증 시트(`private/daily/…`)와 발행본(`daily/…`). 전체본은 `python3 ~/Claude/tools/md2pdf.py <전체본.md> --theme doc --footer-title` 로 PDF 를 만들고 첫 쪽을 눈으로 확인한다.
-9. **Notion** — `PY -m ozl.research notion --slot am` 이 내는 속성 묶음으로 DB 「OZL 소재 카드」(식별자 `private/notion.json`)에 `card_id` 기준 upsert 한다: 먼저 `card_id` 로 조회해 있으면 속성만 갱신, 없으면 새 페이지(본문 = 전체본의 그 카드 부분). **이때 Notion 의 `상태` 가 `채택`·`보류`·`반려` 로 바뀌어 있으면 그것이 사용자 결정이다** — 카드 YAML 의 `state` 를 거기에 맞추고(§3) 덮어쓰지 않는다.
+9. **Notion** — `PY -m ozl.research notion --slot am` 이 내는 속성 묶음으로 DB 「OZL 소재 카드」(식별자 `private/notion.json`)에 `card_id` 기준 upsert 한다: 먼저 `card_id` 로 조회해 있으면 속성만 갱신, 없으면 새 페이지(본문 = 전체본의 그 카드 부분). **이때 Notion 의 `상태` 가 `채택`·`보류`·`반려` 로 바뀌어 있으면 그것이 사용자 결정이다** — 카드 YAML 의 `state` 를 거기에 맞추고(§3) 덮어쓰지 않는다. 카드의 `coverage.videos` 에 `video_id` 가 있으면 DB 「슈카월드 영상」(식별자 `private/meta/notion_videos.json`)에서 그 `video_id` 의 행을 찾아 카드의 「관련 영상」에 연결한다. 찾지 못했거나 조회 한도에 걸리면 비워 두고 보고에 적는다(이 때문에 회차를 멈추지 않는다).
 10. **커밋·발행** — `git add` 는 `daily/<…>.md` 와 렌더가 함께 쓰는 `daily/index.json`(발행 카드 색인 — 사이트 「기록」 쪽의 재료), 승인된 카드가 있으면 `claims/<날짜>/` 만 pathspec 으로. 커밋 뒤 `scripts/push_delegated.sh` → `gh run watch` → `https://johyunbin.github.io/ozl/daily/<날짜>_<회차>/` 가 열리는지 확인한다. pre-commit(gitleaks·공개본 게이트)이 막으면 우회하지 않는다. 끝으로 `scripts/backup_private.sh` 를 돌려 그날의 카드·클레임·전체본을 비공개 백업 저장소에 올린다(실패해도 발행은 유효하다 — 오류를 보고에 적는다).
 11. **보고** — 카드 표(번호·제목·배지·민감도), 받지 못한 피드, 독립 검증 결과(일치/불일치/미확인 건수), 커밋·CI·Pages·Notion 증거, 사용자에게 필요한 일(검증 시트 대조·채택) 순으로 짧게.
 
@@ -51,7 +51,7 @@ description: OZL 이슈 데스크 — 소재 발굴·검증·기록. "오늘 소
 
 ## 3. 사용자 명령
 
-- `pick <card_id>` — `PY -m ozl.research pick <card_id>` → Notion 상태도 `채택`. 그 카드의 나머지 주장까지 클레임으로 만들어 전수 검증하고(§1의 4~7), PPT 초안(`private/decks/drafts/`)은 Phase 4 절차로 넘긴다.
+- `pick <card_id>` — `PY -m ozl.research pick <card_id>` → Notion 상태도 `채택`. 그 카드의 나머지 주장까지 클레임으로 만들어 전수 검증하고(§1의 4~7), PPT 초안은 덱 생성기로 만든다(`CLAUDE.md` 의 「덱 초안 생성기」: 사양 쓰기 → `PY -m ozl.render check` → `build`, 산출물 `private/decks/drafts/`). 예약 실행에서는 덱을 만들지 않는다.
 - `verify <claim_id…>` — **사용자가 "원문과 대조했다"고 말한 클레임만** `PY -m ozl.research human-verify <claim_id…> --by <사용자>`. 그 뒤 `render`.
 - `publish <card_id…>` — `PY -m ozl.research publish <card_id…> --by <사용자>`. 배지가 확인·추정이 아니면 코드가 거부한다. 발행 직전에 출처 링크가 살아 있는지·수치가 그대로인지 다시 연다. 그 뒤 커밋(`daily/`·`claims/`)·`push_delegated.sh`·Notion `Pages 링크` 갱신.
 - `status` — `PY -m ozl.research status`. 지난 카드를 한 장의 표로 보려면 `PY -m ozl.research ledger`(`private/desk/ledger.csv` — 엑셀로 연다).
