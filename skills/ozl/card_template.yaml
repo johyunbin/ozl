@@ -27,6 +27,14 @@ coverage:                          # ⑥
   searched: ["낱말1", "낱말2"]      # 대조에 쓴 낱말 — 비우면 검사에서 걸린다
   videos:
     - {video_id: "xxxxxxxxxxx", title: "가상 영상 제목", date: "2025-12-01"}
+    - {video_id: "yyyyyyyyyyy", title: "가상 영상 제목 둘", date: "2025-03-15", relation: "배경", gist: "가상 제도가 처음 생긴 과정을 다뤘다"}
+    # relation·gist 는 선택 칸이다. 하나라도 relation 이 붙으면 ⑥ 이 날짜순 표(때·영상·무엇을 다뤘나·관계)로 바뀐다.
+    # relation 을 붙인 영상은 카드당 8편까지 · date 는 YYYY-MM-DD · gist 는 줄바꿈 없이 60자 이하.
+    #   배경      — 전에 다룬 바탕
+    #   후속      — 그 사건의 뒷이야기
+    #   전제 변화 — 그때의 가정이 바뀜
+    #   반대 증거 — 그때 전망과 다른 자료가 나옴
+    #   같은 주제 — 사건은 이어지지 않음
 sensitivity: {level: GREEN, reason: ""}   # ⑦ GREEN | YELLOW(사유 필수) — RED 는 카드로 올리지 않는다
 outline:                           # ⑧ 구성 템플릿 v0 의 단계 이름으로 5단계 이상 · 반전 필수
   - {stage: 여는 장, note: "질문이나 최신 뉴스 한 장"}

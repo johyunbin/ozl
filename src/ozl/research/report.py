@@ -13,6 +13,7 @@ import pathlib
 import re
 from collections import Counter
 from datetime import datetime
+from urllib.parse import quote
 
 from . import cards as C
 
@@ -58,6 +59,31 @@ def _claim_mark(c: dict) -> str:
     return C.BADGE_KO.get(c.get("status"), "?")
 
 
+def _cell(s) -> str:
+    """표 칸 하나에 넣을 글. 역슬래시를 먼저 풀고 [ ] | 를 이스케이프해 링크·열이 깨지지 않게 한다. 줄바꿈은 빈칸으로 바꾼다."""
+    s = re.sub(r"\s*[\r\n]+\s*", " ", "" if s is None else str(s)).strip()   # None 만 빈 글자다. 0·false 는 글자로 남긴다
+    return s.replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]").replace("|", "\\|")
+
+
+def _parse_date(s) -> datetime | None:
+    try:
+        return datetime.strptime(str(s), "%Y-%m-%d")
+    except (ValueError, TypeError):
+        return None
+
+
+def _flow_table(videos: list[dict]) -> list[str]:
+    """⑥ 에 relation 이 하나라도 붙은 카드만 쓰는 흐름 표. 날짜를 실제 날짜로 풀어 오름차순으로 놓고, 풀 수 없는 날짜는 맨 뒤에 적힌 그대로 둔다.
+    관계가 없는 영상은 「-」로 둔다. 링크의 영상 ID 는 URL 인코딩해 칸이 쪼개지지 않게 한다."""
+    L = ["", "| 때 | 영상 | 무엇을 다뤘나 | 관계 |", "|---|---|---|---|"]
+    for v in sorted(videos, key=lambda v: (0, _parse_date(v.get("date"))) if _parse_date(v.get("date")) else (1, datetime.min)):
+        d = _parse_date(v.get("date"))
+        when = d.strftime("%Y-%m") if d else _cell(v.get("date"))
+        vid = quote(str(v["video_id"]), safe="")
+        L += [f"| {when} | [{_cell(v['title'])}](https://youtu.be/{vid}) | {_cell(v.get('gist'))} | {_cell(v.get('relation')) or '-'} |"]
+    return L + [""]
+
+
 def render_card(card: dict, claims: list[dict], n: int, public: bool) -> str:
     cid = card["card_id"]
     if public and not C.publishable(card, claims):
@@ -85,8 +111,12 @@ def render_card(card: dict, claims: list[dict], n: int, public: bool) -> str:
     L += [f"**⑤ 검증 배지** — {C.BADGE_LABEL[card['badge']]}" + (f" {card['badge_note']}" if card.get("badge_note") else ""), ""]
     cov = card["coverage"]
     L += [f"**⑥ 슈카월드 기존 커버리지** — {cov['summary']}"]
-    for v in cov.get("videos") or []:
-        L += [f"  - {v['date']} [{v['title']}](https://youtu.be/{v['video_id']})"]
+    vids = cov.get("videos") or []
+    if any("relation" in v for v in vids):
+        L += _flow_table(vids)
+    else:
+        for v in vids:
+            L += [f"  - {v['date']} [{v['title']}](https://youtu.be/{v['video_id']})"]
     if not public:
         L += [f"  - _대조 낱말: {', '.join(cov.get('searched') or [])}_"]
     L += ["", f"**⑦ 민감도** — {sens['level']}" + (f" · {sens['reason']}" if sens.get("reason") else ""), ""]

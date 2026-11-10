@@ -39,6 +39,10 @@ TIERS = ["T1", "T2", "T3", "T4", "T5"]
 STAGES = ["여는 장", "우회 도입", "배경", "전개", "반전", "근거 수치", "비교", "해법", "여담", "시사점", "닫는 장"]  # 구성 템플릿 v0 의 단계 어휘
 CATEGORIES = ["국제·지정학", "금융·증시", "국내 경제·정책", "사회·문화", "역사·과학·기술", "기타"]  # Notion DB 「주제」 선택지와 같아야 한다
 TRIGGERS = ["공식 발표", "예정 일정", "보도", "시장 움직임", "기념일·주기", "트렌드"]
+RELATIONS = ("배경", "후속", "전제 변화", "반대 증거", "같은 주제")  # ⑥ 이 채널이 전에 다룬 영상과 오늘 소재의 관계
+RELATION_MAX = 8      # 관계를 붙인 영상은 카드당 이만큼까지
+COV_GIST_MAX = 60     # ⑥ 영상 요지 한 줄의 글자 수 상한
+YT_ID = re.compile(r"[A-Za-z0-9_-]{11}")   # relation 을 붙인 영상의 video_id 모양
 CHECK_KEYS = ["unit_ok", "base_period", "real_vs_nominal", "seasonally_adjusted", "methodology_match", "revision_status",
               "primary_doc_locator", "recalculated", "translation_checked"]
 COUNTER_KEYS = ["core_claim", "strongest_counter", "denominator_check", "residual_uncertainty"]
@@ -339,6 +343,21 @@ def validate_card(card: dict, claims: list[dict]) -> list[str]:
     for v in cov.get("videos") or []:
         if _blank(v.get("video_id")) or _blank(v.get("title")) or not _real_date(v.get("date")):
             e.append(f"{cid}: ⑥ videos 항목의 video_id·title·date 오류")
+        # relation·gist 는 선택 칸이다. 없으면 검사하지 않고, 있으면 값의 모양만 본다.
+        if "relation" in v:
+            if v.get("relation") not in RELATIONS:
+                e.append(f"{cid}: ⑥ videos 항목의 relation 오류({v.get('relation')}) — {' | '.join(RELATIONS)}")
+            if not _real_date(v.get("date")):
+                e.append(f"{cid}: ⑥ relation 을 붙인 영상({v.get('video_id')})의 date 가 YYYY-MM-DD 날짜가 아님")
+            if not isinstance(v.get("video_id"), str) or not YT_ID.fullmatch(v["video_id"]):
+                e.append(f"{cid}: ⑥ relation 을 붙인 영상의 video_id 가 유튜브 ID 11자가 아님({v.get('video_id')})")
+        if "gist" in v:
+            g = v.get("gist")
+            if not isinstance(g, str) or "\n" in g or "\r" in g or len(g) > COV_GIST_MAX:
+                e.append(f"{cid}: ⑥ videos 항목의 gist 는 줄바꿈 없는 {COV_GIST_MAX}자 이하 문자열({v.get('video_id')})")
+    n_rel = sum(1 for v in cov.get("videos") or [] if "relation" in v)
+    if n_rel > RELATION_MAX:
+        e.append(f"{cid}: ⑥ relation 을 붙인 영상 {n_rel}편 — 카드당 {RELATION_MAX}편까지")
     sens = card.get("sensitivity") or {}
     if sens.get("level") not in ("GREEN", "YELLOW"):
         e.append(f"{cid}: ⑦ 민감도는 GREEN|YELLOW (RED 는 카드로 올리지 않는다)")
