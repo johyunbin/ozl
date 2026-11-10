@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-03-c1
+card_id: 2026-11-10-am-03
+text: EU 의 소득 대비 집값 비율(house price-to-income ratio)은 2025년에 2015년보다 6.8% 높다. 27개 회원국 중 17개국에서 오르고 10개국에서 내렸다.
+observed: +6.8% · 17 EU countries / 10
+source:
+  url: https://ec.europa.eu/eurostat/product?code=ddn-20261109-1
+  tier: T1
+  publisher: Eurostat
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 2015→2025
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: true
+  revision_status: final
+  primary_doc_locator: 본문 첫 문단 · 그림 'House-price-to-income ratio, 2015-2025' (2026-11-09 게재 · 자료 tipsho60)
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 유럽 전체로는 집값이 소득보다 조금 더 올랐다
+  strongest_counter: EU 차원의 집계치다 — 나라별로는 +60.8% 부터 −42.8% 까지 갈려, 전체 숫자만으로는 어느 나라 사정도 알 수 없다
+  denominator_check: 분모는 가구가 아니라 1인당 가처분소득이다. 가구원 수가 줄면 가구가 느끼는 부담은 다르다
+  residual_uncertainty: 글의 방법 주석에 기준 연도가 '2025=100' 으로 적혀 있다 — 오기인지 자료 화면에서 확인 필요
+verifiers:
+  claude: 원문을 직접 열어 값 확인(2026-11-10 13시대 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 지수와 절대 배수 구분 / 금리 미반영'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: EU 집계치를 나라별 등락의 혼합으로 설명한 문장 수정 / 장기 평균 편차와 2015년 대비의 기준 차이'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 3
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin

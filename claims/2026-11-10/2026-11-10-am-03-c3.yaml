@@ -1,0 +1,40 @@
+claim_id: 2026-11-10-am-03-c3
+card_id: 2026-11-10-am-03
+text: EU 의 표준화한 소득 대비 집값 비율이 장기 평균에서 벗어난 정도는 2007년 +7.9%, 2014년 −6.4%, 2022년 +7.4%, 2025년 +0.03% 다.
+observed: +7.9% (2007) · -6.4% (2014) · +7.4% (2022) · +0.03% (2025)
+source:
+  url: https://ec.europa.eu/eurostat/product?code=ddn-20261109-1
+  tier: T1
+  publisher: Eurostat
+  accessed: '2026-11-10'
+  archived: ''
+cross_check: []
+status: verified
+checks:
+  unit_ok: true
+  base_period: 2007·2014·2022·2025
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: true
+  revision_status: final
+  primary_doc_locator: 그림 'Standardised house-price-to-income ratio (deviation to long-term average, %)'
+  recalculated: n/a
+  translation_checked: true
+counter:
+  core_claim: 2022년의 과열은 3년 만에 평균으로 돌아왔다
+  strongest_counter: '''평균으로 돌아왔다''가 ''살 만해졌다''는 아니다 — 이 비율에는 금리(대출 상환 부담)가 들어 있지 않다'
+  denominator_check: 장기 평균을 어느 기간으로 잡았는지에 따라 편차가 달라진다(글은 2000년 이후)
+  residual_uncertainty: EU 전체 값이라 나라별로는 여전히 평균 위에 있는 곳이 있다
+verifiers:
+  claude: 원문을 직접 열어 값 확인(2026-11-10 13시대 KST)
+  subagent: 일치 — 독립 검증 에이전트가 원문을 직접 다시 열어 대조(2026-11-10 13:21 KST)
+  gemini: '해석 검토(2026-11-10 13:24 · 데스크앱) — 수치 이견 없음. 지적 반영: 지수와 절대 배수 구분 / 금리 미반영'
+  chatgpt: '해석 검토(2026-11-10 13:26 · GPT-6 웹 검색 · 사고 수준 매우 높음) — 핵심 수치 확인됨. 지적 반영: EU 집계치를 나라별 등락의 혼합으로 설명한 문장 수정 / 장기 평균 편차와 2015년 대비의 기준 차이'
+human_verified: true
+links:
+  video_id: ''
+  time_range: ''
+  slide_id: ''
+revision: 2
+human_verified_at: '2026-11-10T13:56:49+09:00'
+human_verified_by: johyunbin
