@@ -1,0 +1,226 @@
+{
+ "version": "v0",
+ "basis": {
+  "videos": 25,
+  "slides": 1685,
+  "holdout": {
+   "boundary_f1": 0.865,
+   "rule_hit_rate": 0.91,
+   "labelers": 2,
+   "videos": 5
+  }
+ },
+ "deck": {
+  "slides_median": 69,
+  "slides_p10_p90": [
+   46,
+   82
+  ],
+  "stages_median": 12
+ },
+ "stages": [
+  {
+   "stage": "hook",
+   "videos_share": 0.96,
+   "slide_share_median": 0.03,
+   "run_length_median": 2.0,
+   "position_median": 0.01,
+   "slides_in_deck": 2
+  },
+  {
+   "stage": "lead_in",
+   "videos_share": 0.2,
+   "slide_share_median": 0.1,
+   "run_length_median": 5,
+   "position_median": 0.04,
+   "slides_in_deck": 7
+  },
+  {
+   "stage": "background",
+   "videos_share": 0.76,
+   "slide_share_median": 0.12,
+   "run_length_median": 5,
+   "position_median": 0.2,
+   "slides_in_deck": 8
+  },
+  {
+   "stage": "data",
+   "videos_share": 0.44,
+   "slide_share_median": 0.12,
+   "run_length_median": 6.5,
+   "position_median": 0.28,
+   "slides_in_deck": 8
+  },
+  {
+   "stage": "development",
+   "videos_share": 1.0,
+   "slide_share_median": 0.33,
+   "run_length_median": 7,
+   "position_median": 0.4,
+   "slides_in_deck": 23
+  },
+  {
+   "stage": "turn",
+   "videos_share": 0.92,
+   "slide_share_median": 0.11,
+   "run_length_median": 4,
+   "position_median": 0.45,
+   "slides_in_deck": 8
+  },
+  {
+   "stage": "other",
+   "videos_share": 0.4,
+   "slide_share_median": 0.11,
+   "run_length_median": 7,
+   "position_median": 0.56,
+   "slides_in_deck": 8
+  },
+  {
+   "stage": "comparison",
+   "videos_share": 0.72,
+   "slide_share_median": 0.1,
+   "run_length_median": 5,
+   "position_median": 0.69,
+   "slides_in_deck": 7
+  },
+  {
+   "stage": "implication",
+   "videos_share": 0.64,
+   "slide_share_median": 0.08,
+   "run_length_median": 5.0,
+   "position_median": 0.79,
+   "slides_in_deck": 6
+  },
+  {
+   "stage": "solution",
+   "videos_share": 0.32,
+   "slide_share_median": 0.12,
+   "run_length_median": 5.0,
+   "position_median": 0.83,
+   "slides_in_deck": 8
+  },
+  {
+   "stage": "digression",
+   "videos_share": 0.24,
+   "slide_share_median": 0.06,
+   "run_length_median": 3,
+   "position_median": 0.84,
+   "slides_in_deck": 4
+  },
+  {
+   "stage": "closing",
+   "videos_share": 0.96,
+   "slide_share_median": 0.03,
+   "run_length_median": 2,
+   "position_median": 0.99,
+   "slides_in_deck": 2
+  }
+ ],
+ "slide_roles": {
+  "quote": 0.257,
+  "data": 0.199,
+  "case": 0.126,
+  "context": 0.087,
+  "explainer": 0.082,
+  "turn": 0.066,
+  "humor": 0.039,
+  "comparison": 0.035,
+  "implication": 0.024,
+  "solution": 0.024,
+  "summary": 0.023,
+  "hook": 0.019
+ },
+ "source_mix": {
+  "foreign_press": 0.449,
+  "unclear": 0.138,
+  "none": 0.083,
+  "official": 0.08,
+  "market_data": 0.061,
+  "domestic_press": 0.05,
+  "own_chart": 0.046,
+  "photo_only": 0.045,
+  "social": 0.029,
+  "research_report": 0.019
+ },
+ "reversal": {
+  "per_deck_median": 5,
+  "first_position_median": 0.14
+ },
+ "korea_link": {
+  "share": 1.0,
+  "position_median": 0.64
+ },
+ "humor": {
+  "per_deck_median": 8,
+  "position_median": 0.49
+ },
+ "title": {
+  "connective_start": 0.17,
+  "question": 0.108,
+  "chain_ending": 0.055,
+  "top_connectives": [
+   "그런데",
+   "그러나",
+   "물론",
+   "결국",
+   "그래서",
+   "그러자",
+   "게다가",
+   "그리고",
+   "한편",
+   "더구나",
+   "반면",
+   "하지만"
+  ]
+ },
+ "rules": [
+  {
+   "rule": "첫 단계가 hook(또는 lead_in)이다",
+   "support": 1.0
+  },
+  {
+   "rule": "첫 단계는 전체 슬라이드의 15% 이하다",
+   "support": 1.0
+  },
+  {
+   "rule": "두 번째 단계가 background·development·lead_in 중 하나다",
+   "support": 0.84
+  },
+  {
+   "rule": "단계 수가 9~17개다",
+   "support": 1.0
+  },
+  {
+   "rule": "development 단계가 2번 이상 나온다",
+   "support": 0.84
+  },
+  {
+   "rule": "반전 지점이 3~6곳이다",
+   "support": 1.0
+  },
+  {
+   "rule": "첫 반전이 앞 35% 안에 있다",
+   "support": 1.0
+  },
+  {
+   "rule": "유머 슬라이드가 2장 이상 있다",
+   "support": 0.96
+  },
+  {
+   "rule": "한국 연결이 있다(슬라이드·말·주제 자체)",
+   "support": 1.0
+  },
+  {
+   "rule": "마지막 단계가 closing 또는 implication 이다",
+   "support": 0.96
+  },
+  {
+   "rule": "외신(foreign_press)에 기댄 슬라이드가 30% 이상이다",
+   "support": 0.68
+  },
+  {
+   "rule": "가장 많은 역할이 quote(원문 인용)다",
+   "support": 0.56
+  }
+ ]
+}

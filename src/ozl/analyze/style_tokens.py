@@ -21,6 +21,8 @@ from collections import Counter
 import numpy as np
 from PIL import Image
 
+from ozl.analyze.style_measure import classify
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 FRAMES = ROOT / "private" / "frames"
 OUT_MD = ROOT / "tracks" / "syuka" / "analysis" / "style_tokens_syukaworld.md"
@@ -46,6 +48,8 @@ def key_to_hex(k: int) -> str:
 def analyze_frame(p: pathlib.Path) -> dict | None:
     im = Image.open(p).convert("RGB")
     a = np.asarray(im)
+    if classify(a.astype(np.int16)) != "clean":  # 주석 도구 대화상자·흐림 프레임 제외(색·여백 오염원 — style_measure.py)
+        return None
     h, w, _ = a.shape
     lum = a.mean(axis=2)
     white = lum >= WHITE
@@ -116,11 +120,11 @@ def main() -> int:
     n = len(all_frames)
     aspect = Counter(f"{round(f['w']/f['h'],2)}" for f in all_frames)
     lines = ["# 슈카월드 슬라이드 스타일 토큰 (집계 · 대표 30편 1080p 프레임)", "",
-             f"- 분석 프레임 {n}개(흰 배경 ≥55%만) / 영상 {len(per_video)}편 · 크롭 비율 분포(w/h): {aspect.most_common(3)}",
+             f"- 분석 프레임 {n}개(흰 배경 ≥55% · 대화상자·흐림 프레임 제외) / 영상 {len(per_video)}편 · 크롭 비율 분포(w/h): {aspect.most_common(3)}",
              f"- 흰 배경 비율 중앙값 {statistics.median(f['white_ratio'] for f in all_frames):.2f} · 잉크(글·그림) 비율 중앙값 {statistics.median(f['ink_ratio'] for f in all_frames):.2f}",
              f"- 상단 여백 중앙값 {statistics.median(f['top_margin_pct'] for f in all_frames):.1f}% · 좌측 여백 중앙값 {statistics.median(f['left_margin_pct'] for f in all_frames):.1f}%",
              f"- 좌/우 잉크 밀도 중앙값 {statistics.median(f['left_ink'] for f in all_frames):.3f} / {statistics.median(f['right_ink'] for f in all_frames):.3f} (좌 이미지·우 텍스트면 좌 > 우)",
-             f"- 장당 체류 시간 중앙값(영상별 중앙값의 중앙값) {statistics.median([v['dwell_median_sec'] for v in per_video if v['dwell_median_sec']]):.0f}초 · 10분당 슬라이드 중앙값 {statistics.median([v['slides_per_10min'] for v in per_video]):.1f}장",
+             f"- (참고) 추출 프레임 간격 중앙값 {statistics.median([v['dwell_median_sec'] for v in per_video if v['dwell_median_sec']]):.0f}초 · 10분당 {statistics.median([v['slides_per_10min'] for v in per_video]):.1f}장 — 장면 전환 검출 기준이라 실제 장수보다 적다. 장수·체류 시간의 정본은 `slide_structure_syukaworld.md`(촘촘 표본).",
              "", "## 유채색 팔레트(제목·강조 후보) — 32단계 양자화, 프레임 평균 비율 상위", "", "| hex | 평균 비율 |", "|---|---|"]
     for hx, r in chroma.most_common(8):
         lines.append(f"| `{hx}` | {r / n:.4f} |")
@@ -133,7 +137,7 @@ def main() -> int:
     lines += ["", "## 영상별", "", "| 영상 | 길이(분) | 전환 | 보관 | 슬라이드 프레임 | 체류 중앙(초) | 10분당 장수 |", "|---|---|---|---|---|---|---|"]
     for v in sorted(per_video, key=lambda x: x["video_id"]):
         lines.append(f"| {v['video_id']} | {round((v['duration_sec'] or 0)/60)} | {v['transitions']} | {v['frames_kept']} | {v['slide_frames']} | {v['dwell_median_sec'] or '-'} | {v['slides_per_10min']} |")
-    lines += ["", "※ 양자화 hex는 32단계 중심값이라 실제 색은 ±16 범위. 정확한 토큰은 대표 프레임 3~5장을 사람이 스포이드로 확정한다(`private/style/style-guide.md`)."]
+    lines += ["", "※ 양자화 hex는 32단계 중심값이라 실제 색은 ±16 범위. 글자 색·크기·폰트의 정밀값은 `style_measure_syukaworld.md`(심지 색·폰트 대조)를 본다."]
     OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines[:9]))
     return 0
