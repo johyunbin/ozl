@@ -168,7 +168,7 @@ def main(argv: list[str]) -> int:
             continue
         if p.suffix == ".pptx":
             errs = check_pptx(p)
-        elif p.suffix in (".md", ".py", ".json", ".txt", ".swift", ".yml", ".yaml", ".toml"):  # 소스·데이터 파일도 대조(2026-11-10: deck.py 시제품 예시에 슬라이드 제목이 들어가 있던 것을 md 전용 게이트가 못 잡았다)
+        elif p.suffix in (".md", ".py", ".json", ".txt", ".swift", ".yml", ".yaml", ".toml", ".sh"):  # 소스·데이터 파일도 대조(2026-11-10: deck.py 시제품 예시에 슬라이드 제목이 들어가 있던 것을 md 전용 게이트가 못 잡았다)
             if sh is None:
                 sh, slide_sh = transcript_shingles()
             errs = check_md(p, sh, slide_sh)

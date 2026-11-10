@@ -1,0 +1,64 @@
+# 소재 후보 수집 피드 — 2026-11-10 응답 실측분만 켠다(enabled: false 는 그날 실패한 주소 · 사유 note).
+# tier = docs/methodology.md §1 의 출처 등급. kind: official(기관 원문) · news(주류 언론) · paper(워킹페이퍼) · trend(검색 급상승) · community(T5 단서 전용)
+# outlet 이 같은 피드는 한 매체로 센다(묶음 점수에서 "서로 다른 매체 수"를 계산할 때).
+feeds:
+  # ── 국내 통신·경제지 (T3)
+  - {id: yna_economy, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/economy.xml", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: yna_international, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/international.xml", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: yna_industry, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/industry.xml", tier: T3, lang: ko, kind: news, section: 산업}
+  - {id: yna_market, outlet: 연합뉴스, url: "https://www.yna.co.kr/rss/market.xml", tier: T3, lang: ko, kind: news, section: 증시}
+  - {id: hk_economy, outlet: 한국경제, url: "https://www.hankyung.com/feed/economy", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: hk_international, outlet: 한국경제, url: "https://www.hankyung.com/feed/international", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: hk_finance, outlet: 한국경제, url: "https://www.hankyung.com/feed/finance", tier: T3, lang: ko, kind: news, section: 증시}
+  - {id: hk_it, outlet: 한국경제, url: "https://www.hankyung.com/feed/it", tier: T3, lang: ko, kind: news, section: 테크}
+  - {id: mk_economy, outlet: 매일경제, url: "https://www.mk.co.kr/rss/30100041/", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: mk_international, outlet: 매일경제, url: "https://www.mk.co.kr/rss/30300018/", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: mk_stock, outlet: 매일경제, url: "https://www.mk.co.kr/rss/50200011/", tier: T3, lang: ko, kind: news, section: 증시}
+  - {id: sedaily_economy, outlet: 서울경제, url: "https://www.sedaily.com/rss/economy", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: mt_all, outlet: 머니투데이, url: "https://rss.mt.co.kr/mt_news.xml", tier: T3, lang: ko, kind: news, section: 종합}
+  # ── 해외 언론 (T3)
+  - {id: bbc_business, outlet: BBC, url: "https://feeds.bbci.co.uk/news/business/rss.xml", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: bbc_world, outlet: BBC, url: "https://feeds.bbci.co.uk/news/world/rss.xml", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: guardian_business, outlet: Guardian, url: "https://www.theguardian.com/business/rss", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: guardian_world, outlet: Guardian, url: "https://www.theguardian.com/world/rss", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: nyt_business, outlet: NYT, url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: nyt_world, outlet: NYT, url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: nyt_economy, outlet: NYT, url: "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: ft_home, outlet: FT, url: "https://www.ft.com/rss/home", tier: T3, lang: en, kind: news, section: 종합}
+  - {id: ft_world, outlet: FT, url: "https://www.ft.com/world?format=rss", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: wsj_world, outlet: WSJ, url: "https://feeds.content.dowjones.io/public/rss/RSSWorldNews", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: wsj_markets, outlet: WSJ, url: "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain", tier: T3, lang: en, kind: news, section: 증시}
+  - {id: cnbc_top, outlet: CNBC, url: "https://www.cnbc.com/id/100003114/device/rss/rss.html", tier: T3, lang: en, kind: news, section: 종합}
+  - {id: cnbc_economy, outlet: CNBC, url: "https://www.cnbc.com/id/20910258/device/rss/rss.html", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: bloomberg_markets, outlet: Bloomberg, url: "https://feeds.bloomberg.com/markets/news.rss", tier: T3, lang: en, kind: news, section: 증시}
+  - {id: bloomberg_economics, outlet: Bloomberg, url: "https://feeds.bloomberg.com/economics/news.rss", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: bloomberg_tech, outlet: Bloomberg, url: "https://feeds.bloomberg.com/technology/news.rss", tier: T3, lang: en, kind: news, section: 테크}
+  - {id: nikkei_asia, outlet: Nikkei Asia, url: "https://asia.nikkei.com/rss/feed/nar", tier: T3, lang: en, kind: news, section: 아시아, note: "발행 시각 없음 — 수집 시각으로 대신한다"}
+  - {id: aljazeera, outlet: Al Jazeera, url: "https://www.aljazeera.com/xml/rss/all.xml", tier: T3, lang: en, kind: news, section: 국제}
+  - {id: gnews_reuters, outlet: Reuters, url: "https://news.google.com/rss/search?q=site:reuters.com+when:1d&hl=en-US&gl=US&ceid=US:en", tier: T3, lang: en, kind: news, section: 종합, note: "Reuters 는 공식 RSS 가 없어 구글 뉴스 검색 피드로 제목만 받는다. 링크는 구글 경유 주소라 원문은 따로 연다"}
+  - {id: gnews_ap, outlet: AP, url: "https://news.google.com/rss/search?q=site:apnews.com+when:1d&hl=en-US&gl=US&ceid=US:en", tier: T3, lang: en, kind: news, section: 종합, note: "AP 도 같은 방식"}
+  # ── 기관 원문 (T1/T2)
+  - {id: fed_press, outlet: Federal Reserve, url: "https://www.federalreserve.gov/feeds/press_all.xml", tier: T1, lang: en, kind: official, section: 미국 통화}
+  - {id: bea, outlet: BEA, url: "https://apps.bea.gov/rss/rss.xml", tier: T1, lang: en, kind: official, section: 미국 통계}
+  - {id: census_econ, outlet: US Census, url: "https://www.census.gov/economic-indicators/indicator.xml", tier: T1, lang: en, kind: official, section: 미국 통계}
+  - {id: eia_today, outlet: EIA, url: "https://www.eia.gov/rss/todayinenergy.xml", tier: T1, lang: en, kind: official, section: 에너지}
+  - {id: ecb_press, outlet: ECB, url: "https://www.ecb.europa.eu/rss/press.html", tier: T1, lang: en, kind: official, section: 유럽 통화}
+  - {id: eurostat, outlet: Eurostat, url: "https://ec.europa.eu/eurostat/en/search?p_p_id=estatsearchportlet_WAR_estatsearchportlet&p_p_lifecycle=2&p_p_resource_id=atom&_estatsearchportlet_WAR_estatsearchportlet_collection=CAT_EURNEW", tier: T1, lang: en, kind: official, section: 유럽 통계}
+  - {id: bok_press, outlet: 한국은행, url: "https://www.bok.or.kr/portal/bbs/B0000338/news.rss?menuNo=200761", tier: T1, lang: ko, kind: official, section: 한국 통화}
+  - {id: moef_press, outlet: 기획재정부, url: "https://www.moef.go.kr/com/detailRssTagService.do?bbsId=MOSFBBS_000000000028", tier: T1, lang: ko, kind: official, section: 한국 정책}
+  - {id: nber_new, outlet: NBER, url: "https://www.nber.org/rss/new.xml", tier: T4, lang: en, kind: paper, section: 학술, note: "워킹페이퍼(동료심사 전) — T4 로만 쓴다. 발행 시각 없음"}
+  # ── 트렌드·커뮤니티 (단서 전용)
+  - {id: trends_kr, outlet: Google Trends KR, url: "https://trends.google.com/trending/rss?geo=KR", tier: T5, lang: ko, kind: trend, section: 급상승}
+  - {id: trends_us, outlet: Google Trends US, url: "https://trends.google.com/trending/rss?geo=US", tier: T5, lang: en, kind: trend, section: 급상승}
+  - {id: hn_front, outlet: Hacker News, url: "https://hnrss.org/frontpage", tier: T5, lang: en, kind: community, section: 테크 커뮤니티}
+  # ── 2026-11-10 실패 — 주소가 바뀌었는지 다음 점검 때 다시 본다
+  - {id: bls_latest, outlet: BLS, url: "https://www.bls.gov/feed/bls_latest.rss", tier: T1, lang: en, kind: official, section: 미국 통계, enabled: false, note: "항목 1개짜리 요약 피드 — 발표 일정은 calendar.yaml 로 대신"}
+  - {id: imf_news, outlet: IMF, url: "https://www.imf.org/en/News/RSS?Language=ENG", tier: T2, lang: en, kind: official, section: 국제기구, enabled: false, note: "403"}
+  - {id: koreakr_press, outlet: 정책브리핑, url: "https://www.korea.kr/rss/pressrelease.xml", tier: T1, lang: ko, kind: official, section: 한국 정책, enabled: false, note: "404"}
+  - {id: fsc_press, outlet: 금융위원회, url: "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111", tier: T1, lang: ko, kind: official, section: 한국 정책, enabled: false, note: "503"}
+  - {id: kostat_press, outlet: 통계청, url: "https://kostat.go.kr/rss/board.es?mid=a10301010000&bid=a103010100", tier: T1, lang: ko, kind: official, section: 한국 통계, enabled: false, note: "항목 0개"}
+  - {id: oecd_news, outlet: OECD, url: "https://www.oecd.org/en/about/news.rss", tier: T2, lang: en, kind: official, section: 국제기구, enabled: false, note: "응답 시간 초과"}
+
+# 슈카월드 최신 업로드(커버리지 대조용) — 키 없이 받는 공개 채널 피드
+channels:
+  - {id: syukaworld, name: 슈카월드, url: "https://www.youtube.com/feeds/videos.xml?channel_id=UCsJ6RuBiTVWRX156FVbeaGg"}

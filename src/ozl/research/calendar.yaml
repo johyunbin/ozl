@@ -1,0 +1,23 @@
+# 공식 통계·정책 발표 일정 — "왜 오늘인가"의 가장 단단한 근거.
+# 날짜는 각 기관 공식 일정 페이지를 직접 열어 확인한 것만 적는다(checked = 확인한 날). basis: official = 공식 페이지에서 날짜 확인,
+# official_date_only = 날짜만 공식(시각은 관례), secondary = 주최 측 2차 페이지. 확인하지 못한 일정은 적지 않는다.
+# checked 가 35일 넘게 지난 항목은 수집기가 "일정 재확인 필요"로 표시한다 — 루틴은 그때 schedule_url 을 다시 연다.
+events:
+  - {date: "2026-11-10", kst: "2026-11-10 22:30", org: BLS, title: "미국 소비자물가지수(CPI)", period: "2026년 10월", schedule_url: "https://www.bls.gov/schedule/news_release/cpi.htm", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-11", kst: "2026-11-11", org: 국가데이터처, title: "고용동향", period: "2026년 10월", schedule_url: "https://www.mods.go.kr/lcofNewsPln.es?mid=a50303000000", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-13", kst: "2026-11-13 22:30", org: BLS, title: "미국 생산자물가지수(PPI)", period: "2026년 10월", schedule_url: "https://www.bls.gov/schedule/news_release/ppi.htm", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-19", kst: "2026-11-19", org: 한국교육과정평가원, title: "2027학년도 대학수학능력시험", period: "", schedule_url: "https://www.suneung.re.kr", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-25", kst: "2026-11-25 22:30", org: BEA, title: "미국 GDP 2차 추정", period: "2026년 3분기", schedule_url: "https://www.bea.gov/news/schedule", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-25", kst: "2026-11-25 22:30", org: BEA, title: "미국 개인소득·지출(PCE 물가)", period: "2026년 10월", schedule_url: "https://www.bea.gov/news/schedule", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-26", kst: "2026-11-26", org: 한국은행, title: "금융통화위원회 통화정책방향 결정회의(올해 마지막)", period: "", schedule_url: "https://www.bok.or.kr/portal/singl/crncyPolicyDrcMtg/listYear.do?mtgSe=A&menuNo=200755", basis: official, checked: "2026-11-10"}
+  - {date: "2026-11-30", kst: "2026-11-30", org: 국가데이터처, title: "산업활동동향", period: "2026년 10월", schedule_url: "https://www.mods.go.kr/lcofNewsPln.es?mid=a50303000000", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-02", kst: "2026-12-02", org: 국가데이터처, title: "소비자물가동향", period: "2026년 11월", schedule_url: "https://www.mods.go.kr/lcofNewsPln.es?mid=a50303000000", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-04", kst: "2026-12-04 22:30", org: BLS, title: "미국 고용보고서(Employment Situation)", period: "2026년 11월", schedule_url: "https://www.bls.gov/schedule/news_release/empsit.htm", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-09", kst: "2026-12-10 04:00", org: Federal Reserve, title: "FOMC 결과 발표(경제전망 동반 · 올해 마지막)", period: "", schedule_url: "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", basis: official_date_only, checked: "2026-11-10"}
+  - {date: "2026-12-10", kst: "2026-12-10 22:30", org: BLS, title: "미국 소비자물가지수(CPI)", period: "2026년 11월", schedule_url: "https://www.bls.gov/schedule/news_release/cpi.htm", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-15", kst: "2026-12-15 22:30", org: BLS, title: "미국 생산자물가지수(PPI)", period: "2026년 11월", schedule_url: "https://www.bls.gov/schedule/news_release/ppi.htm", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-16", kst: "2026-12-16", org: 국가데이터처, title: "고용동향", period: "2026년 11월", schedule_url: "https://www.mods.go.kr/lcofNewsPln.es?mid=a50303000000", basis: official, checked: "2026-11-10"}
+  - {date: "2026-12-17", kst: "2026-12-17 22:15", org: ECB, title: "통화정책회의 결정", period: "", schedule_url: "https://www.ecb.europa.eu/press/calendars/mgcgc/html/index.en.html", basis: official_date_only, checked: "2026-11-10"}
+  - {date: "2026-12-17", kst: "2026-12-17 21:00", org: Bank of England, title: "통화정책위원회(MPC) 금리 결정", period: "", schedule_url: "https://www.bankofengland.co.uk/monetary-policy/upcoming-mpc-dates", basis: official_date_only, checked: "2026-11-10"}
+  - {date: "2026-12-18", kst: "2026-12-18", org: Bank of Japan, title: "금융정책결정회의 결과", period: "", schedule_url: "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm", basis: official, checked: "2026-11-10"}
+# 확인하지 못해 뺀 것(2026-11-10): 관세청 1~10일·1~20일 수출입 현황, 산업통상부 월간 수출입동향, 한국은행 3분기 GDP 잠정치·국제수지, OPEC+ 회의.

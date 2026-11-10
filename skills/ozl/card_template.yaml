@@ -1,0 +1,48 @@
+# 소재 카드 양식 — private/desk/cards/<card_id>.yaml (값은 전부 지어낸 예시)
+card_id: 2026-01-02-am-01          # YYYY-MM-DD-{am|pm|wk}-NN · 한번 준 번호는 바꾸지 않는다
+date: "2026-01-02"
+slot: am
+rank: 1                            # 보고서에 싣는 순서
+revision: 1
+state: 제안                         # 제안 | 보류 | 채택 | PPT 초안 | PPT 완료 | 반려
+depth: full                        # full = 핵심 수치 3개 + 클레임(상위 3장) · light = 1차 출처 링크만
+category: 기타                      # 국제·지정학 | 금융·증시 | 국내 경제·정책 | 사회·문화 | 역사·과학·기술 | 기타 (Notion 「주제」)
+topic: 가상 분야                     # 자유 표기(보고서에 보이는 분야 이름)
+titles:                            # ① 제목 후보 2~3개 — 명사구가 아니라 문장
+  - "지어낸 제목 하나"
+  - "지어낸 제목 둘"
+hook: "지어낸 한 줄 훅"               # ②
+why_today:                         # ③
+  text: "가상 기관이 오늘 수치를 낸다"
+  trigger_date: "2026-01-02"
+  trigger_type: 공식 발표            # 공식 발표 | 예정 일정 | 보도 | 시장 움직임 | 기념일·주기 | 트렌드
+data:                              # ④ full 이면 3개 이상 · 전부 T1/T2 · claim_id 필수
+  - {text: "지어낸 수치 문장", source_name: "가상 통계청", url: "https://example.org/stat", tier: T1, claim_id: 2026-01-02-am-01-c1}
+sources:                           # 그 밖의 1차 출처·보도 링크
+  - {name: "가상 통신 보도", url: "https://example.org/news", tier: T3}
+badge: pending                     # ⑤ 클레임 상태 중 가장 약한 것 — pending | verified | credible_estimate | single_source | unverified_rumor
+badge_note: "원문 대조 3/3 · 사람 확인 0/3"
+coverage:                          # ⑥
+  summary: "전용 영상 없음 · 본문 언급 2편"
+  searched: ["낱말1", "낱말2"]      # 대조에 쓴 낱말 — 비우면 검사에서 걸린다
+  videos:
+    - {video_id: "xxxxxxxxxxx", title: "가상 영상 제목", date: "2025-12-01"}
+sensitivity: {level: GREEN, reason: ""}   # ⑦ GREEN | YELLOW(사유 필수) — RED 는 카드로 올리지 않는다
+outline:                           # ⑧ 구성 템플릿 v0 의 단계 이름으로 5단계 이상 · 반전 필수
+  - {stage: 여는 장, note: "질문이나 최신 뉴스 한 장"}
+  - {stage: 배경, note: "현황·등장인물·용어"}
+  - {stage: 전개, note: "원문 인용을 시간순·인과순으로"}
+  - {stage: 반전, note: "그런데 —"}
+  - {stage: 근거 수치, note: "통계·차트로 규모를"}
+  - {stage: 비교, note: "다른 나라·과거 사건과"}
+  - {stage: 시사점, note: "한국·시청자·시장에 주는 의미"}
+  - {stage: 닫는 장, note: "요약 없이 전망이나 열린 질문"}
+angles:                            # ⑨
+  twist: "지어낸 반전"
+  parallel: "지어낸 과거 평행 사례"
+  analogy: "지어낸 비유"
+  bridge: "지어낸 브릿지 멘트"
+risks:                             # ⑩
+  - "지어낸 리스크"
+discovery: "발굴 경로 — 어느 묶음·어느 일정에서 왔는지(비공개 전체본에만 실린다)"
+publish: {approved: false}
