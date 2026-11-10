@@ -16,8 +16,7 @@ from datetime import datetime
 from . import cards as C
 
 ROOT = C.ROOT
-TAGLINE = "**OZL — 오늘의 즐길거리.** 매일 이슈를 발굴·검증·브리핑합니다."
-SITE = "https://johyunbin.github.io/ozl"
+SITE ="https://johyunbin.github.io/ozl"
 REPO = "https://github.com/johyunbin/ozl"  # 발행본은 저장소 화면과 사이트 양쪽에서 읽히므로 링크를 절대 주소로 쓴다
 SLOT_KO = {"am": "아침", "pm": "저녁", "wk": "주간"}
 DOW = "월화수목금토일"
@@ -113,7 +112,7 @@ def render_card(card: dict, claims: list[dict], n: int, public: bool) -> str:
 def _head(date: str, slot: str, title: str, front: bool = False) -> list[str]:
     dow = DOW[datetime.strptime(date, "%Y-%m-%d").weekday()]
     fm = ["---", "kicker: OZL Daily Desk", f"date: {date}", "theme: doc", "---", ""] if front else []   # 비공개 문서만 — PDF 머리말용
-    return fm + [f"# {title} — {date} ({dow}) {SLOT_KO[slot]}", "", f"> {TAGLINE}", ""]
+    return fm + [f"# {title} — {date} ({dow}) {SLOT_KO[slot]}", ""]
 
 
 def summary_counts(cards: list[dict]) -> str:
@@ -172,8 +171,8 @@ def render_public(date: str, slot: str) -> str:
           f"| 검증 요약 | {summary_counts(cards)} |"]
     if st:
         L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳 · 최근 {st['hours']:g}시간 기사·발표 {st['items']}건 → 사건 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
-    L += ["", f"이 데스크는 배지가 `확인`·`추정`이고 사람이 발행을 승인한 카드만 전문을 싣습니다([검증 방법론 §8]({SITE}/methodology/)). "
-          "나머지는 번호·분야·상태만 남기고, 검증이 끝나면 같은 번호로 채워집니다.", ""]
+    L += ["", f"배지가 `확인`이나 `추정`이고 제가 공개를 승인한 카드만 전문을 싣습니다([검증 방법 8절]({SITE}/methodology/)). "
+          "나머지는 번호와 분야, 상태만 남기고, 검증이 끝나면 같은 번호 자리에 채웁니다.", ""]
     if pub:
         for i, c in enumerate(pub, 1):
             claims = C.claims_for(c["card_id"])
