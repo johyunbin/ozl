@@ -169,6 +169,7 @@ def fetch_uploads(cfg: dict, now: datetime) -> tuple[list[dict], list[dict]]:
 
 
 def collect(slot: str, date: str | None = None, hours: float = 24.0, now: datetime | None = None) -> pathlib.Path:
+    """수집해 요약본 경로를 돌려준다. 그 회차의 첫 수집이면 candidates.md, 재수집이면 recheck_HHMM.md."""
     now = now or datetime.now(timezone.utc)
     date = date or now.astimezone(KST).strftime("%Y-%m-%d")
     cfg = load_config()
@@ -230,9 +231,11 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
             "coverage_error": cov_error, "calendar": calendar_window(date), "calendar_gap": calendar_gap(date),
             "trends": [{"title": t["title"], "outlet": t["outlet"]} for t in trends],
             "uploads": uploads[:15], "clusters": clusters}
-    (out_dir / "candidates.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
-    (out_dir / "candidates.md").write_text(digest(data), encoding="utf-8")
-    return out_dir
+    # 같은 회차를 다시 수집하면 첫 수집본(보고서의 수집 통계가 가리키는 것)을 덮지 않고 재점검본으로 따로 둔다
+    stem = "candidates" if not (out_dir / "candidates.json").exists() else f"recheck_{now.astimezone(KST).strftime('%H%M')}"
+    (out_dir / f"{stem}.json").write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    (out_dir / f"{stem}.md").write_text(digest(data), encoding="utf-8")
+    return out_dir / f"{stem}.md"
 
 
 def digest(d: dict, top: int = 70) -> str:
@@ -299,7 +302,7 @@ def main(argv: list[str]) -> int:
     a = ap.parse_args(argv)
     t0 = time.time()
     out = collect(a.slot, a.date, a.hours)
-    d = json.loads((out / "candidates.json").read_text(encoding="utf-8"))
+    d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
     bad = [f["outlet"] for f in d["feeds"] if f["error"]]
-    print(f"{out}/candidates.md — 피드 {len(d['feeds']) - len(bad)}/{len(d['feeds'])} · 묶음 {d['n_clusters']}개 · {time.time() - t0:.0f}초" + (f" · 실패: {', '.join(bad)}" if bad else ""))
+    print(f"{out} — 피드 {len(d['feeds']) - len(bad)}/{len(d['feeds'])} · 묶음 {d['n_clusters']}개 · {time.time() - t0:.0f}초" + (f" · 실패: {', '.join(bad)}" if bad else ""))
     return 0

@@ -135,6 +135,16 @@ def test_digest_surfaces_failures_and_red_counts():
     assert "RED 1개" in md and "국내 정당·선거·정치 공방: 1개" in md      # 뺀 사실과 사유는 남긴다
 
 
+def test_recollect_keeps_first_snapshot(monkeypatch, tmp_path):
+    monkeypatch.setattr(collect, "DESK", tmp_path)
+    monkeypatch.setattr(collect, "load_config", lambda: {"feeds": [{"id": "x", "outlet": "가", "url": "u", "tier": "T3", "lang": "ko", "kind": "news"}], "channels": []})
+    monkeypatch.setattr(collect, "fetch_feed", lambda f, now: ([item("해운 운임 지수 석 달 만에 반등", "가")], {"id": "x", "outlet": "가", "http": 200, "entries": 1, "error": None}))
+    monkeypatch.setattr(collect.coverage, "load_catalog", lambda: CAT)
+    first = collect.collect("am", "2026-11-10", now=NOW)
+    again = collect.collect("am", "2026-11-10", now=NOW)
+    assert first.name == "candidates.md" and again.name.startswith("recheck_") and first.exists() and again.exists()
+
+
 def test_calendar_window_marks_stale(monkeypatch, tmp_path):
     (tmp_path / "calendar.yaml").write_text(
         'events:\n  - {date: "2026-11-10", kst: "2026-11-10 22:30", org: A, title: t, schedule_url: "https://example.com", basis: official, checked: "2026-09-01"}\n'
