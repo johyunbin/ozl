@@ -144,3 +144,52 @@ def test_publish_gate_needs_consecutive_windows():
 
     assert pg.check_md(P(f"인용: {line}"), set(), sh)  # 한 줄을 그대로 옮기면 걸린다
     assert not pg.check_md(P(f"{line[:pg.N_SLIDE]} 그리고 한참 뒤 {line[-pg.N_SLIDE:]}"), set(), sh)  # 떨어진 14자 두 토막은 인용이 아니다
+
+
+def test_publish_gate_transcript_ignores_english_names_but_catches_korean_quote():
+    """전사에서 읽어 준 영문 기관명은 코퍼스에 넣지 않는다(2026-11-10 발행처 오탐) — 한국어 인용은 그대로 잡는다."""
+    import publish_gate as pg
+
+    spoken = pg.norm(  # 지어낸 방송 문장 — 영문 기관명을 그대로 읽은 대목과 한국어 설명이 섞여 있다
+        "자 여기 보시면 Federal Reserve Bank of Exampletown 자료인데요 "
+        "작년 겨울에는 붕어빵 가게가 골목마다 하나씩 생겼다가 봄이 되자 한꺼번에 사라졌다고 합니다"
+    )
+    sh = {pg.h64(w) for k in range(pg.STRIDE) for w in pg.transcript_windows(spoken[k:])}  # 모든 위치를 넣어 STRIDE 영향 제거
+    assert all(pg._hangul(w) >= pg.TRANS_MIN_HANGUL for w in pg.transcript_windows(spoken))
+
+    class P:
+        def __init__(self, text):
+            self.text = text
+
+        def read_text(self, **kw):
+            return self.text
+
+    assert not pg.check_md(P("publisher: Federal Reserve Bank of Exampletown (원자료)"), sh, set())  # 영문 기관명만 겹치면 통과
+    assert pg.check_md(P("인용: 작년 겨울에는 붕어빵 가게가 골목마다 하나씩 생겼다가 봄이 되자"), sh, set())  # 한국어 문장을 옮기면 걸린다
+
+
+def test_publish_gate_transcript_numbers_heavy_quote_caught_at_every_phase():
+    """숫자·티커가 많은 한국어 문장도 33자 이상 옮기면 STRIDE 위상과 상관없이 걸린다(독립 리뷰 반례 — 정렬 창만 보던 필터는 39자를 놓쳤다)."""
+    import publish_gate as pg
+
+    sent = "그래서 S&P500 지수가 2024년 4분기 GDP 3.2% 성장 발표 직후 NASDAQ 100 선물이 1,250포인트 올랐습니다 이건 정말 놀라운 일이죠"  # 지어낸 문장
+    quote = "4년 4분기 GDP 3.2% 성장 발표 직후 NASDAQ 100 선물이 1,250포인트 올랐습니"  # 정규화 39자 — 정렬 창만 보던 필터는 phase 1 에서 놓쳤다(전수 탐색)
+
+    class P:
+        def __init__(self, text):
+            self.text = text
+
+        def read_text(self, **kw):
+            return self.text
+
+    for phase in range(pg.STRIDE):
+        t = "0" * phase + pg.norm(sent)  # 앞에 글자를 덧대 STRIDE 정렬 위치를 바꾼다
+        sh = {pg.h64(w) for w in pg.transcript_windows(t)}
+        assert pg.check_md(P(f"인용: {quote}"), sh, set()), f"phase {phase} 에서 놓침"
+
+
+def test_publish_gate_transcript_windows_include_last_window():
+    import publish_gate as pg
+
+    t = "가" * pg.STRIDE + "나" * pg.N  # 끝 창(시작 위치 = STRIDE)만 '나' 20자 — range 끝값이 빠지면 놓친다
+    assert "나" * pg.N in set(pg.transcript_windows(t))

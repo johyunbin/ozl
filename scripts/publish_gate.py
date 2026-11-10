@@ -30,11 +30,14 @@ CACHE = ROOT / "private" / ".gate_shingles.pkl"
 SLIDES = ROOT / "private" / "slides_dense"
 OCR = ROOT / "private" / "ocr"
 N = 20        # 셔글 길이(정규화 문자)
+TRANS_MIN_HANGUL = 8  # 전사 창도 한글이 이만큼 있어야 코퍼스에 넣는다 — 방송에서 읽어 준 영문 기관명('federalreservebankof'·'internationalmonetar')이
+                      # 클레임 발행처와 겹쳐 오탐(2026-11-10 하루 두 번). 실측: 전사 창 821만 개 중 한글 0자 0.45% · 7자 이하 0.57%(영문·숫자 위주)
 N_SLIDE = 14  # 슬라이드 문구용 창(정규화 문자) — 코퍼스가 작아 1칸 간격으로 전부 넣는다
 SLIDE_MIN_HANGUL = 8  # 창 안에 한글이 이만큼 있어야 대조한다 — 'financialtimes' 같은 매체명·영문 고유명사 오탐 방지(2026-11-10 docs/sources.md 에서 실증)
 SLIDE_MIN_HITS = 2    # 연속 15자 이상 겹칠 때만 인용으로 본다
 UI_TEXT = re.compile(r"저장하시겠습니까|저장하지 않은 변경|저장하지 않음")
-STRIDE = 7    # 코퍼스 셔글 추출 간격 — md 쪽은 1칸씩 훑으므로 임의 위치 인용도 N+STRIDE 자 이상이면 반드시 걸린다
+STRIDE = 7    # 코퍼스 셔글 추출 간격 — STRIDE 칸 묶음마다 한글 기준을 넘는 첫 창을 넣는다(transcript_windows).
+              # 보장: 옮긴 문장이 N+2·STRIDE−1(=33)자 이상이고 그 안에 한글 기준을 넘는 20자 창이 하나라도 있으면 반드시 걸린다
 MIN_HITS = 1
 
 
@@ -59,7 +62,7 @@ def check_pptx(p: pathlib.Path) -> list[str]:
 
 def _corpus_signature() -> str:
     idx = TRANS / "trading_export" / "index.csv"
-    parts = ["v4-blake2b-slides-hangul", str(idx.stat().st_mtime_ns) if idx.exists() else "0"]
+    parts = [f"v6-blake2b-slides-hangul-trans{TRANS_MIN_HANGUL}-blockfirst", str(idx.stat().st_mtime_ns) if idx.exists() else "0"]
     parts.append(str(sum(1 for _ in PILOT.rglob("*.txt")) if PILOT.exists() else 0))
     for d in (SLIDES, OCR):
         fs = sorted(d.glob("*.json*")) if d.exists() else []
@@ -101,6 +104,26 @@ def _build_slide_shingles() -> set[int]:
     return sh
 
 
+def _hangul(w: str) -> int:
+    return sum(1 for c in w if "가" <= c <= "힣")
+
+
+def transcript_windows(t: str):
+    """정규화된 전사 문자열에서 코퍼스에 넣을 창.
+
+    시작 위치를 STRIDE 칸씩 묶고, 묶음마다 한글이 TRANS_MIN_HANGUL 자 이상인 첫 창 하나를 넣는다.
+    정렬 위치의 창만 보고 버리면 숫자·티커가 많은 구간에서 연속 두 묶음이 통째로 빠져 39자 인용도 놓쳤다
+    (2026-11-10 독립 리뷰 반례) — 묶음 안에서 다음 위치로 미뤄 보면 그 구멍이 메워진다.
+    마지막 창(k = len−N)까지 본다(이전 range 는 끝 창을 빠뜨렸다)."""
+    last = len(t) - N
+    for k in range(0, last + 1, STRIDE):
+        for j in range(k, min(k + STRIDE, last + 1)):
+            w = t[j:j + N]
+            if _hangul(w) >= TRANS_MIN_HANGUL:
+                yield w
+                break
+
+
 def _build_shingles() -> set[int]:
     sh: set[int] = set()
     files = list(TRANS.rglob("*.json")) if TRANS.exists() else []
@@ -109,13 +132,11 @@ def _build_shingles() -> set[int]:
             t = norm(json.loads(f.read_text(encoding="utf-8")).get("text", ""))
         except Exception:  # noqa: BLE001
             continue
-        for k in range(0, max(0, len(t) - N), STRIDE):
-            sh.add(h64(t[k:k + N]))
+        sh.update(h64(w) for w in transcript_windows(t))
     if PILOT.exists():
         for f in PILOT.rglob("*.txt"):
             t = norm(f.read_text(encoding="utf-8", errors="ignore"))
-            for k in range(0, max(0, len(t) - N), STRIDE):
-                sh.add(h64(t[k:k + N]))
+            sh.update(h64(w) for w in transcript_windows(t))
     return sh
 
 
