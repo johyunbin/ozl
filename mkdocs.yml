@@ -14,6 +14,7 @@ nav:
   - 기록: daily/
   - 작업 방식: how-it-works.md
   - 검증 방법: methodology.md
+  - 이슈 브리핑: issue-brief.md
   - 쓰는 소스: sources.md
   - 도구: tooling.md
   - 정정 기록: corrections.md
