@@ -7,6 +7,7 @@
     GET /api/topic/<id>    주제 하나의 지난 24시간 추이(실행마다 순위·점수·매체 수) + now.json 의 그 주제
     GET /api/health        마지막 실행 시각·성공 여부 — 앱이 "갱신 멈춤"을 표시하는 데 쓴다
     GET /brief?id=<id>     이슈 브리핑 기사 화면(web/brief.html)
+    GET /deck?id=<id>      이슈 브리핑 덱 화면(web/deck.html · 한 장 한 문장 스와이프)
     GET /api/brief/<id>    기사 1건(YAML → JSON). sample = 시안(skills/ozl-news/brief_template.yaml), 그 밖은 private/briefs/<날짜>/<id>.yaml
 
 DB 는 읽기 전용 모드로 연다. 쓰는 일은 매시 실행(snapshot)만 한다.
@@ -27,6 +28,7 @@ from . import snapshot, store
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
 SAMPLE_BRIEF = store.ROOT / "skills" / "ozl-news" / "brief_template.yaml"
+SAMPLE_DECK = store.ROOT / "skills" / "ozl-news" / "deck_example.yaml"
 BRIEFS = store.ROOT / "private" / "briefs"
 BRIEF_ID = re.compile(r"(\d{4}-\d{2}-\d{2})-(am|pm)-b\d{2}")
 
@@ -35,6 +37,8 @@ def read_brief(brief_id: str, briefs_dir: pathlib.Path | None = None) -> dict | 
     """기사 1건. id 는 정해진 꼴만 받는다(경로를 만들기 전에 검사 — 디렉터리 밖으로 나가지 않게)."""
     if brief_id == "sample":
         path = SAMPLE_BRIEF
+    elif brief_id == "deck-sample":
+        path = SAMPLE_DECK
     else:
         m = BRIEF_ID.fullmatch(brief_id)
         if not m:
@@ -139,6 +143,8 @@ def make_handler(db: pathlib.Path, out_dir: pathlib.Path):
                     return self.send(200, (WEB / "index.html").read_bytes(), "text/html; charset=utf-8")
                 if path == "/brief":
                     return self.send(200, (WEB / "brief.html").read_bytes(), "text/html; charset=utf-8")
+                if path == "/deck":
+                    return self.send(200, (WEB / "deck.html").read_bytes(), "text/html; charset=utf-8")
                 m = re.fullmatch(r"/api/brief/([A-Za-z0-9-]{1,40})", path)
                 if m:
                     d = read_brief(m.group(1))

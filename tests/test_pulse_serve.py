@@ -133,3 +133,22 @@ def test_brief_sample_and_guard(server, tmp_path):
     (tmp_path / "2026-11-11").mkdir()
     (tmp_path / "2026-11-11" / "2026-11-11-am-b01.yaml").write_text("headline: 가상 제목\n", encoding="utf-8")
     assert serve.read_brief("2026-11-11-am-b01", tmp_path) == {"headline": "가상 제목"}
+
+
+VERDICTS = {"확인", "일부 맞음", "사실과 다름", "근거 없음", "확인 못 함"}
+SLIDE_TYPES = {"cover", "number", "claim", "bars", "cards", "text", "questions"}
+
+
+def test_deck_sample_shape(server):
+    base, _, _ = server
+    assert get(base + "/deck")[0] == 200
+    d = json.loads(get(base + "/api/brief/deck-sample")[2])
+    assert d["format"] == "deck" and d["slides"][0]["type"] == "cover"
+    ids = {s["id"] for s in d["sources"]}
+    for s in d["slides"]:
+        assert s["type"] in SLIDE_TYPES
+        if s["type"] != "cover":
+            assert s.get("title")   # 제목은 문장 — 제목만 넘겨 읽어도 줄거리가 되게
+        if s["type"] == "claim":
+            assert s["verdict"] in VERDICTS and s.get("why")
+        assert set(s.get("sources", [])) <= ids   # 근거는 출처 목록 안에서만

@@ -1,0 +1,71 @@
+# 이슈 브리핑 덱의 틀 — 한 장에 문장 하나 + 그림 하나, 옆으로 넘긴다(슈카 생방송 슬라이드의 리듬).
+# 이 파일은 형식 예시다. 내용은 전부 지어낸 것이다. 실제 덱은 private/briefs/<날짜>/<brief_id>.yaml(비공개)에 같은 칸으로 쓴다.
+#
+# 장 유형(type)
+#   cover     첫 장. headline + summary(30초 요약 3줄) + 판정 막대(claim 장들의 판정을 자동 집계)
+#   number    큰 숫자 하나 — big, unit, caption
+#   claim     커뮤니티·SNS 주장 하나에 판정 도장. said_by(누가 말했나), verdict, why(왜 그렇게 판정했나 · 한두 문장)
+#   bars      막대 몇 개 — items[{label, value, max}], highlight(강조할 label), note
+#   cards     숫자 카드 2~4개 — items[{value, label, sources}]
+#   text      짧은 글 한 덩이(120자 안팎) — 그림이 필요 없는 연결 장에만
+#   questions 닫는 장. 요약하지 않고 남은 질문
+# 모든 장: title(문장 · 제목만 넘겨 읽어도 줄거리가 되게) · step(슈카 구성 단계 이름) · twist(true 면 "그런데" 반전 장 색) · sources(근거 id)
+# 판정(verdict) 다섯 가지 — 화면 색과 막대 순서가 이 순서다
+#   확인        1차 출처, 서로 다른 매체 2곳 이상, 또는 당사자가 직접 공개한 자료(인터뷰·공시)로 확인 — 출처가 1곳이면 why 에 그렇게 적는다
+#   일부 맞음    숫자·사실 일부는 맞고 해석이나 범위가 넘친다
+#   사실과 다름   확인한 자료와 어긋난다
+#   근거 없음    주장을 받칠 증거·보도·공식 자료가 없다(틀렸다는 뜻은 아님)
+#   확인 못 함   판단할 자료를 아직 찾지 못했다
+# 출처 규칙: 커뮤니티 글은 단서(community_refs)일 뿐 sources 에 넣지 않는다. 개인을 특정하는 정보(이름·소속)는 장에 쓰지 않는다.
+
+brief_id: deck-sample
+example: true
+format: deck
+category: 사회
+status: 논란 중
+updated_at: "2026-11-11T22:30:00+09:00"
+headline: "○○시험 최고점자의 점수표, 어디까지 사실인가"
+summary:
+  - "가상 ○○시험에서 최고점자가 나오자 커뮤니티에 부정행위 의심 글이 퍼졌습니다."
+  - "점수는 보도로 확인됐지만, 부정행위를 받칠 증거는 나온 것이 없습니다."
+  - "주관 기관은 아직 입장을 내지 않았습니다."
+
+slides:
+  - type: cover
+  - type: number
+    step: 여는 장
+    title: "100점 만점에 99점. 가상 ○○시험에서 나온 점수입니다"
+    big: "99"
+    unit: "/ 100"
+    caption: "최고점자의 평균 점수"
+    sources: [s1]
+  - type: claim
+    step: 전개
+    title: "커뮤니티는 '기기를 쓴 것 아니냐'고 묻기 시작했습니다"
+    claim: "최고점자가 시험장에 전자기기를 가지고 들어갔다"
+    said_by: "가상 커뮤니티 글"
+    verdict: 근거 없음
+    why: "적발 기록·보도·기관 발표 어디에도 기기 사용을 받치는 자료가 없다."
+    sources: [s1, s2]
+  - type: claim
+    step: 첫 반전
+    twist: true
+    title: "그런데, 커뮤니티가 그린 최고점자의 모습은 보도와 달랐습니다"
+    claim: "최고점자는 공부를 시작한 지 몇 달밖에 안 됐다"
+    said_by: "가상 커뮤니티 글"
+    verdict: 사실과 다름
+    why: "인터뷰 보도에서는 준비 기간을 약 2년이라고 했다."
+    sources: [s1]
+  - type: questions
+    step: 닫는 장
+    title: "남은 질문은 세 가지입니다"
+    items:
+      - "주관 기관은 의혹을 확인할까"
+      - "점수 분포는 공개될까"
+      - "근거 없는 의심의 책임은 누가 지나"
+
+sources:
+  - {id: s1, outlet: 가상일보, kind: news, title: "가상 ○○시험 최고점자 인터뷰", url: "https://example.invalid/a1", opened_at: "2026-11-11T22:00:00+09:00"}
+  - {id: s2, outlet: 가상경제, kind: news, title: "시험장 전자기기 적발, 올해 몇 건", url: "https://example.invalid/a2", opened_at: "2026-11-11T22:05:00+09:00"}
+community_refs:
+  - {site: 가상커뮤니티A, title: "최고점자 점수 이상하지 않음?", url: "https://example.invalid/c1"}
