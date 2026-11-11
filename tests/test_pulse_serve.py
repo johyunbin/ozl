@@ -118,15 +118,10 @@ def test_db_is_wal(server):
     assert store.connect(db).execute("PRAGMA journal_mode").fetchone()[0] == "wal"
 
 
-def test_brief_sample_and_guard(server, tmp_path):
+def test_brief_path_guard(server, tmp_path):
     base, _, _ = server
-    code, h, body = get(base + "/brief")
-    assert code == 200 and b"brief" in body
-    d = json.loads(get(base + "/api/brief/sample")[2])
-    assert d["example"] is True and d["facts"] and d["story"]
-    ids = {s["id"] for s in d["sources"]}
-    for f in d["facts"]:   # 시안도 출처 규칙을 지킨다: 사실마다 출처가 목록에 있다
-        assert f["sources"] and set(f["sources"]) <= ids
+    assert get(base + "/brief")[0] == 404   # 접은 긴 글 시안 경로는 없다
+    assert get(base + "/api/brief/sample")[0] == 404
     assert get(base + "/api/brief/2026-11-11-am-b99")[0] == 404
     assert get(base + "/api/brief/..%2Fpulse")[0] == 404
     assert serve.read_brief("../../etc/passwd") is None
