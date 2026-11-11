@@ -1,13 +1,21 @@
 # OZL Pulse
 
-매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/pulse/out/now.json` 에 쓰고, 웹 화면이 이 파일을 읽는다(iOS 앱은 아직 만들지 않았다). 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
+매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/pulse/out/now.json` 에 쓰고, 웹 화면과 iOS 앱이 이 파일을 읽는다. 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
 
 ## 웹 화면
 
 - 서버: `python -m ozl.pulse serve` — 표준 라이브러리, 읽기 전용, `127.0.0.1:8765` 에만 연다. launchd `com.hyunbin.ozl-pulse-web` 이 상시 띄운다.
-- 밖에서 보기: `tailscale serve --bg --http=8765 http://127.0.0.1:8765` 로 tailnet 안에만 연다. 주소는 `http://pulse-host.example-tailnet.ts.net:8765/`(같은 tailnet 에 로그인한 기기에서만 열린다). tailnet 에 HTTPS 인증서를 켜지 않아 HTTP 다. 끄기: `tailscale serve --http=8765 off`.
+- 밖에서 보기: `tailscale serve --bg --http=8765 http://127.0.0.1:8765` 로 tailnet 안에만 연다. 주소는 `http://<기기 이름>.<tailnet>.ts.net:8765/`(`tailscale status` 로 확인 · 같은 tailnet 에 로그인한 기기에서만 열린다). tailnet 에 HTTPS 인증서를 켜지 않아 HTTP 다. 끄기: `tailscale serve --http=8765 off`.
 - API: `/api/now`(now.json) · `/api/topic/<id>`(지난 24시간 순위·매체 수) · `/api/health`(마지막 성공 실행과 90분 넘게 멈췄는지).
 - 화면: 순위 · 기관 발표 · 급상승어 탭, 국내/해외 필터, 민감 소재 숨김. 5분마다, 그리고 탭으로 돌아올 때 다시 읽는다.
+
+## iOS 앱
+
+- 위치: `apps/ios/OZLPulse/`(SwiftUI · iOS 18 이상 · 외부 패키지 없음). `OZLPulse.xcodeproj` 를 Xcode 로 연다.
+- 서버 주소는 앱의 설정 화면에서 넣는다(기기에만 저장 · 저장소에 실제 주소를 두지 않는다). 시뮬레이터는 `http://127.0.0.1:8765` 로 이 맥의 서버에 붙는다.
+- HTTP 허용은 `*.ts.net` 과 로컬 주소에만 둔다(`Info.plist`).
+- 화면: 순위(등락·신호 막대·민감·슈카 최근 다룸 표시) · 기관 발표 · 급상승어, 상세(신호 값·24시간 순위와 매체 수 차트·기사 링크). 당겨서 새로고침, 앱으로 돌아올 때와 5분마다 다시 읽는다.
+- 실기기 설치는 Xcode 에서 개인 Apple ID 로 서명해 직접 한다. 푸시 알림은 넣지 않았다.
 
 ## 실행
 

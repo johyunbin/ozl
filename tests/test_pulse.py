@@ -232,3 +232,14 @@ def test_concurrent_run_refused(tmp_path):
         fcntl.flock(held, fcntl.LOCK_EX)
         r = snapshot.run(fetch=False, now=NOW, db=tmp_path / "p.db", out_dir=out, youtube=[])
     assert not r["ok"] and "진행 중" in r["error"]
+
+
+def test_searches_carry_sensitivity(tmp_path):
+    db, out = tmp_path / "p.db", tmp_path / "out"
+    con = store.connect(db)
+    store.add_items(con, [it(STORY[0], "가상일보", 40), it(STORY[1], "가상경제", 30),
+                          it("가상어", "가상트렌드", 20, kind="trend", tier="T5", traffic="500+", trend_news="가상 기사 제목")], NOW)
+    con.commit()
+    snapshot.run(fetch=False, now=NOW, db=db, out_dir=out, youtube=[])
+    d = __import__("json").loads((out / "now.json").read_text(encoding="utf-8"))
+    assert d["searches"] and d["searches"][0]["sensitivity"]["level"] in ("GREEN", "YELLOW", "RED")

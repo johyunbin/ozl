@@ -210,7 +210,8 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict
         "topics": topics,
         "official_new": official_new(window, now),
         "searches": [{"title": t["title"], "lang": t["lang"], "traffic": t.get("traffic", ""), "news": t.get("trend_news", ""),
-                      "topic_id": matched.get(t["title"])} for t in trends_now],
+                      "topic_id": matched.get(t["title"]),
+                      "sensitivity": sensitive.classify(f"{t['title']} {t.get('trend_news', '')}")} for t in trends_now],
     }
     tmp = out_dir / f"now.json.{os.getpid()}.tmp"
     try:

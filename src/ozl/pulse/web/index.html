@@ -224,11 +224,14 @@ function render() {
     v.append(box);
   } else {
     const box = el("div", { class: "list" });
-    const ss = d.searches.filter(s => langOk(s.lang));
+    const ss = d.searches.filter(s => langOk(s.lang) && !(state.hideRed && s.sensitivity && s.sensitivity.level === "RED"));
     if (!ss.length) box.append(el("div", { class: "empty" }, "급상승어가 없습니다"));
     ss.forEach(s => {
       const item = el("div", { class: "item" }, el("b", {}, s.title), " ", el("span", { class: "tag" }, s.traffic || "검색량 모름"));
-      if (s.topic_id) { const t = d.topics.find(x => x.topic_id === s.topic_id); if (t) item.append(el("small", {}, `연결된 주제 ${t.rank}위 · ${t.title}`)); }
+      if (s.topic_id) {   // 숨긴 주제(지역·민감 필터)의 제목은 여기서도 보이지 않게
+        const t = d.topics.find(x => x.topic_id === s.topic_id && langOk(x.lang) && !(state.hideRed && x.sensitivity && x.sensitivity.level === "RED"));
+        if (t) item.append(el("small", {}, `연결된 주제 ${t.rank}위 · ${t.title}`));
+      }
       if (s.news) item.append(el("small", {}, s.news));
       box.append(item);
     });
