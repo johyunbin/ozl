@@ -1,6 +1,13 @@
 # OZL Pulse
 
-매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/pulse/out/now.json` 에 쓰고, 웹 화면과 iOS 앱이 이 파일을 읽는다(웹과 앱은 아직 만들지 않았다). 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
+매시 5분에 피드를 읽고, 최근 6시간 기사를 사건별로 묶어 신호 네 가지로 순위를 매기는 비공개 도구다. 결과는 `private/pulse/out/now.json` 에 쓰고, 웹 화면이 이 파일을 읽는다(iOS 앱은 아직 만들지 않았다). 검증 전 신호여서 공개 문서와 사이트에 옮기지 않는다.
+
+## 웹 화면
+
+- 서버: `python -m ozl.pulse serve` — 표준 라이브러리, 읽기 전용, `127.0.0.1:8765` 에만 연다. launchd `com.hyunbin.ozl-pulse-web` 이 상시 띄운다.
+- 밖에서 보기: `tailscale serve --bg --http=8765 http://127.0.0.1:8765` 로 tailnet 안에만 연다. 주소는 `http://pulse-host.example-tailnet.ts.net:8765/`(같은 tailnet 에 로그인한 기기에서만 열린다). tailnet 에 HTTPS 인증서를 켜지 않아 HTTP 다. 끄기: `tailscale serve --http=8765 off`.
+- API: `/api/now`(now.json) · `/api/topic/<id>`(지난 24시간 순위·매체 수) · `/api/health`(마지막 성공 실행과 90분 넘게 멈췄는지).
+- 화면: 순위 · 기관 발표 · 급상승어 탭, 국내/해외 필터, 민감 소재 숨김. 5분마다, 그리고 탭으로 돌아올 때 다시 읽는다.
 
 ## 실행
 

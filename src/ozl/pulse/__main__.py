@@ -4,6 +4,7 @@
     python -m ozl.pulse run [--no-fetch]   # 수집 → 점수 → private/pulse/out/now.json
     python -m ozl.pulse show [-n 15]       # now.json 상위 주제를 표로
     python -m ozl.pulse prune [--days 90]  # 오래된 항목·실행 기록 정리
+    python -m ozl.pulse serve [--port 8765] # 읽기 전용 대시보드·API(127.0.0.1)
 """
 from __future__ import annotations
 
@@ -40,7 +41,15 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("-n", type=int, default=15)
     p = sub.add_parser("prune")
     p.add_argument("--days", type=int, default=90)
+    v = sub.add_parser("serve")
+    v.add_argument("--port", type=int, default=8765)
     a = ap.parse_args(argv)
+    if a.cmd == "serve":
+        from . import serve
+        httpd = serve.serve(a.port)
+        print(f"http://127.0.0.1:{a.port}", flush=True)
+        httpd.serve_forever()
+        return 0
     if a.cmd == "run":
         res = snapshot.run(fetch=not a.no_fetch)
         print(json.dumps(res, ensure_ascii=False))

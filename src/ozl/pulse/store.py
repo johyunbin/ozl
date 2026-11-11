@@ -35,6 +35,7 @@ def connect(path: pathlib.Path | None = None) -> sqlite3.Connection:
     path.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(path)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL")   # 웹 서버의 읽기 전용 연결이 쓰기 도중·중단 뒤에도 읽을 수 있게
     con.executescript(SCHEMA)
     return con
 
