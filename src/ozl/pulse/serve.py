@@ -6,6 +6,8 @@
     GET /api/now           private/pulse/out/now.json 그대로
     GET /api/topic/<id>    주제 하나의 지난 24시간 추이(실행마다 순위·점수·매체 수) + now.json 의 그 주제
     GET /api/health        마지막 실행 시각·성공 여부 — 앱이 "갱신 멈춤"을 표시하는 데 쓴다
+    GET /brief?id=<id>     이슈 브리핑 기사 화면(web/brief.html)
+    GET /api/brief/<id>    기사 1건(YAML → JSON). sample = 시안(skills/ozl-news/brief_template.yaml), 그 밖은 private/briefs/<날짜>/<id>.yaml
 
 DB 는 읽기 전용 모드로 연다. 쓰는 일은 매시 실행(snapshot)만 한다.
 """
@@ -19,9 +21,28 @@ from datetime import datetime, timedelta, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import yaml
+
 from . import snapshot, store
 
 WEB = pathlib.Path(__file__).resolve().parent / "web"
+SAMPLE_BRIEF = store.ROOT / "skills" / "ozl-news" / "brief_template.yaml"
+BRIEFS = store.ROOT / "private" / "briefs"
+BRIEF_ID = re.compile(r"(\d{4}-\d{2}-\d{2})-(am|pm)-b\d{2}")
+
+
+def read_brief(brief_id: str, briefs_dir: pathlib.Path | None = None) -> dict | None:
+    """기사 1건. id 는 정해진 꼴만 받는다(경로를 만들기 전에 검사 — 디렉터리 밖으로 나가지 않게)."""
+    if brief_id == "sample":
+        path = SAMPLE_BRIEF
+    else:
+        m = BRIEF_ID.fullmatch(brief_id)
+        if not m:
+            return None
+        path = (briefs_dir or BRIEFS) / m.group(1) / f"{brief_id}.yaml"
+    if not path.exists():
+        return None
+    return yaml.safe_load(path.read_text(encoding="utf-8"))
 STALE_MIN = 90   # 마지막 성공 실행이 이보다 오래되면 health.stale
 LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]", "macmini"}
 
@@ -116,6 +137,14 @@ def make_handler(db: pathlib.Path, out_dir: pathlib.Path):
             try:
                 if path in ("/", "/index.html"):
                     return self.send(200, (WEB / "index.html").read_bytes(), "text/html; charset=utf-8")
+                if path == "/brief":
+                    return self.send(200, (WEB / "brief.html").read_bytes(), "text/html; charset=utf-8")
+                m = re.fullmatch(r"/api/brief/([A-Za-z0-9-]{1,40})", path)
+                if m:
+                    d = read_brief(m.group(1))
+                    if d is None:
+                        return self.json({"error": "없는 기사"}, 404)
+                    return self.send(200, json.dumps(d, ensure_ascii=False, default=str).encode("utf-8"), "application/json; charset=utf-8")
                 if path == "/api/now":
                     d = read_now(out_dir)
                     return self.json(d) if d is not None else self.json({"error": "now.json 없음 — 아직 실행 전"}, 503)

@@ -116,3 +116,20 @@ def test_health_survives_unreadable_db(server, monkeypatch):
 def test_db_is_wal(server):
     _, db, _ = server
     assert store.connect(db).execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+
+
+def test_brief_sample_and_guard(server, tmp_path):
+    base, _, _ = server
+    code, h, body = get(base + "/brief")
+    assert code == 200 and b"brief" in body
+    d = json.loads(get(base + "/api/brief/sample")[2])
+    assert d["example"] is True and d["facts"] and d["story"]
+    ids = {s["id"] for s in d["sources"]}
+    for f in d["facts"]:   # 시안도 출처 규칙을 지킨다: 사실마다 출처가 목록에 있다
+        assert f["sources"] and set(f["sources"]) <= ids
+    assert get(base + "/api/brief/2026-11-11-am-b99")[0] == 404
+    assert get(base + "/api/brief/..%2Fpulse")[0] == 404
+    assert serve.read_brief("../../etc/passwd") is None
+    (tmp_path / "2026-11-11").mkdir()
+    (tmp_path / "2026-11-11" / "2026-11-11-am-b01.yaml").write_text("headline: 가상 제목\n", encoding="utf-8")
+    assert serve.read_brief("2026-11-11-am-b01", tmp_path) == {"headline": "가상 제목"}
