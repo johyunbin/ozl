@@ -78,6 +78,9 @@ def fetch_feed(feed: dict, now: datetime) -> tuple[list[dict], dict]:
                       "published": (ts or now).isoformat(), "undated": ts is None,
                       "feed": feed["id"], "outlet": outlet, "tier": feed["tier"], "lang": feed["lang"],
                       "kind": feed["kind"], "section": feed.get("section", "")})
+        if feed["kind"] == "trend":   # 구글 트렌드 피드의 대략 검색량("500+")과 딸린 기사 제목 하나(feedparser 는 마지막 것만 남긴다)
+            items[-1]["traffic"] = clean(e.get("ht_approx_traffic", ""), 20)
+            items[-1]["trend_news"] = clean(e.get("ht_news_item_title", ""), 200)
     status["entries"] = len(items)
     if not items:
         status["error"] = "항목 0개"
