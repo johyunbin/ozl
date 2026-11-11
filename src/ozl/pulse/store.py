@@ -13,6 +13,8 @@ from datetime import datetime, timedelta
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 PULSE = ROOT / "private" / "pulse"
 DB = PULSE / "pulse.db"
+# items.extra 에 두는 칸 — 급상승어의 검색량·딸린 기사 제목, 커뮤니티 목록의 소스·순위·추천/조회/댓글 수·정치 게시판 표시
+EXTRA = ("traffic", "trend_news", "source", "rank", "votes", "views", "comments", "politics")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs (
@@ -52,7 +54,7 @@ def add_items(con: sqlite3.Connection, items: list[dict], now: datetime) -> int:
             "INSERT OR IGNORE INTO items VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (item_key(it), it["title"], it.get("url", ""), it["outlet"], it["feed"], it["kind"], it["tier"], it["lang"],
              it["published"], int(bool(it.get("undated"))), now.isoformat(), it.get("summary", ""),
-             json.dumps({k: it[k] for k in ("traffic", "trend_news") if k in it}, ensure_ascii=False)))
+             json.dumps({k: it[k] for k in EXTRA if k in it}, ensure_ascii=False)))
         n += cur.rowcount
     return n
 
@@ -66,7 +68,7 @@ def window_items(con: sqlite3.Connection, now: datetime, hours: float) -> list[d
     for r in rows:
         d = dict(r)
         d["undated"] = bool(d["undated"])
-        d.update(json.loads(d.pop("extra") or "{}"))   # 급상승어의 검색량·딸린 기사 제목
+        d.update(json.loads(d.pop("extra") or "{}"))   # EXTRA 칸
         d["ts"] = d["first_seen"] if d["undated"] else d["published"]
         out.append(d)
     return out

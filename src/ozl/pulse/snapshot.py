@@ -2,6 +2,7 @@
 
     python -m ozl.pulse run            # 수집하고 private/pulse/out/now.json 을 새로 쓴다
     python -m ozl.pulse run --no-fetch # 수집 없이 저장된 항목으로만 다시 계산(점검용)
+    python -m ozl.pulse run --community # 회차(하루 2회) — 피드에 더해 국내 커뮤니티 인기글·실시간 검색어(community.py)도 받는다
 
 피드가 전부 실패하면 now.json 을 덮지 않고 실패한 실행만 기록한다(이전 화면이 남는다).
 산출은 비공개다 — 검증 전 신호이고, 공개 문서에 옮기지 않는다.
@@ -17,6 +18,7 @@ import re
 from datetime import datetime, timedelta, timezone
 
 from ..research import collect, coverage, sensitive
+from . import community as community_mod
 from . import rank, signals, store
 
 WINDOW_H = 6.0
@@ -119,7 +121,7 @@ def official_new(window: list[dict], now: datetime, hours: float = 3) -> list[di
 
 
 def run(fetch: bool = True, now: datetime | None = None, db: pathlib.Path | None = None,
-        out_dir: pathlib.Path | None = None, youtube: list[dict] | None = None) -> dict:
+        out_dir: pathlib.Path | None = None, youtube: list[dict] | None = None, community: bool = False) -> dict:
     now = now or datetime.now(timezone.utc)
     out_dir = out_dir or OUT
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -130,18 +132,23 @@ def run(fetch: bool = True, now: datetime | None = None, db: pathlib.Path | None
         lock.close()
         return {"ok": False, "error": "다른 실행이 진행 중"}
     try:
-        return _run(fetch, now, db, out_dir, youtube)
+        return _run(fetch, now, db, out_dir, youtube, community)
     finally:
         fcntl.flock(lock, fcntl.LOCK_UN)
         lock.close()
 
 
-def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict:
+def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube, community: bool = False) -> dict:
     con = store.connect(db)
     statuses, fetched, trends_now = [], [], []
+    comm_st: list[dict] = []
     yt: list[dict] = youtube or []
     if fetch:
         fetched, statuses = fetch_all(now)
+        if community:   # 회차 호출에서만 — 소스당 요청 1회
+            got, comm_st = community_mod.fetch_all(now)
+            fetched += got
+            statuses += comm_st
         if youtube is None:
             yt, yt_st = signals.fetch_youtube(now)
             statuses.append(yt_st)
@@ -150,7 +157,7 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict
         con.execute("INSERT INTO runs (at, n_fetched, n_new, feeds_failed, error) VALUES (?,?,?,?,?)",
                     (now.isoformat(), 0, 0, json.dumps(failed, ensure_ascii=False), "뉴스·기관 항목 0개 — now.json 유지"))
         con.commit()
-        return {"ok": False, "error": "뉴스·기관 항목 0개", "failed": failed}
+        return {"ok": False, "error": "뉴스·기관 항목 0개", "failed": failed, "community": comm_st}
 
     n_new = store.add_items(con, fetched, now)
     con.commit()   # 받은 기사는 먼저 남긴다. 아래 순위 계산·발행은 한 덩어리 — now.json 을 못 쓰면 실행 기록째 되돌린다
@@ -198,7 +205,8 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict
             "outlets": sorted({i["outlet"] for i in c["items"]}),
             "sensitivity": sensitive.worst([sensitive.classify(f"{i['title']} {i.get('summary', '')}") for i in c["items"]]),
             "coverage_recent": (coverage.recent_overlap(c["tok"], catalog, date) if c["lang"] == "ko" else []) if catalog is not None else None,
-            "items": [{"title": i["title"], "url": i["url"], "outlet": i["outlet"], "kind": i["kind"], "tier": i["tier"], "ts": i["ts"]}
+            "items": [{"title": i["title"], "url": i["url"], "outlet": i["outlet"], "kind": i["kind"], "tier": i["tier"], "ts": i["ts"],
+                       **{k: i[k] for k in ("source", "votes", "views", "comments", "politics") if k in i}}
                       for i in sorted(c["items"], key=lambda i: i["ts"], reverse=True)[:10]],
         })
     matched = {t: s["topic_id"] for s in scored for t in s["trend_hits"]}
@@ -210,7 +218,7 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict
         "topics": topics,
         "official_new": official_new(window, now),
         "searches": [{"title": t["title"], "lang": t["lang"], "traffic": t.get("traffic", ""), "news": t.get("trend_news", ""),
-                      "topic_id": matched.get(t["title"]),
+                      "topic_id": matched.get(t["title"]), "source": t.get("source", "google"), "rank": t.get("rank"),
                       "sensitivity": sensitive.classify(f"{t['title']} {t.get('trend_news', '')}")} for t in trends_now],
     }
     tmp = out_dir / f"now.json.{os.getpid()}.tmp"
@@ -223,4 +231,4 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube) -> dict
         raise
     con.commit()
     return {"ok": True, "run_id": run_id, "n_fetched": len(fetched), "n_new": n_new, "n_topics": len(scored),
-            "failed": len(failed), "path": str(out_dir / "now.json")}
+            "failed": len(failed), "path": str(out_dir / "now.json"), "community": comm_st}

@@ -1,8 +1,8 @@
 """주제 하나에 대한 신호 네 가지 — 각 0~1, 그리고 사람이 읽을 근거 문장.
 
-    search     검색 급상승(구글 트렌드 KR/US 급상승어가 주제 낱말에 들어 있나, 대략 검색량)
+    search     검색 급상승(구글 트렌드 KR/US 급상승어가 주제 낱말에 들어 있나, 대략 검색량) + 시그널 실시간 검색어 순위(회차 수집분)
     volume     보도량(서로 다른 매체 수 + 지난 1시간 기사 수를 그 전 5시간 평균과 견준 속도)
-    community  유튜브 인기 급상승·커뮤니티(HN) — 유튜브는 API 키가 있을 때만 켠다(youtube_key)
+    community  커뮤니티 언급(서로 다른 사이트 수·글 수 — HN·국내 커뮤니티 인기글) + 유튜브 인기 동영상(API 키가 있을 때만)
     official   기관 원문(중앙은행·통계 기관 피드)이 묶음에 있거나, 오늘 발표 일정과 낱말이 겹치나
 
 판단은 전부 결정적 규칙이다(모델 호출 없음). 숫자 기준을 바꾸면 tests/test_pulse.py 도 같이 고친다.
@@ -60,14 +60,44 @@ def trend_matches(tok: set[str], lang: str, trends: list[dict]) -> list[dict]:
     return out
 
 
+def signal_matches(tok: set[str], lang: str, keywords: list[dict]) -> list[dict]:
+    """시그널 실시간 검색어("인물 이름 사건 낱말" 꼴 구절)와 주제의 연결 — 구절 낱말 2개 이상이 주제에 있고, 구절 낱말의 절반 이상일 때.
+    낱말 하나짜리 검색어(사람 이름 하나)는 통째로 들어 있어도 잇지 않는다 — 동명이인·무관한 기사에 흔히 걸린다."""
+    out = []
+    for k in keywords:
+        if k["lang"] != lang:
+            continue
+        kw = collect.toks(k["title"], lang)
+        ov = len(kw & tok)
+        if len(kw) >= 2 and ov >= 2 and ov >= 0.5 * len(kw):
+            out.append(k)
+    return out
+
+
+def signal_rank_value(r: int | None) -> float:
+    """1위 0.8 … 10위 0.53. 순위를 모르면 0.5."""
+    if not r or r < 1:
+        return 0.5
+    return round(max(0.5, 0.8 - 0.03 * (r - 1)), 2)
+
+
 def search_signal(tok: set[str], lang: str, trends: list[dict]) -> tuple[float, list[str], list[dict]]:
-    hits = trend_matches(tok, lang, trends)
-    if not hits:
-        return 0.0, [], []
-    best = max(hits, key=lambda t: parse_traffic(t.get("traffic", "")) or 0)
-    v = traffic_value(parse_traffic(best.get("traffic", "")))
-    region = "KR" if lang == "ko" else "US"
-    return v, [f"검색 급상승 {region} '{best['title']}'" + (f" {best['traffic']}" if best.get("traffic") else "")], hits
+    """trends 에는 구글 트렌드 급상승어와 시그널 실시간 검색어(source=signal)가 섞여 온다. 둘 중 큰 값을 쓴다."""
+    google = [t for t in trends if t.get("source") != "signal"]
+    sig_kw = [t for t in trends if t.get("source") == "signal"]
+    v, reasons = 0.0, []
+    hits = trend_matches(tok, lang, google)
+    if hits:
+        best = max(hits, key=lambda t: parse_traffic(t.get("traffic", "")) or 0)
+        v = traffic_value(parse_traffic(best.get("traffic", "")))
+        region = "KR" if lang == "ko" else "US"
+        reasons.append(f"검색 급상승 {region} '{best['title']}'" + (f" {best['traffic']}" if best.get("traffic") else ""))
+    s_hits = signal_matches(tok, lang, sig_kw)
+    if s_hits:
+        top = min(s_hits, key=lambda k: k.get("rank") or 99)
+        v = max(v, signal_rank_value(top.get("rank")))
+        reasons.append(f"실시간 검색어 '{top['title']}'" + (f" {top['rank']}위" if top.get("rank") else ""))
+    return v, reasons, hits + s_hits
 
 
 def volume_signal(items: list[dict], now: datetime) -> tuple[float, list[str], dict]:
@@ -129,12 +159,27 @@ def fetch_youtube(now: datetime) -> tuple[list[dict], dict]:
     return vids, st
 
 
+def community_value(n_sites: int, n_posts: int) -> float:
+    """사이트 1곳 글 1건 0.2(켜짐 기준 0.3 미만 — 글 하나로 주제가 등록되지 않게) · 1곳 3건 0.3 · 2곳 0.6 · 3곳 이상 1.0.
+    사이트 수가 뼈대, 같은 사이트 글이 늘면 조금 더한다(최대 +0.15)."""
+    if n_sites <= 0:
+        return 0.0
+    base = {1: 0.2, 2: 0.6}.get(n_sites, 1.0)
+    return round(min(1.0, base + 0.05 * min(3, max(0, n_posts - n_sites))), 2)
+
+
 def community_signal(items: list[dict], tok: set[str], lang: str, youtube: list[dict]) -> tuple[float, list[str]]:
+    """묶음 안 커뮤니티 글의 서로 다른 사이트 수·글 수(사이트 = source, 없으면 매체 이름 — 뽐뿌 두 게시판은 한 사이트).
+    유튜브 인기 동영상 제목과 낱말 2개 이상 겹치면 1.0. 정치 게시판 글은 거르지 않고 근거에 표시만 한다."""
     v, reasons = 0.0, []
     comm = [i for i in items if i["kind"] == "community"]
     if comm:
-        v = 0.6
-        reasons.append(f"커뮤니티 {comm[0]['outlet']}")
+        sites = sorted({i.get("source") or i["outlet"] for i in comm})
+        names = sorted({i["outlet"] for i in comm})
+        v = community_value(len(sites), len(comm))
+        reasons.append(f"커뮤니티 {len(sites)}곳 글 {len(comm)}건({'·'.join(names)})")
+        if any(i.get("politics") for i in comm):
+            reasons.append("정치 게시판 글 포함")
     yt = [y for y in youtube if y["lang"] == lang and len(collect.toks(y["title"], lang) & tok) >= 2]
     if yt:
         v = 1.0

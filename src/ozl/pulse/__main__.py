@@ -2,6 +2,7 @@
 """OZL Pulse 명령줄.
 
     python -m ozl.pulse run [--no-fetch]   # 수집 → 점수 → private/pulse/out/now.json
+    python -m ozl.pulse run --community    # 회차(하루 2회)용 — 국내 커뮤니티 인기글·실시간 검색어도 받는다
     python -m ozl.pulse show [-n 15]       # now.json 상위 주제를 표로
     python -m ozl.pulse prune [--days 90]  # 오래된 항목·실행 기록 정리
     python -m ozl.pulse serve [--port 8765] # 읽기 전용 대시보드·API(127.0.0.1)
@@ -37,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--no-fetch", action="store_true")
+    r.add_argument("--community", action="store_true", help="커뮤니티 목록도 받는다(회차 호출용 · 매시 실행에는 넣지 않는다)")
     s = sub.add_parser("show")
     s.add_argument("-n", type=int, default=15)
     p = sub.add_parser("prune")
@@ -51,7 +53,9 @@ def main(argv: list[str] | None = None) -> int:
         httpd.serve_forever()
         return 0
     if a.cmd == "run":
-        res = snapshot.run(fetch=not a.no_fetch)
+        res = snapshot.run(fetch=not a.no_fetch, community=a.community)
+        for st in res.pop("community", None) or []:
+            print(f"커뮤니티 {st['id']:<16} {'켜짐' if st['enabled'] else '꺼짐'} HTTP {st['http']} 항목 {st['entries']} {st['error'] or ''}", file=sys.stderr)
         print(json.dumps(res, ensure_ascii=False))
         return 0 if res["ok"] else 2
     if a.cmd == "show":
