@@ -185,8 +185,9 @@ def validate_claim(c: dict, deep: bool = True) -> list[str]:
                 e += [f"{cid}: {x}" for x in machine_struct_errors(c)]
         if tier not in ("T1", "T2") and not (tier == "T3" and ind):
             e.append(f"{cid}: verified 는 T1/T2 원문이거나, 원출처가 다른 교차 출처가 있는 T3 여야 한다")
-        if ch.get("unit_ok") is not True:
-            e.append(f"{cid}: verified 인데 checks.unit_ok 가 true 가 아님")
+        if ch.get("unit_ok") is not True and not (hv is not True and _is_na(ch.get("unit_ok")) and not observed_has_quantity(c)):
+            e.append(f"{cid}: verified 인데 checks.unit_ok 가 true 가 아님"
+                     + (" — n/a 는 observed 에 수량이 하나도 없는 기계 대조 기록(수치 없는 인용)에서만 받는다" if _is_na(ch.get("unit_ok")) else ""))
         if ch.get("methodology_match") is False or ch.get("translation_checked") is False:
             e.append(f"{cid}: verified 인데 methodology_match·translation_checked 가 false")
         if ch.get("recalculated") not in (True, "n/a"):
@@ -311,6 +312,17 @@ def _period_key(s) -> tuple:
     return ("s", t.casefold())
 
 
+def _is_na(v) -> bool:
+    return isinstance(v, str) and v.strip().casefold() == "n/a"
+
+
+def observed_has_quantity(c: dict) -> bool:
+    """observed 에 대조가 필요한 수량(수량·기간·수량 낱말 — numbers.claim_tokens, 덱 숫자 검사의 needs_claim 과 같은 기준)이 있는가.
+    달력(2026년 3월)·식별자는 수량으로 치지 않는다."""
+    from ozl.render import numbers as N
+    return bool(N.claim_tokens(str(c.get("observed") or "")))
+
+
 def recheck_check_errors(c: dict) -> list[str]:
     """재대조한 쪽의 맥락 칸을 쓴 쪽의 checks 와 견준다. 견줄 수 없는 칸은 채워졌는가만 본다."""
     e: list[str] = []
@@ -321,8 +333,14 @@ def recheck_check_errors(c: dict) -> list[str]:
             e.append(f"재대조 맥락 칸 {k} 비어 있음")
     if e:
         return e
-    if ch.get("unit_ok") is not True:
+    has_q = observed_has_quantity(c)
+    if not has_q and _is_na(ch.get("unit_ok")):   # 수치 없는 인용: 쓴 쪽 n/a 면 재대조 단위도 n/a 여야 한다
+        if not _is_na(rch["unit"]):
+            e.append(f"쓴 쪽 checks.unit_ok 는 n/a(수치 없는 인용)인데 재대조는 단위 {rch['unit']!r} 를 적었다 — 단위 판단이 어긋난다")
+    elif ch.get("unit_ok") is not True:
         e.append("쓴 쪽 checks.unit_ok 가 true 가 아닌데 재대조는 단위를 적었다 — 단위 판단이 어긋난다")
+    if has_q and _is_na(rch["unit"]):
+        e.append("observed 에 수량이 있는데 재대조 단위가 n/a 다 — 단위를 적는다")
     bp = ch.get("base_period")
     if not _blank(bp) and str(bp).strip().casefold() != "n/a" and _period_key(bp) != _period_key(rch["as_of"]):
         e.append(f"기준 시점 불일치: 쓴 쪽 base_period {bp!r} · 재대조 as_of {rch['as_of']!r}")
@@ -461,9 +479,10 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
             if len(occ) == 1:
                 target = occ[0]
             else:
-                errs.append(f"observed 가 사본에 {len(occ)}번 나온다 — 쓴 쪽이 author.located 로 어느 자리인지 가리켜야 한다")
+                errs.append(f"observed 가 사본에 {len(occ)}번 나온다 — 쓴 쪽이 author.located 로 어느 자리인지 가리켜야 한다"
+                            "(표의 칸이면 그 칸이 든 표의 행 전체(줄의 처음부터 끝까지)를 author.located 에 적는다)")
         else:
-            span = _unique_span(K.find_phrase(text, au["located"]), "쓴 쪽 대목(author.located)", errs)
+            span = _unique_span(K.find_phrase(text, au["located"], cross_tabs=True), "쓴 쪽 대목(author.located)", errs)
             if span:
                 inside = [o for o in occ if span[0] <= o[0] and o[1] <= span[1]]
                 if len(inside) == 1:
@@ -475,7 +494,7 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
     if _blank(rc.get("located")):
         errs.append("재대조한 쪽 대목(recheck.located)이 없다")
     else:
-        span = _unique_span(K.find_phrase(text, rc["located"]), "재대조한 쪽 대목(recheck.located)", errs)
+        span = _unique_span(K.find_phrase(text, rc["located"], cross_tabs=True), "재대조한 쪽 대목(recheck.located)", errs)
         if span and target:
             n_in = sum(1 for o in occ if span[0] <= o[0] and o[1] <= span[1])
             if not (span[0] <= target[0] and target[1] <= span[1]):
@@ -486,12 +505,12 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
     spans = [("observed 의 대조한 자리", target)]
     for what, who in (("쓴 쪽 대목(author.located)", au), ("재대조한 쪽 대목(recheck.located)", rc)):
         if not _blank(who.get("located")):
-            f = K.find_phrase(text, who["located"])
+            f = K.find_phrase(text, who["located"], cross_tabs=True)
             if f["count"] == 1:
                 spans.append((what, (f["matches"][0]["offset"], f["matches"][0]["end"])))
-    for what, span in spans:
+    for x, (what, span) in enumerate(spans):
         if span:
-            why = K.passage_bounds_error(text, span[0], span[1])
+            why = K.passage_bounds_error(text, span[0], span[1], allow_row=x > 0)   # located 만 표의 행 전체를 받는다
             if why:
                 errs.append(f"{what} 가 통째 대목이 아니다 — 문장(마침표까지)·줄·칸을 통째로 따와야 한다. {why}")
     errs += recheck_check_errors(c)

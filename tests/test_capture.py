@@ -1112,3 +1112,107 @@ def test_fuzz_html_indentation_and_cells():
             if not K.find_value(t, v)["found"] or not any(K.passage_bounds_error(t, a, b) == "" for a, b in spans(v)):
                 bad.append(("칸", v))
     assert n >= 4000 and not bad, bad[:5]
+
+
+# ════ located = 표의 행 전체 · 수치 없는 인용의 unit_ok: n/a ══════════════
+ROWS = ("<!doctype html><html><body><table><tr><th>항목</th><th>2098</th><th>2097</th></tr>"
+        "<tr><td>매출</td><td>9,962</td><td>8,100</td></tr><tr><td>비용</td><td>1,200</td><td>1,100</td></tr></table>"
+        "<table><tr><td>분기 매출</td><td>9,962</td><td>7,000</td></tr><tr><td>같은 값</td><td>5,555</td><td>5,555</td></tr></table>"
+        f"<p>{PAD}</p></body></html>").encode("utf-8")   # 같은 값 9,962 가 두 표의 다른 행에 나온다(지어낸 표)
+
+
+def test_row_located_points_to_one_cell(desk):
+    prepare(desk, base_claim(observed="9,962"), body=ROWS, author_located="매출 9,962 8,100", rc=recheck(located="매출 9,962 8,100"))
+    r = C.machine_verify(CID)
+    assert r["ok"], r["reasons"]
+    m = C.load_yaml(C.claim_path(CID))["verification"]["match"]
+    assert m["count"] == 2 and m["target"]["nth"] == 0
+
+
+@pytest.mark.parametrize("obs,au,rl,msg", [
+    ("9,962", "매출 9,962 8,100", "분기 매출 9,962 7,000", "통째로 담지 않는다"),                 # 서로 다른 행
+    ("9,962", "9,962 8,100", "매출 9,962 8,100", "author.located) 가 통째 대목이 아니다"),        # 행의 일부(탭을 건넘)
+    ("9,962", "매출 9,962 8,100", "9,962 8,100", "recheck.located) 가 통째 대목이 아니다"),
+    ("5,555", "같은 값 5,555 5,555", "같은 값 5,555 5,555", "정해지지 않는다"),                     # 행 안에 같은 값이 두 번
+    ("9,962", "", "매출 9,962 8,100", "그 칸이 든 표의 행 전체(줄의 처음부터 끝까지)를 author.located 에 적는다"),
+    ("매출 9,962 8,100", "", "매출 9,962 8,100", "observed 가 사본 글에 없다"),                   # observed 는 칸 하나(행은 안 된다)
+])
+def test_row_located_refusals(desk, obs, au, rl, msg):
+    assert msg in _refused(desk, base_claim(observed=obs), body=ROWS, author_located=au, rc=recheck(located=rl))
+
+
+def test_allow_row_only_for_whole_lines():
+    t = K.html_text(ROWS)
+    norm, _ = K.normalize(t)
+    for p, ok in (("매출 9,962 8,100", True), ("9,962 8,100", False), ("매출 9,962", False), ("분기 매출 9,962 7,000", True)):
+        i = norm.index(p) if p != "매출 9,962" else norm.index("\n매출 9,962".strip())
+        assert (K.passage_bounds_error(t, i, i + len(p), allow_row=True) == "") is ok, p
+        assert K.passage_bounds_error(t, i, i + len(p)) != ""                         # 칸 검사(allow_row 없음)는 여전히 거부
+    assert "수량 한가운데" in K.passage_bounds_error("값\t3\n억원\t끝", 0, len("값 3"), allow_row=True)   # 행 끝의 줄 경계 검사
+
+
+def _xlsx_rows(path):
+    rows = [["항목", "2098", "2097"], ["매출", "9,962", "8,100"], ["분기 매출", "9,962", "7,000"]] + [[f"가상의 설명 줄 {i} 지어낸 값"] for i in range(10)]
+    xml = "".join(f'<row r="{n}">' + "".join(f'<c t="inlineStr"><is><t>{v}</t></is></c>' for v in row) + "</row>" for n, row in enumerate(rows, 1))
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
+        z.writestr("xl/worksheets/sheet1.xml", '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+                   + xml + "</sheetData></worksheet>")
+    return pathlib.Path(path).read_bytes()
+
+
+def test_row_located_in_xlsx(desk):
+    body = _xlsx_rows(desk / "rows.xlsx")
+    xl = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    prepare(desk, base_claim(observed="9,962", url="https://example.org/t.xlsx"), body=body, ctype=xl, url="https://example.org/t.xlsx",
+            author_located="분기 매출 9,962 7,000", rc=recheck(located="분기 매출 9,962 7,000"))
+    r = C.machine_verify(CID)
+    assert r["ok"], r["reasons"]
+    assert C.load_yaml(C.claim_path(CID))["verification"]["match"]["target"]["nth"] == 1
+
+
+def test_fuzz_allow_row():
+    r = random.Random(20261117)
+    bad, n, row_only = [], 0, 0
+    for _ in range(120):
+        d = FP.passage_doc(r)
+        text = d.text
+        norm, pos = K.normalize(text)
+        for a, b, want, want_row in FP.spans(r, d, len(norm), pos, rows=True):
+            n += 1
+            row_only += want_row and not want
+            if (K.passage_bounds_error(text, a, b, allow_row=True) == "") is not want_row:
+                bad.append((want_row, norm[a:b]))
+    assert n >= 4000 and row_only > 20 and not bad, bad[:5]
+
+
+QUOTE = doc("가상의 섬 통계청은 새 감자 연구소 설립에 나선다.", "가상 섬은 2098년 3월 중 제도를 개편한다.")
+
+
+@pytest.mark.parametrize("obs", ["가상의 섬 통계청은 새 감자 연구소 설립에 나선다.", "가상 섬은 2098년 3월 중 제도를 개편한다."])
+def test_quote_without_quantity_accepts_unit_na(desk, obs):
+    from ozl.render import numbers as N
+    assert N.claim_tokens(obs) == []                                     # 달력 표기만 있는 문장도 판독부는 수량 없음으로 읽는다
+    c = base_claim(observed=obs)
+    c["checks"]["unit_ok"] = "n/a"
+    prepare(desk, c, body=QUOTE, rc=recheck(located=obs, unit="n/a"))
+    r = C.machine_verify(CID)
+    assert r["ok"], r["reasons"]
+    assert C.grade_label(C.load_yaml(C.claim_path(CID))) == "원문 일치"
+
+
+def test_unit_na_refused_when_observed_has_quantity(desk):
+    c = base_claim()
+    c["checks"]["unit_ok"] = "n/a"
+    assert "unit_ok" in _refused(desk, c, rc=recheck(unit="n/a"))
+    assert "재대조 단위가 n/a" in _refused(desk, base_claim(), rc=recheck(unit="n/a"))
+    c = base_claim(observed="가상의 섬 통계청은 새 감자 연구소 설립에 나선다.")
+    c["checks"]["unit_ok"] = "n/a"
+    assert "단위 판단이 어긋난다" in _refused(desk, c, body=QUOTE, rc=recheck(located=c["observed"], unit="톤"))
+
+
+def test_human_record_unit_na_still_refused():
+    old = {**base_claim(observed="가상의 섬 통계청은 새 감자 연구소 설립에 나선다."), "status": "verified", "human_verified": True,
+           "human_verified_at": "x", "human_verified_by": "y"}
+    old["checks"] = {**old["checks"], "unit_ok": "n/a"}
+    assert any("unit_ok" in e for e in C.validate_claim(old))           # 사람 대조 기록의 판정은 종전 그대로

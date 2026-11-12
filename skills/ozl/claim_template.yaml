@@ -12,7 +12,7 @@ source:
 cross_check: []                    # [{url, tier, publisher, same_origin_as_source}]
 status: pending                    # 사람 대조 전에는 항상 pending
 checks:
-  unit_ok: true
+  unit_ok: true                    # 단위를 확인했다. 수치가 없는 인용(observed 에 수량이 없다)이면 n/a — 재대조 unit 도 n/a
   base_period: "2025-12"
   real_vs_nominal: nominal         # 금액 지표가 아니면 n/a
   seasonally_adjusted: n/a
@@ -37,8 +37,8 @@ human_verified: false
 #   capture: {url, final_url, fetched_at, sha256, path, kind, text_path}
 #   match: {found, count, offsets, context}
 #   image: {path, reason}             # 미리 보기일 뿐이다. 덱은 이 그림을 쓰지 않고, 빌드할 때 해시가 확인된 사본의 대조한 자리에서 새로 그린다
-#   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목(이것도 문장·줄·칸 통째 — 앞뒤 문장까지 넓힌다)
-#   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목(문장·줄·칸 통째)", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
+#   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목(문장·줄·칸 통째 — 앞뒤 문장까지 넓힌다. 칸 값이면 그 칸이 든 표의 행 전체)
+#   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목(문장·줄·칸 통째 · 칸 값이 여러 번 나오면 표의 행 전체)", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
 #   verified_at: ""                # machine-verify 가 채운다 → status verified · 표시 「원문 일치」(human_verified 는 false 그대로)
 links: {video_id: "", time_range: "", slide_id: ""}
 revision: 1

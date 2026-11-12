@@ -170,8 +170,10 @@ def passage_doc(r: random.Random) -> _Doc:
     return d
 
 
-def spans(r: random.Random, d: _Doc, norm_len: int, pos: list[int], k: int = 40) -> list[tuple[int, int, bool]]:
-    """(정리한 글의 시작, 끝, 기대 통과 여부). 가능한 자리끼리 · 무작위 · 단단한 줄바꿈 바로 앞뒤를 섞는다."""
+def spans(r: random.Random, d: _Doc, norm_len: int, pos: list[int], k: int = 40, rows: bool = False) -> list[tuple]:
+    """(정리한 글의 시작, 끝, 기대 통과 여부). 가능한 자리끼리 · 무작위 · 단단한 줄바꿈 바로 앞뒤를 섞는다.
+    rows=True 면 넷째 칸에 allow_row(located) 경로의 기대값을 더한다: 위 기대값이 참이거나, 시작·끝이 가능한 자리이면서 줄의 처음과
+    끝(앞뒤가 줄바꿈·글의 처음·끝)이면 안쪽 탭과 무관하게 통과(표의 행 전체). 줄의 일부가 탭을 건너면 거부."""
     text = d.text
     vs = [i for i in range(norm_len) if pos[i] in d.vs]
     ve = [j for j in range(1, norm_len + 1) if pos[j - 1] + 1 in d.ve]
@@ -203,7 +205,15 @@ def spans(r: random.Random, d: _Doc, norm_len: int, pos: list[int], k: int = 40)
         if r.random() < 0.15:                  # 가능한 자리에서 한 글자 어긋나게
             b = min(norm_len, max(a + 1, b + r.choice([-1, 1])))
         raw = text[pos[a]:pos[b - 1] + 1]
-        out.append((a, b, a in svs and b in sve and "\t" not in raw))
+        want = a in svs and b in sve and "\t" not in raw
+        if rows:
+            before = text[:pos[a]]
+            after = text[pos[b - 1] + 1:]
+            line_head = a == 0 or any(c in before[len(before.rstrip()):] for c in "\n\f")
+            line_tail = b == norm_len or any(c in after[:len(after) - len(after.lstrip())] for c in "\n\f")
+            out.append((a, b, want, want or (a in svs and b in sve and line_head and line_tail)))
+        else:
+            out.append((a, b, want))
     return out
 
 

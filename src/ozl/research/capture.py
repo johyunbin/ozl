@@ -36,7 +36,8 @@
 (html 글 뽑기는 hidden·aria-hidden="true"·인라인 style(display:none·visibility:hidden·font-size:0)·textarea·option 만 건너뛴다).
 html 글 뽑기는 글자 노드 안의 공백류(소스의 들여쓰기 탭·줄바꿈)를 공백 하나로 접는다 — 뽑은 글의 탭은 td·th 경계, 줄바꿈은 블록 요소 경계에서만 나온다.
 PDF(pdftotext -layout) 표는 열이 여러 칸 공백이라 칸 하나만 따올 수 없고 줄 전체만 통째 대목이다. 같은 이유로 PDF 표의 '-'(빈 칸)는 값의 이웃으로 본다.
-같은 칸 값이 표에 두 번 나오면 그 칸을 담는 통째 대목이 칸 자신뿐이라 자리를 가리킬 수 없다(기계 대조로 올리지 못한다).
+같은 칸 값이 문서에 여러 번 나오면 located 에 그 칸이 든 표의 행 전체(줄의 처음부터 끝까지 · 탭 포함)를 적어 자리를 가리킨다
+(observed 는 칸 하나 그대로). 행 안에 같은 값이 두 번이면(두 열의 값이 같음) 자리를 하나로 정할 수 없어 기계 대조로 올리지 못한다.
 차트의 칸(어느 달·어느 항목)과 값의 짝은 프로그램이 보지 못한다 — 문장 대조에서 본다.
 
 차단을 우회하지 않는다: User-Agent 는 하나로 고정하고 돌려쓰지 않는다. 쿠키를 넣지 않고, 재시도하지 않으며, CAPTCHA 를 다루지 않는다.
@@ -741,7 +742,7 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
     return False
 
 
-def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
+def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int, cross_tabs: bool = False) -> bool:
     """일치 구간 안의 공백이 원문에서 탭을 건넜으면 무조건(표의 다른 칸), 줄바꿈·쪽 구분을 건넜으면 앞 줄이 수량으로 끝나고 뒤 줄이
     숫자로 바로 시작하거나 부호·범위 이음+수로 시작할 때만(자릿수 잇기 1\n234 · 복합 수량 1억\n2천 · 범위 3%\n-5%) 거부한다.
     문장이 줄·쪽을 넘기는 것은 허용(여는 괄호로 시작하는 줄 '3%\n(2억 원)' 포함)."""
@@ -750,7 +751,9 @@ def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool
             continue
         run = _run(text, pos, k)
         if _has_tab(run):
-            return True
+            if not cross_tabs:
+                return True
+            continue   # located(표의 행일 수 있다)를 찾을 때 — 통째 대목인지는 passage_bounds_error(allow_row=True) 가 본다
         if _has_break(run) and _joins_line_quantities(text, pos, k):
             return True
     return False
@@ -766,11 +769,12 @@ def _drops_unit_after_break(text: str, norm: str, pos: list[int], i: int, j: int
     return _ends_with_quantity(_line_tail(text, pos[j])) and bool(_UNIT_HEAD.match(_line_head(text, pos[j + 1])))
 
 
-def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
+def find_phrase(text: str, phrase: str, context: int = CONTEXT, cross_tabs: bool = False) -> dict:
     """{found, count, matches:[{offset, end, raw_offset, page, before, after}], cut}. offset·end 는 정리한 글 기준, raw_offset 은 원래 글 기준,
     page 는 원래 글의 쪽 구분(\\f)으로 센 쪽 번호(쪽 구분이 없으면 1). 공백 정리 말고는 아무것도 맞춰 주지 않는다.
     문구가 숫자로 시작하거나 끝나면 더 긴 수의 조각인 자리(부호·자릿수가 다른 수)는 찾은 것으로 치지 않고 cut 에 센다.
-    통째 대목인지(규칙 1)는 여기서 보지 않는다 — passage_bounds_error 를 따로 부른다."""
+    통째 대목인지(규칙 1)는 여기서 보지 않는다 — passage_bounds_error 를 따로 부른다.
+    cross_tabs=True 는 located(표의 행 전체일 수 있다)를 찾을 때만 — 탭을 건너는 일치를 받는다. observed 는 언제나 칸 하나(False)."""
     norm, pos = normalize(text or "")
     needle = _WS.sub(" ", str(phrase or "")).strip()
     if not needle:
@@ -783,7 +787,7 @@ def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
         i = norm.find(needle, start)
         if i < 0:
             break
-        if (_cuts_number(text or "", norm, pos, i, i + len(needle)) or _crosses_cells(text or "", norm, pos, i, i + len(needle))
+        if (_cuts_number(text or "", norm, pos, i, i + len(needle)) or _crosses_cells(text or "", norm, pos, i, i + len(needle), cross_tabs)
                 or _drops_unit_after_break(text or "", norm, pos, i, i + len(needle))):
             cut += 1
             start = i + 1
@@ -804,7 +808,7 @@ def _snip(norm: str, start: int, end: int, side: int = 25, mid: int = 60) -> str
     return f"…{norm[max(0, start - side):start]}【{body}】{norm[end:end + side]}…"
 
 
-def passage_bounds_error(text: str, start: int, end: int) -> str:
+def passage_bounds_error(text: str, start: int, end: int, allow_row: bool = False) -> str:
     """정리한 글(normalize) 기준의 자리 [start, end) 가 통째 대목(문장·줄·표의 칸)인가. 빈 글이면 통과, 아니면 사유(그 자리 앞뒤 글 포함).
     시작: 글의 처음 · 탭 바로 뒤 · 줄바꿈·쪽 구분 바로 뒤(줄 경계 검사 통과) · 문장 끝('. ! ? 。 …' + 닫는 따옴표·괄호 0개 이상) 뒤 공백 바로 뒤.
     끝:   글의 끝 · 탭 바로 앞 · 줄바꿈·쪽 구분 바로 앞(줄 경계 검사 통과) · 문장 끝 글자까지이고 그 뒤가 공백.
@@ -816,6 +820,17 @@ def passage_bounds_error(text: str, start: int, end: int) -> str:
     if norm[start] == " " or norm[end - 1] == " ":
         return "대목이 공백으로 시작하거나 끝난다"
     where = _snip(norm, start, end)
+    # allow_row=True(located 검사에서만): 줄의 처음부터 끝까지인 대목(표의 한 행 — 시작이 글의 처음이거나 줄바꿈 바로 뒤, 끝이 글의 끝이거나
+    # 줄바꿈 바로 앞)은 안쪽에 탭이 있어도 받는다. 행의 양 끝에도 줄 경계 검사를 한다. 줄의 일부가 탭을 건너면 아래에서 그대로 거부한다
+    if allow_row:
+        head = start == 0 or (norm[start - 1] == " " and _has_break(_run(text, pos, start - 1)))
+        tail = end == len(norm) or (norm[end] == " " and _has_break(_run(text, pos, end)))
+        if head and tail:
+            if start > 0 and not _line_break_is_boundary(text, pos, start - 1):
+                return f"행이 시작하는 줄바꿈이 수량 한가운데다(앞 줄 꼬리 '{_line_tail(text, pos[start - 1], 15)}'): {where}"
+            if end < len(norm) and not _line_break_is_boundary(text, pos, end):
+                return f"행이 끝나는 줄바꿈이 수량 한가운데다(뒤 줄 머리 '{_line_head(text, pos[end + 1], 15)}'): {where}"
+            return ""
     for k in range(start, end):
         if norm[k] == " " and _has_tab(_run(text, pos, k)):
             return f"표의 칸 경계(탭)를 건넌다 — 칸은 하나씩 따온다: {where}"
