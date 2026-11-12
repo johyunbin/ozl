@@ -546,7 +546,7 @@ def source_rows(spec: dict, claims: dict, card: dict, pending=None) -> list[list
         chk = c.get("checks") or {}
         short = cid.rsplit("-", 1)[-1] + (f"\n{PENDING_MARK}" if cid in (pending_ids or set()) else "")
         rows.append([short, str(src.get("publisher") or ""), locator_text(chk.get("primary_doc_locator")), str(src.get("url") or ""),
-                     str(chk.get("base_period") or ""), ", ".join(map(str, pages[cid]))])
+                     str(chk.get("base_period") or "").replace("~", " ~ "), ", ".join(map(str, pages[cid]))])   # 범위는 띄어 쓴다(칸에서 줄을 바꿀 수 있게)
         for x in c.get("cross_check") or []:  # 교차 출처도 부록에 — 화면에서 '다른 보도'로 인용한 문장을 거슬러 갈 수 있게
             if isinstance(x, dict) and x.get("url"):
                 rows.append([short.split("\n")[0] + " 교차" + (f"\n{PENDING_MARK}" if cid in (pending_ids or set()) else ""),

@@ -53,3 +53,9 @@ def test_strict_mode_reruns_record_validation_for_machine_records(desk):
     assert why and "증거가 맞지 않는다" in why
     errs, _ = S.claim_state_errors([T.CID], {T.CID: c})
     assert errs
+
+
+def test_base_period_range_is_rendered_with_spaces():
+    """범위로 적은 기준 시점은 양끝을 풀어 띄어 쓴다(부록 표의 칸에서 줄을 바꿀 수 있게)."""
+    assert S.base_period_text("2098-01~2098-09") == "2098년 1월 ~ 2098년 9월"
+    assert S.base_period_text("2098-Q3") == "2098년 3분기" and S.base_period_text("2098") == "2098년"

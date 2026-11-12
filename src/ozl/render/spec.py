@@ -370,10 +370,13 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[
 
 # ── 각주(화면에 찍히는 글 — 생성과 검사가 같은 함수를 쓴다) ─────────────────
 def base_period_text(base) -> str:
-    """기록의 base_period 를 화면 표기로: 2023 → 2023년 · 2026-07 → 2026년 7월 · 2026-Q3 → 2026년 3분기 · 날짜는 그대로."""
+    """기록의 base_period 를 화면 표기로: 2023 → 2023년 · 2026-07 → 2026년 7월 · 2026-Q3 → 2026년 3분기 · 2026-01~2026-09 → 2026년 1월 ~ 2026년 9월 · 날짜는 그대로."""
     b = _s(base).strip()
     if not b or b == "n/a":
         return ""
+    if "~" in b:   # 범위(2026-01~2026-09)는 양끝을 따로 풀고 사이를 띄운다 — 한 덩어리로 두면 부록 칸에서 줄을 바꾸지 못한다
+        lo, hi = (x.strip() for x in b.split("~", 1))
+        return f"{base_period_text(lo)} ~ {base_period_text(hi)}"
     if re.fullmatch(r"\d{4}", b):
         return f"{b}년"
     m = re.fullmatch(r"(\d{4})-(\d{2})", b)
