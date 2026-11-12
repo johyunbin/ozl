@@ -4,7 +4,7 @@
 측정 단위 낱말은 수량에 넣지 않는다(numbers.py 와 같은 정의) — 그래서 core 만 쓴 문구도 '온전한 수량'이다.
 복합 수량(1억2만원 · 1억 2천만원)과 범위(3~5 · 3%~5% · 3억~5억원)는 전체(와 측정 단위를 뗀 전체)만 온전하다.
 기대값: 온전한 표기(위)가 글에 그 표기로 있으면 찾는다. 그 밖에 숫자를 담은 진부분 문자열·범위의 한쪽·복합의 일부·
-탭·줄바꿈을 건너 두 수량을 이은 문구는 찾지 않는다.
+탭·줄바꿈을 건너 두 수량을 이은 문구는 찾지 않는다(줄바꿈 너머가 여는 괄호로 시작하는 줄만 예외 — 괄호 설명과 가를 수 없다).
 모호한 꼴은 만들지 않는다(ambiguous_space): 같은 줄에서 공백 한 칸으로 이은 '숫자 공백 숫자'·'크기 단위 공백 숫자'·'공백 -수'.
 줄바꿈은 이어 읽는다(탭만 칸을 끊는다). 그래서 같은 꼴을 줄바꿈으로 이은 자리는 만들되, 그 양옆 수량의 기대값은 '거부'다(expected)."""
 from __future__ import annotations
@@ -122,5 +122,8 @@ def expected(text: str, items: list[dict], query: str, why: str) -> bool:
     모호한 줄바꿈(ambiguous_space 꼴을 줄바꿈으로 이은 자리) 양옆의 수량은 온전한 표기라도 찾지 않는다 — 줄바꿈을 공백으로 이어 읽으면
     '3억\n3,000' 은 복합 수량 '3억 3,000' 과, '12%\n-3%' 는 범위와 가를 수 없다."""
     if why == "cross":
-        return False
+        # 줄바꿈 너머가 여는 괄호로 시작하는 줄('3억톤\n(7.5)')은 문장이 괄호 설명으로 이어지는 꼴과 가를 수 없어 거부하지 않는다
+        # (find_phrase 의 줄바꿈 거부는 숫자·부호·범위 이음으로 시작하는 줄만 — 주 방어선은 통째 대목 규칙이다). 탭을 건넌 것은 거부.
+        return any(it.get("sep_before") == "\n" and it["text"].startswith("(") and query.endswith(" " + it["text"]) and
+                   items[i - 1]["text"] + " " + it["text"] == query for i, it in enumerate(items) if i)
     return any(query in it["whole"] and not it.get("ambig") for it in items)

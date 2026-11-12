@@ -1021,3 +1021,94 @@ def test_fuzz_chart_value_whole_word():
             if K.find_value(text, q)["found"] is not want:
                 bad.append((want, q, text))
     assert n >= 4000 and 0 < n_found < n and not bad, bad[:5]
+
+
+# ════ Codex 4차 검토 반례 ═══════════════════════════════════════════════
+def _B(text, passage):
+    norm, _ = K.normalize(text)
+    q, _ = K.normalize(passage)
+    s = norm.index(q)
+    return K.passage_bounds_error(text, s, s + len(q))
+
+
+# 높음 1 — html 의 들여쓰기 탭·줄바꿈은 글자 노드 안에서 공백 하나로 접는다
+def test_html_indentation_is_not_a_cell():
+    t = K.html_text("<p>수익률은 −\n\t0.8% </p>".encode())
+    assert "\t" not in t and "수익률은 − 0.8%" in t
+    assert _B(t, "0.8%") and not K.find_phrase(t, "0.8%")["found"] and not K.find_value(t, "0.8%")["found"]
+    assert _B(t, "수익률은 − 0.8%") == ""
+    t = K.html_text(b"<table><tr><td>\n\t\tA\n\t</td><td>\n 1,234 \n</td></tr></table><pre>a\tb\nc</pre>")
+    assert t.count("\t") == 4 and K.find_value(t, "1,234")["found"] and "a b\nc" in t     # 탭은 td 경계에서만 · pre 는 줄바꿈을 둔다
+
+
+# 높음 2 — 줄바꿈 뒤의 측정 단위를 버린 발췌
+@pytest.mark.parametrize("text,passage", [("가격은 3\n달러다.", "가격은 3"), ("매출은 3억\n원이다.", "매출은 3억"), ("비율은 3\n%다.", "비율은 3"),
+                                          ("격차는 3%\np 다.", "격차는 3%"), ("The rate rose 3\npercent.", "The rate rose 3"),
+                                          ("규모는 70\nmillion barrels.", "규모는 70")])
+def test_unit_after_line_break_is_not_a_boundary(text, passage):
+    assert "수량 한가운데" in _B(text, passage)
+    assert not K.find_phrase(text, passage)["found"]
+
+
+@pytest.mark.parametrize("text,passage", [("2026 66.60 71.83\n2027 70.10 72.00", "2026 66.60 71.83"),
+                                          ("2026 66.60 71.83\n2027 70.10 72.00", "2027 70.10 72.00"),
+                                          ("66.60 71.83\n합계 138.43", "66.60 71.83"), ("66.60 71.83\n합계 138.43", "합계 138.43"),
+                                          ("감자 3\n대비 수치다.", "감자 3"), ("표 2098\n원래 값이다.", "표 2098")])
+def test_table_rows_and_word_lines_stay_boundaries(text, passage):
+    assert _B(text, passage) == ""
+
+
+# 높음 3 · 중간 6 — 차트 값의 이웃 낱말
+@pytest.mark.parametrize("text,value,found", [
+    ("범위\t3%~ 5%", "5%", False), ("범위\t3% ~5%", "3%", False), ("금액\t-$ 0.8", "0.8", False), ("금액\t−$ 0.8", "0.8", False),
+    ("금액\t$ 0.8", "0.8", True), ("[sheet1.xml]\n항목\t값\nA\t3\n-\t4", "3", True), ("A 3\n- 4", "3", True), ("A 3 - 4", "3", False),
+    ("A\t3%~\t5%", "5%", True),
+])
+def test_find_value_neighbor_joiners(text, value, found):
+    assert K.find_value(text, value)["found"] is found
+
+
+# 중간 4 — 각주 번호가 붙은 문장
+@pytest.mark.parametrize("mark", ["1)", "12)", "*", "†", "‡", "¹", "²³", "[1]"])
+def test_footnote_mark_after_sentence_end(mark):
+    text = f"매출이 3% 늘었다.{mark} 비용이 2% 줄었다."
+    assert _B(text, f"매출이 3% 늘었다.{mark}") == "" and _B(text, "비용이 2% 줄었다.") == ""
+    assert _B(text, "매출이 3% 늘었다.")                        # 각주 표시를 떼면 낱말 중간에서 끝난다
+
+
+def test_footnote_mark_is_not_read_after_a_number():
+    assert _B("값은 3.1) 다음 문장이다.", "다음 문장이다.")             # '3.1)' 은 각주 붙은 문장 끝이 아니다
+
+
+# 중간 5 — 줄을 넘긴 문장의 괄호 설명
+def test_parenthesis_on_next_line_is_found():
+    text = "매출은 3%\n(2억 원) 증가했다."
+    assert K.find_phrase(text, "매출은 3% (2억 원) 증가했다.")["found"] and _B(text, "매출은 3% (2억 원) 증가했다.") == ""
+
+
+# 무작위 시험 — html 원문 경로(들여쓰기 탭·줄바꿈 · td 표)
+def test_fuzz_html_indentation_and_cells():
+    r = random.Random(20261116)
+    bad, n = [], 0
+    for _ in range(400):
+        d = FP.html_doc(r)
+        t = K.html_text(d["html"])
+        norm, _ = K.normalize(t)
+
+        def spans(p):
+            out, i = [], norm.find(p)
+            while i >= 0:
+                out.append((i, i + len(p)))
+                i = norm.find(p, i + 1)
+            return out
+        n += 1 + len(d["sentences"]) + len(d["signed"]) + len(d["cells"])
+        if t.count("\t") != 2 * d["n_cells"]:
+            bad.append(("탭 수", t))
+        bad += [("문장", s) for s in d["sentences"] if not any(K.passage_bounds_error(t, a, b) == "" for a, b in spans(s))]
+        for v in d["signed"]:
+            if K.find_value(t, v)["found"] or K.find_phrase(t, v)["found"] or any(K.passage_bounds_error(t, a, b) == "" for a, b in spans(v)):
+                bad.append(("부호 뗀 값", v))
+        for v in d["cells"]:
+            if not K.find_value(t, v)["found"] or not any(K.passage_bounds_error(t, a, b) == "" for a, b in spans(v)):
+                bad.append(("칸", v))
+    assert n >= 4000 and not bad, bad[:5]

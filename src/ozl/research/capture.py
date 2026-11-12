@@ -20,7 +20,9 @@
   규칙 1 · 통째 대목(passage_bounds_error · cards.machine_check 가 observed 의 대조한 자리와 author·recheck.located 에 적용, fresh=False 재검사도 같다)
     시작은 글의 처음 · 탭 뒤 · 줄바꿈·쪽 구분 뒤 · 문장 끝('. ! ? 。 …' + 닫는 따옴표·괄호) 뒤 공백 뒤, 끝은 그 짝. 안쪽에서 탭을 건너면 거부
     (칸은 하나씩). 줄바꿈·쪽 구분은 건너도 되지만, 그 줄바꿈이 수량 한가운데면(앞 줄 꼬리와 뒤 줄 머리를 이어 읽은 claim_tokens 가 따로 읽은 것과
-    다르거나, 앞 줄이 부호·범위 이음·여는 괄호·통화 기호로 끝나거나, 뒤 줄이 범위 이음으로 시작) 경계가 아니다. 발췌의 양끝이 문장·줄·칸 경계라서
+    다르거나, 앞 줄이 부호·범위 이음·여는 괄호·통화 기호로 끝나거나, 뒤 줄이 범위 이음으로 시작하거나, 앞 줄이 수량으로 끝나고 뒤 줄이
+    단위(측정 단위 낱말·크기 단위·%·%p·p — 한글 낱말은 뒤가 조사·어미일 때만: '달러다.' 는 단위, '대비' 는 낱말)로 시작하면) 경계가 아니다.
+    문장 끝 뒤에는 각주 표시(1) · * · † · ¹ · [1]) 0~1개를 허용한다(마침표 앞이 숫자면 받지 않는다 — '3.1)'). 발췌의 양끝이 문장·줄·칸 경계라서
     부호·범위·복합 수량·단위가 발췌 안에 남고, 덱의 숫자 검사(numbers.py)가 그 문장 문맥으로 수량을 읽는다.
   규칙 2 · 낱말 일치(find_value · spec.chart_errors) — 차트 점 값은 사본 글의 낱말 하나와 같아야 한다. 같은 칸에서 바로 앞이 부호·범위 이음만인
     낱말이거나 바로 뒤가 범위 이음만인 낱말이면 세지 않는다(탭 너머 칸의 '-' 는 빈 칸 표시라 이웃으로 보지 않는다).
@@ -32,6 +34,7 @@
   쪽 구분을 탭처럼 끊던 규칙(문장이 쪽을 넘기면 못 찾았다).
 알려진 한계: 공백으로 자릿수를 나눈 수('1 234')는 두 수로 읽어, 그 줄바꿈('1\n234')을 경계로 받는다. 스타일시트(class)로 숨긴 글은 잡지 못한다
 (html 글 뽑기는 hidden·aria-hidden="true"·인라인 style(display:none·visibility:hidden·font-size:0)·textarea·option 만 건너뛴다).
+html 글 뽑기는 글자 노드 안의 공백류(소스의 들여쓰기 탭·줄바꿈)를 공백 하나로 접는다 — 뽑은 글의 탭은 td·th 경계, 줄바꿈은 블록 요소 경계에서만 나온다.
 PDF(pdftotext -layout) 표는 열이 여러 칸 공백이라 칸 하나만 따올 수 없고 줄 전체만 통째 대목이다. 같은 이유로 PDF 표의 '-'(빈 칸)는 값의 이웃으로 본다.
 같은 칸 값이 표에 두 번 나오면 그 칸을 담는 통째 대목이 칸 자신뿐이라 자리를 가리킬 수 없다(기계 대조로 올리지 못한다).
 차트의 칸(어느 달·어느 항목)과 값의 짝은 프로그램이 보지 못한다 — 문장 대조에서 본다.
@@ -305,8 +308,19 @@ class _HTMLText(html.parser.HTMLParser):
         self.handle_starttag(tag, attrs)
 
     def handle_data(self, data):
-        if not self.hidden:
-            self.out.append(data)
+        """글자 노드 안의 공백류(들여쓰기 탭·줄바꿈 포함)는 브라우저처럼 보통 공백 하나로 접는다 — 뽑은 글의 탭은 td·th 경계에서만,
+        줄바꿈은 블록 요소 경계에서만 나온다(원문 소스의 들여쓰기 탭을 표의 칸으로 오인하지 않게). <pre> 안은 줄바꿈을 두고 탭만 공백으로."""
+        if self.hidden:
+            return
+        if any(t == "pre" for t, _ in self.stack):
+            data = _PRE_SPACE.sub(" ", data.replace("\r\n", "\n").replace("\r", "\n"))
+        else:
+            data = _HTML_SPACE.sub(" ", data)
+        self.out.append(data)
+
+
+_HTML_SPACE = re.compile(r"[ \t\n\r\f\v\x1c\x1d\x1e\x85\u2028\u2029]+")   # 글자 노드에서 한 칸으로 접는 공백류(NBSP 등 보이는 공백은 둔다)
+_PRE_SPACE = re.compile(r"[\t\f\v\x1c\x1d\x1e\x85\u2028\u2029]")
 
 
 def _decode(raw: bytes, charset: str = "") -> str:
@@ -456,7 +470,10 @@ _MAGS = set("십백천만억조경")          # 한글 크기 단위(수량의 �
 _CURRENCY = set("$€£¥₩")
 # 줄을 끊는 글자. 탭은 칸 구분이라 따로 다룬다(칸은 하나씩이다). 쪽 구분(\f)도 줄바꿈처럼 다룬다 — 문장은 줄과 쪽을 넘길 수 있다
 _LINE_BREAKS = "\n\r\f\v\x1c\x1d\x1e\x85  "
-_SENT_END = re.compile(r"[.!?。…][\"'”’)\]」』]*$")          # 문장 끝: 마침표류 뒤에 닫는 따옴표·괄호가 0개 이상
+# 문장 끝: 마침표류 뒤에 닫는 따옴표·괄호가 0개 이상, 그 뒤에 각주 표시(1) · 12) · * · † · ‡ · ¹²³ · [1])가 0~1개.
+# 각주 표시가 붙은 꼴은 마침표 앞이 숫자·자릿점이 아닐 때만(값은 3.1) 의 '.1)' 을 문장 끝으로 읽지 않게)
+_FOOTNOTE = r"(?:\d{1,3}\)|\*|†|‡|[¹²³⁰⁴⁵⁶⁷⁸⁹]{1,3}|\[\d{1,3}\])"
+_SENT_END = re.compile(r"(?:[.!?。…][\"'”’)\]」』]*|(?<![\d.,])[.!?。…][\"'”’)\]」』]*" + _FOOTNOTE + r")$")
 _LINE_TAIL_CUT = set("-+−–—‐‑﹣－＋△▲▽▼~∼〜～(") | _CURRENCY    # 앞 줄이 이것으로 끝나면 그 줄바꿈은 수량 한가운데다
 _LINE_HEAD_CUT = set("~∼〜～–—")                                 # 뒤 줄이 범위 이음으로 시작해도 그렇다
 _LINE_SPAN = 40                                                   # 줄 경계 검사에서 보는 앞 줄 꼬리·뒤 줄 머리의 길이
@@ -469,7 +486,17 @@ def _unit_words() -> list[str]:
 
 _UNIT_WORDS = _unit_words()
 _TRAIL_UNIT = re.compile(r"(?: ?(?:" + "|".join(map(re.escape, sorted(_UNIT_WORDS, key=len, reverse=True))) + r"))?\)?$")
-_NUM_HEAD = re.compile(r"\(?[-+−–—‐‑﹣－＋△▲▽▼]?[$€£¥₩]?\.?\d")   # 줄 머리가 수(부호·괄호·통화 기호·소수점 앞자리 생략 포함)로 시작
+# find_phrase 가 줄바꿈을 건넌 일치를 거부하는 뒤 줄 머리: 숫자로 바로 시작(1\n234) · 부호·범위 이음+수(3%\n-5% · 3%\n~5% · 3%\n−5%).
+# 여는 괄호로 시작하는 줄(매출은 3%\n(2억 원) 증가했다)은 거부하지 않는다
+_NUM_HEAD = re.compile(r"[-+−–—‐‑﹣－＋△▲▽▼~∼〜～]?[$€£¥₩]?\.?\d")
+# 줄 머리가 단위로 시작: 측정 단위 낱말(numbers.py 목록) · 퍼센트 · 영문 크기·비율 낱말 · 한글 크기 단위 · % · %p · p.
+# 한글 낱말은 뒤가 조사·어미이거나 한글이 아닐 때만 단위로 본다('달러다.' · '원이다.' · '억 원' 은 단위, '대비' · '원래' · '조사' · '만약' 은 낱말)
+_KO_END = (r"(?:다|이었다|였다|이다|입니다|이며|이고|이라|으로는|으로|로|에서|에는|에|까지|부터|보다|씩|당|어치|짜리|쯤|가량|정도"
+           r"|[은는이가을를의와과도만])?(?![가-힣A-Za-z])")
+_KO_UNITS = "|".join(map(re.escape, sorted([w for w in _UNIT_WORDS if not w.isascii()] + ["퍼센트포인트", "퍼센트", "포인트"], key=len, reverse=True)))
+_ASCII_UNIT = ("percentage points?|percent|per cent|pct|thousand|million|billion|trillion|bn|mn|kg|km|MW|GW|TEU|bbl|barrels?|dollars?|usd|p")
+_UNIT_HEAD = re.compile(r"(?:%|[십백천만억조경]+ ?(?:(?:" + _KO_UNITS + r")" + _KO_END + r"|" + _KO_END + r")|(?:" + _KO_UNITS + r")" + _KO_END
+                        + r"|(?:" + _ASCII_UNIT + r")(?![A-Za-z]))", re.IGNORECASE)
 
 
 def _run(text: str, pos: list[int], k: int) -> str:
@@ -517,6 +544,8 @@ def _line_break_is_boundary(text: str, pos: list[int], k: int) -> bool:
         return False
     if R and R[0] in _LINE_HEAD_CUT:
         return False
+    if L and R and _UNIT_HEAD.match(R) and _ends_with_quantity(L):
+        return False   # 3\n달러 · 3억\n원 · 3\n% — 수량과 그 단위 사이의 줄바꿈(판독부의 토큰은 측정 단위를 담지 않아 따로 본다)
     if not L or not R:
         return True
     return _sig(L + " " + R) == _sig(L) + _sig(R)
@@ -714,7 +743,8 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
 
 def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
     """일치 구간 안의 공백이 원문에서 탭을 건넜으면 무조건(표의 다른 칸), 줄바꿈·쪽 구분을 건넜으면 앞 줄이 수량으로 끝나고 뒤 줄이
-    수(또는 부호+수)로 시작할 때만(두 줄의 수량을 한 문구로 이은 자리) 거부한다. 문장이 줄·쪽을 넘기는 것은 허용."""
+    숫자로 바로 시작하거나 부호·범위 이음+수로 시작할 때만(자릿수 잇기 1\n234 · 복합 수량 1억\n2천 · 범위 3%\n-5%) 거부한다.
+    문장이 줄·쪽을 넘기는 것은 허용(여는 괄호로 시작하는 줄 '3%\n(2억 원)' 포함)."""
     for k in range(i, j):
         if norm[k] != " ":
             continue
@@ -724,6 +754,16 @@ def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool
         if _has_break(run) and _joins_line_quantities(text, pos, k):
             return True
     return False
+
+
+def _drops_unit_after_break(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
+    """문구가 수량으로 끝나는 줄 끝에서 멈추고 다음 줄이 그 수량의 단위로 시작하는가('가격은 3\n달러다.' 의 '가격은 3' · '3억\n원' 의 '3억')."""
+    if j >= len(norm) or norm[j] != " " or j + 1 >= len(pos):
+        return False
+    run = _run(text, pos, j)
+    if _has_tab(run) or not _has_break(run):
+        return False
+    return _ends_with_quantity(_line_tail(text, pos[j])) and bool(_UNIT_HEAD.match(_line_head(text, pos[j + 1])))
 
 
 def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
@@ -743,7 +783,8 @@ def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
         i = norm.find(needle, start)
         if i < 0:
             break
-        if _cuts_number(text or "", norm, pos, i, i + len(needle)) or _crosses_cells(text or "", norm, pos, i, i + len(needle)):
+        if (_cuts_number(text or "", norm, pos, i, i + len(needle)) or _crosses_cells(text or "", norm, pos, i, i + len(needle))
+                or _drops_unit_after_break(text or "", norm, pos, i, i + len(needle))):
             cut += 1
             start = i + 1
             continue
@@ -807,15 +848,20 @@ def passage_bounds_error(text: str, start: int, end: int) -> str:
 
 # ── 규칙 2: 차트 점 값 = 공백으로 나뉜 낱말 하나 ──────────────────────
 
-_WORD_SIGNS = set("-+−–—‐‑﹣－＋△▲▽▼~∼〜～(")   # 이것만으로 된 낱말이 바로 앞이면 그 값은 세지 않는다(− 0.8 · ~ 5% · ( 0.8 )
-_WORD_RANGE = set("-–—~∼〜～")                  # 이것만으로 된 낱말이 바로 뒤이면 세지 않는다(3% ~ 5% 의 3%)
+_WORD_SIGN_CH = "-+−–—‐‑﹣－＋△▲▽▼"
+_WORD_RANGE_CH = "-–—~∼〜～"
+# 바로 앞 낱말: 부호·범위 이음으로 끝나거나(3%~ · -) 부호(+통화 기호)·여는 괄호만으로 됐으면(-$ · △ · ( ) 그 값은 세지 않는다. 통화 기호만('$')은 센다
+_WORD_BEFORE = re.compile(r"(?:.*[" + re.escape(_WORD_SIGN_CH + "~∼〜～") + r"]|\(?[" + re.escape(_WORD_SIGN_CH) + r"]+[$€£¥₩]*|\()$", re.S)
+_WORD_AFTER = re.compile(r"[" + re.escape(_WORD_RANGE_CH) + r"]")   # 바로 뒤 낱말이 범위 이음으로 시작(~5% · - 5)
 _WORD_RX = re.compile(r"\S+")
+_GAP_SAME = re.compile(r"[^\S\t" + _LINE_BREAKS + r"]+")             # 이웃으로 보는 간격: 같은 줄·같은 칸의 공백만(탭·줄바꿈 너머는 이웃이 아니다)
 
 
 def find_value(text: str, notation: str) -> dict:
     """{found, count, skipped}. 사본 글을 공백류로 나눈 낱말 가운데 notation 과 글자 그대로 같은 것의 수.
-    바로 앞 낱말이 부호·범위 이음만으로 되어 있거나 바로 뒤 낱말이 범위 이음만으로 되어 있으면 그 자리는 세지 않고 skipped 에 센다
-    (이웃은 같은 칸 안에서만 본다 — 탭 너머 칸의 '-' 는 빈 칸 표시다. PDF 표는 칸이 여러 칸 공백이라 가르지 못해 이웃으로 본다).
+    바로 앞 낱말이 부호·범위 이음으로 끝나거나(3%~ · -) 부호(+통화 기호)만으로 되어 있거나(-$ · △), 바로 뒤 낱말이 범위 이음으로 시작하면(~5%)
+    그 자리는 세지 않고 skipped 에 센다. 이웃은 같은 줄·같은 칸에서 공백으로만 떨어진 낱말이다(탭·줄바꿈 너머의 '-' 는 빈 칸 표시다.
+    PDF 표는 칸이 여러 칸 공백이라 가르지 못해 이웃으로 본다).
     보이지 않는 글자(Cf)가 든 표기는 찾지 않는다. 조사가 붙은 낱말('4명이다.')·부호가 붙은 낱말('-0.8%')·범위 낱말('3%~5%')은
     다른 낱말이라 찾은 것이 아니다 — 차트 자료는 표의 칸에서 온다."""
     q = str(notation or "").strip()
@@ -828,9 +874,9 @@ def find_value(text: str, notation: str) -> dict:
         if m.group() != q:
             continue
         # 이웃 낱말은 같은 칸 안에서만 본다 — 탭 너머(다른 칸)의 '-' 는 빈 칸 표시·범례이지 이 값의 부호나 범위가 아니다
-        before = ms[x - 1].group() if x and "\t" not in t[ms[x - 1].end():m.start()] else ""
-        after = ms[x + 1].group() if x + 1 < len(ms) and "\t" not in t[m.end():ms[x + 1].start()] else ""
-        if (before and all(ch in _WORD_SIGNS for ch in before)) or (after and all(ch in _WORD_RANGE for ch in after)):
+        before = ms[x - 1].group() if x and _GAP_SAME.fullmatch(t[ms[x - 1].end():m.start()]) else ""
+        after = ms[x + 1].group() if x + 1 < len(ms) and _GAP_SAME.fullmatch(t[m.end():ms[x + 1].start()]) else ""
+        if (before and _WORD_BEFORE.match(before)) or (after and _WORD_AFTER.match(after)):
             out["skipped"] += 1
             continue
         out["count"] += 1

@@ -19,6 +19,7 @@ from __future__ import annotations
 import random
 import unicodedata
 
+FOOTNOTES = ["1)", "12)", "*", "†", "‡", "¹", "²³", "[1]", "[12]"]
 WORDS = ["가상의", "섬의", "감자", "당근", "수확량은", "출하는", "전년", "대비", "최대", "늘었다", "줄었다", "기록했다", "the", "index",
          "rose", "growth", "통계청은", "올해", "지난해"]
 SIGNS = ["", "", "", "-", "−", "+", "△", "▲", "▼"]
@@ -48,6 +49,10 @@ def quantity(r: random.Random) -> tuple[str, list[int]]:
             cuts.append(len(sign + num))                             # 3\n억원
         if tail == "%":
             cuts.append(len(sign + num))                             # 3\n%
+        if tail == "%p":
+            cuts.append(len(sign + num) + 1)                         # 3%\np
+        if meas:
+            cuts.append(len(sign + num + tail))                      # 3\n달러 · 3억\n원 (수량과 측정 단위 사이)
         return t, cuts
     if k < 0.60:
         a, b = r.randint(1, 9), r.randint(1, 9)
@@ -121,7 +126,7 @@ def _sentence(r: random.Random, d: _Doc, first: bool):
             d.add(tail)
         else:
             d.add(t, start_ok=start)
-    d.add("." + ('"' if quoted else ""))
+    d.add("." + ('"' if quoted else "") + (r.choice(FOOTNOTES) if r.random() < 0.15 else ""))   # 각주 표시는 마침표 뒤 0~1개
     d.end_ok()
 
 
@@ -143,7 +148,17 @@ def passage_doc(r: random.Random) -> _Doc:
                 d.add("\t")
                 d.add(quantity(r)[0], start_ok=True)
             d.end_ok()
-        elif kind < 0.85:                                   # PDF 표의 줄(칸 사이 여러 칸 공백) — 줄 전체만 통째 대목
+        elif kind < 0.78:                                   # 숫자 표의 줄들(2026 66.60 71.83 · 다음 줄도 숫자로 시작 · 끝은 '합계 …') — 줄마다 통째 대목
+            d.add("연도 " + " ".join(r.choice(WORDS) for _ in range(2)), start_ok=True)
+            d.end_ok()
+            for _ in range(r.randint(1, 4)):
+                d.add("\n")
+                d.add(f"{r.randint(1990, 2030)} " + " ".join(f"{r.randint(1, 999)}.{r.randint(0, 99):02d}" for _ in range(r.randint(1, 4))), start_ok=True)
+                d.end_ok()
+            d.add("\n")
+            d.add(f"합계 {r.randint(1, 9999)}.{r.randint(0, 99):02d}", start_ok=True)
+            d.end_ok()
+        elif kind < 0.88:                                   # PDF 표의 줄(칸 사이 여러 칸 공백) — 줄 전체만 통째 대목
             d.add(r.choice(WORDS), start_ok=True)
             for _ in range(r.randint(1, 4)):
                 d.add(" " * r.randint(2, 6))
@@ -207,34 +222,51 @@ SPACES = [" ", " ", "  ", "\t", "\n", "\f", "　", "\xa0", "\r\n"]
 
 
 def value_doc(r: random.Random) -> tuple[str, list[dict]]:
-    """(글, 항목들). 항목 = {words, standalone(홀로 선 값의 낱말 | None), inner(그 항목에 든 값들)}."""
+    """(글, 항목들). 항목 = {words, standalone(홀로 선 값의 낱말 | None), inner(그 항목에 든 값들), first_range, last_joiner}.
+    first_range = 첫 낱말이 범위 이음으로 시작(만든 꼴로 정한다), last_joiner = 끝 낱말이 부호·범위 이음으로 끝나거나 부호(+통화 기호)만."""
     items = []
     for _ in range(r.randint(4, 12)):
         k = r.random()
         v, w = _value(r), _value(r)
-        if k < 0.30:
-            items.append({"words": [v], "standalone": v, "inner": [v]})
-        elif k < 0.42:                       # 낱말 하나인 항목은 그 낱말 통째가 홀로 선 낱말이다('-0.8%' 를 그대로 찾으면 찾는다)
-            s = r.choice(["-", "−", "△", "▲", "+"])
-            items.append({"words": [s + v], "standalone": s + v, "inner": [v]})
-        elif k < 0.50:
-            items.append({"words": [f"({v})"], "standalone": f"({v})", "inner": [v]})
-        elif k < 0.60:
-            items.append({"words": [f"{v}~{w}"], "standalone": f"{v}~{w}", "inner": [v, w]})
-        elif k < 0.68:
-            items.append({"words": [f"{v}명이다."], "standalone": f"{v}명이다.", "inner": [v, v + "명"]})
-        elif k < 0.78:
-            items.append({"words": [r.choice(SIGN_WORDS), v], "standalone": None, "inner": [v]})
-        elif k < 0.88:
-            items.append({"words": [v, r.choice(RANGE_WORDS), w], "standalone": None, "inner": [v, w]})
+        it = {"first_range": False, "last_joiner": False}
+        if k < 0.24:
+            it.update(words=[v], standalone=v, inner=[v])
+        elif k < 0.34:                       # 낱말 하나인 항목은 그 낱말 통째가 홀로 선 낱말이다('-0.8%' 를 그대로 찾으면 찾는다)
+            sg = r.choice(["-", "−", "△", "▲", "+"])
+            it.update(words=[sg + v], standalone=sg + v, inner=[v], first_range=(sg == "-"))
+        elif k < 0.40:
+            it.update(words=[f"({v})"], standalone=f"({v})", inner=[v])
+        elif k < 0.47:
+            it.update(words=[f"{v}~{w}"], standalone=f"{v}~{w}", inner=[v, w])
+        elif k < 0.52:
+            it.update(words=[f"{v}~"], standalone=f"{v}~", inner=[v], last_joiner=True)          # 3%~ 5% 의 앞
+        elif k < 0.57:
+            it.update(words=[f"~{w}"], standalone=f"~{w}", inner=[w], first_range=True)          # 3% ~5% 의 뒤
+        elif k < 0.62:
+            it.update(words=[f"{v}명이다."], standalone=f"{v}명이다.", inner=[v, v + "명"])
+        elif k < 0.70:
+            sg = r.choice(SIGN_WORDS)
+            it.update(words=[sg, v], standalone=None, inner=[v], first_range=sg in ("-", "~"))
+        elif k < 0.75:
+            it.update(words=["-$", v], standalone=None, inner=[v], first_range=True)              # -$ 0.8
+        elif k < 0.80:
+            it.update(words=["$", v], standalone=v, inner=[v])                                    # $ 0.8 — 통화 기호만은 센다
+        elif k < 0.90:
+            it.update(words=[v, r.choice(RANGE_WORDS), w], standalone=None, inner=[v, w])
         else:
-            items.append({"words": [r.choice(WORDS)], "standalone": None, "inner": []})
-    # 항목 사이는 아무 공백류(탭 = 표의 다른 칸 포함), 한 항목 안의 낱말 사이는 탭이 아닌 공백류(띄어 쓴 부호·범위는 한 칸 안이다)
+            it.update(words=[r.choice(WORDS)], standalone=None, inner=[])
+        items.append(it)
+    # 항목 사이는 아무 공백류(탭 = 표의 다른 칸, 줄바꿈 = 다음 행), 한 항목 안의 낱말 사이는 같은 줄의 공백류(띄어 쓴 부호·범위는 한 칸 안이다)
     gaps = [r.choice(SPACES) for _ in items[1:]]
-    for x in range(len(items) - 1):          # 홀로 선 값 바로 뒤가 같은 칸의 범위 이음 낱말이면(v - w) 범위의 앞쪽과 가를 수 없다 → 거부
-        if items[x]["standalone"] and items[x + 1]["words"][0] in RANGE_WORDS and "\t" not in gaps[x]:
-            items[x]["ambig"] = True
-    inner = [s for s in SPACES if "\t" not in s]
+    same_line = [not any(c in g for c in "\t\n\r\f") for g in gaps]
+    for x, it in enumerate(items):           # 홀로 선 값의 같은 줄 이웃이 이음·부호면 범위·부호와 가를 수 없다 → 거부
+        if not it["standalone"]:
+            continue
+        if x and same_line[x - 1] and items[x - 1]["last_joiner"] and len(it["words"]) == 1:
+            it["ambig"] = True
+        if x + 1 < len(items) and same_line[x] and items[x + 1]["first_range"]:
+            it["ambig"] = True
+    inner = [sp for sp in SPACES if not any(c in sp for c in "\t\n\r\f")]
     parts = []
     for x, it in enumerate(items):
         if x:
@@ -271,3 +303,67 @@ def value_expected(items: list[dict], q: str) -> bool:
     if not q or any(ch.isspace() or unicodedata.category(ch) == "Cf" for ch in q):
         return False
     return any(it["standalone"] == q and not it.get("ambig") for it in items)
+
+
+# ── html 원문 경로(html_text 를 거친다) ─────────────────────────────────
+INDENT = [" ", " ", "\n", "\n\t", "\n    ", "\t", "\r\n\t\t", "  \n  "]
+
+
+def html_doc(r: random.Random) -> dict:
+    """html 원문을 만든다. 문단 안의 낱말 사이에는 들여쓰기 탭·줄바꿈을 섞고, 부호를 띄어 쓴 값('−' + 들여쓰기 + '0.817%')을 넣는다.
+    표는 td 로 만들고 칸 안쪽에도 들여쓰기를 넣는다. 돌려주는 것:
+      html(bytes) · sentences(접은 뒤의 문장 — 통째 대목이어야 한다) · signed(부호를 띄어 쓴 값 — 부호를 버린 발췌는 거부, 값으로도 못 찾는다)
+      · cells(칸 값 — 통째 대목이고 값으로 찾는다) · n_cells(td 수 — 뽑은 글의 탭은 칸 경계에서만 나오므로 탭 수 = 2 × 칸 수)."""
+    sentences, signed, cells, html, n_cells = [], [], [], [], 0
+    used: set[str] = set()
+
+    def uniq(make):
+        while True:
+            v = make()
+            if v not in used:
+                used.add(v)
+                return v
+    for _ in range(r.randint(2, 5)):
+        if r.random() < 0.6:
+            sent = []
+            for _ in range(r.randint(1, 3)):
+                toks = [r.choice(WORDS)]
+                for _ in range(r.randint(2, 6)):
+                    if r.random() < 0.3:
+                        v = uniq(lambda: f"{r.randint(0, 99)}.{r.randint(0, 999):03d}%")
+                        sg = r.choice(["−", "-", "△", "▲"])
+                        signed.append(v)
+                        toks.append((sg, v))
+                    elif r.random() < 0.4:
+                        toks.append(f"{r.randint(1, 999)}{r.choice(['명', '톤', '억 원', '%'])}")
+                    else:
+                        toks.append(r.choice(WORDS))
+                toks.append(r.choice(["늘었다.", "줄었다.", "기록했다."]))
+                sent.append(toks)
+            raw, flat = [], []
+            for toks in sent:
+                parts_raw, parts_flat = [], []
+                for t in toks:
+                    if isinstance(t, tuple):
+                        parts_raw.append(t[0] + r.choice(INDENT) + t[1])
+                        parts_flat.append(t[0] + " " + t[1])
+                    else:
+                        parts_raw.append(t)
+                        parts_flat.append(t)
+                raw.append("".join(p + r.choice(INDENT) for p in parts_raw[:-1]) + parts_raw[-1])
+                flat.append(" ".join(parts_flat))
+                sentences.append(flat[-1])
+            html.append("<p>" + r.choice(INDENT) + r.choice(INDENT).join(raw) + r.choice(INDENT) + "</p>")
+        else:
+            rows = []
+            for _ in range(r.randint(1, 3)):
+                tds = [r.choice(WORDS)]
+                for _ in range(r.randint(1, 3)):
+                    v = uniq(lambda: f"{r.randint(0, 9999):,}.{r.randint(0, 99):02d}")
+                    cells.append(v)
+                    tds.append(v)
+                n_cells += len(tds)
+                rows.append("<tr>" + "".join(f"<td>{r.choice(INDENT)}{x}{r.choice(INDENT)}</td>" + r.choice(INDENT) for x in tds) + "</tr>")
+            html.append("<table>" + r.choice(INDENT) + r.choice(INDENT).join(rows) + "</table>")
+    body = "<!doctype html><html><body>" + r.choice(INDENT).join(html) + "</body></html>"
+    return {"html": body.encode("utf-8"), "sentences": sentences, "signed": signed, "cells": cells, "n_cells": n_cells}
