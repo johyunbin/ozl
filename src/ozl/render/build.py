@@ -703,8 +703,7 @@ def capture_png(c: dict, out: pathlib.Path, size_px: tuple[int, int]) -> pathlib
         return None
     cap = src["cap"]
     r = K.evidence_image(str(c.get("claim_id")), src["path"], src["kind"], src["text"], str(c.get("observed") or ""), target["offset"],
-                         {"url": cap.get("final_url") or cap.get("url"), "fetched_at": cap.get("fetched_at"), "sha256": cap.get("sha256")},
-                         out, size_px=size_px)
+                         S.capture_meta(cap), out, size_px=size_px)
     return pathlib.Path(r["path"]) if r.get("path") else None
 
 

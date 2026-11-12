@@ -49,7 +49,10 @@ def opener_of(body, **kw):
     return lambda req, timeout: Resp(body, **kw)
 
 
-def base_claim(observed="수확량은 4,321톤으로", tier="T1", url=URL):
+SENTENCE = "2098년 감자 수확량은 4,321톤으로 전년보다 7.5% 늘었다."   # 기본 사본 글의 한 문장 — observed·located 는 통째 대목이어야 한다(규칙 1)
+
+
+def base_claim(observed=SENTENCE, tier="T1", url=URL):
     return {"claim_id": CID, "card_id": CARD, "text": "가상의 섬 2098년 감자 수확량은 4,321톤이다.", "observed": observed,
             "source": {"url": url, "tier": tier, "publisher": "가상 섬 통계청", "accessed": "2099-01-02", "archived": ""},
             "cross_check": [], "status": "pending",
@@ -59,7 +62,7 @@ def base_claim(observed="수확량은 4,321톤으로", tier="T1", url=URL):
             "human_verified": False, "revision": 1}
 
 
-def recheck(by="agent-b", located="2098년 감자 수확량은 4,321톤으로", **chk):
+def recheck(by="agent-b", located=SENTENCE, **chk):
     checks = {"unit": "톤", "as_of": "2098년", "status": "확정", "population": "가상의 섬 전체", "speaker": "가상 섬 통계청"}
     checks.update(chk)
     return {"by": by, "located": located, "checks": checks, "at": "2099-01-02T10:00:00+09:00"}
@@ -274,7 +277,7 @@ def test_strict_mode_rechecks_evidence_every_time(desk):
     prepare(desk, base_claim())
     assert C.machine_verify(CID)["ok"]
     c = C.load_yaml(C.claim_path(CID))
-    c["observed"] = "수확량은 4,399톤으로"
+    c["observed"] = SENTENCE.replace("4,321", "4,399")
     errs, _ = S.claim_state_errors([CID], {CID: c})
     assert errs and "observed 가 사본 글에 없다" in errs[0]
 
@@ -302,10 +305,11 @@ def _refused(desk, claim, **kw):
 
 
 def test_refuse_observed_not_in_copy(desk):
-    assert "observed 가 사본 글에 없다" in _refused(desk, base_claim(observed="수확량은 5,000톤으로"))
+    assert "observed 가 사본 글에 없다" in _refused(desk, base_claim(observed=SENTENCE.replace("4,321", "5,000")))
 
 
-@pytest.mark.parametrize("observed", ["수확량은 4,322톤으로", "2097년 감자 수확량은 4,321톤", "0.8% 줄었다", "+0.8% 줄었다", "4,321 톤으로"])
+@pytest.mark.parametrize("observed", [SENTENCE.replace("4,321", "4,322"), SENTENCE.replace("2098", "2097"), "같은 해 당근 수출은 0.8% 줄었다.",
+                                      "같은 해 당근 수출은 +0.8% 줄었다.", SENTENCE.replace("4,321톤", "4,321 톤")])
 def test_refuse_altered_number_year_sign(desk, observed):
     assert "observed 가 사본 글에 없다" in _refused(desk, base_claim(observed=observed), rc=recheck(located="같은 해 당근 수출은 -0.8% 줄었다"))
 
@@ -326,17 +330,23 @@ def test_refuse_recheck_passage_not_in_copy(desk):
     assert "재대조한 쪽 대목(recheck.located) 가 사본 글에 없다" in _refused(desk, base_claim(), rc=recheck(located="감자 수확량은 4,321톤으로 줄었다"))
 
 
+TWICE = ("<!doctype html><html><body><p>가상 감자 통계다. 수확량은 4,321톤이다.</p><p>가상 당근 통계다. 수확량은 4,321톤이다.</p>"
+         f"<p>{PAD}</p></body></html>").encode("utf-8")   # 같은 문장(통째 대목)이 두 문맥에 나오는 문서
+
+
 def test_refuse_recheck_points_to_other_place(desk):
-    # 같은 값이 다른 문맥(당근 창고)에도 나오는 문서 — 쓴 쪽은 감자 문장을, 재대조는 창고 문장을 가리켰다
-    why = _refused(desk, base_claim(observed="4,321톤"), author_located="감자 수확량은 4,321톤으로 전년보다",
-                   rc=recheck(located="당근 창고 용량은 4,321톤이다"))
+    # 같은 문장이 다른 문맥(당근)에도 나오는 문서 — 쓴 쪽은 감자 문단을, 재대조는 당근 문단을 가리켰다
+    why = _refused(desk, base_claim(observed="수확량은 4,321톤이다."), body=TWICE, author_located="가상 감자 통계다. 수확량은 4,321톤이다.",
+                   rc=recheck(located="가상 당근 통계다. 수확량은 4,321톤이다."))
     assert "통째로 담지 않는다" in why
-    # 쓴 쪽이 자리를 가리키지 않으면 여러 번 나오는 값은 올리지 않는다
-    assert "author.located" in _refused(desk, base_claim(observed="4,321톤"), rc=recheck(located="감자 수확량은 4,321톤으로"))
+    # 쓴 쪽이 자리를 가리키지 않으면 여러 번 나오는 문장은 올리지 않는다
+    assert "author.located" in _refused(desk, base_claim(observed="수확량은 4,321톤이다."), body=TWICE,
+                                        rc=recheck(located="가상 감자 통계다. 수확량은 4,321톤이다."))
 
 
 def test_same_value_twice_passes_when_both_point_to_same_place(desk):
-    prepare(desk, base_claim(observed="4,321톤"), author_located="감자 수확량은 4,321톤으로 전년보다", rc=recheck(located="2098년 감자 수확량은 4,321톤"))
+    prepare(desk, base_claim(observed="수확량은 4,321톤이다."), body=TWICE, author_located="가상 감자 통계다. 수확량은 4,321톤이다.",
+            rc=recheck(located="가상 감자 통계다. 수확량은 4,321톤이다."))
     assert C.machine_verify(CID)["ok"]
 
 
@@ -651,16 +661,18 @@ def test_period_key_keeps_kind(a, b, same):
 
 # C4 자리 판정
 def test_recheck_must_contain_whole_target(desk):
-    why = _refused(desk, base_claim(observed="100억 원"), body=doc("국내 매출은 100억 원이다."), rc=recheck(located="원이다."))
+    why = _refused(desk, base_claim(observed="국내 매출은 100억 원이다."), body=doc("국내 매출은 100억 원이다."), rc=recheck(located="원이다."))
     assert "통째로 담지 않는다" in why
 
 
 def test_author_location_must_be_one_place(desk):
-    body = doc("A사 매출 10억 원. B사 매출 10억 원.")
-    why = _refused(desk, base_claim(observed="10억 원"), body=body, author_located="A사 매출 10억 원. B사 매출 10억 원.",
-                   rc=recheck(located="B사 매출 10억 원."))
+    body = doc("A사 집계다. 매출은 10억 원이다. B사 집계다. 매출은 10억 원이다.")
+    why = _refused(desk, base_claim(observed="매출은 10억 원이다."), body=body,
+                   author_located="A사 집계다. 매출은 10억 원이다. B사 집계다. 매출은 10억 원이다.",
+                   rc=recheck(located="B사 집계다. 매출은 10억 원이다."))
     assert "정해지지 않는다" in why
-    prepare(desk, base_claim(observed="10억 원"), body=body, author_located="B사 매출 10억 원.", rc=recheck(located="B사 매출 10억 원."))
+    prepare(desk, base_claim(observed="매출은 10억 원이다."), body=body, author_located="B사 집계다. 매출은 10억 원이다.",
+            rc=recheck(located="B사 집계다. 매출은 10억 원이다."))
     assert C.machine_verify(CID)["ok"]
 
 
@@ -787,11 +799,12 @@ def test_spec_copy_text_is_cards_copy_text(desk):
 
 # D 대조한 자리 — match.target · 문맥
 def test_match_target_is_the_place_rechecked(desk):
-    body = doc("A사 매출 10억 원.", "B사 매출 10억 원.")
-    prepare(desk, base_claim(observed="10억 원"), body=body, author_located="B사 매출 10억 원.", rc=recheck(located="B사 매출 10억 원."))
+    body = doc("A사 집계다. 매출은 10억 원이다.", "B사 집계다. 매출은 10억 원이다.")
+    prepare(desk, base_claim(observed="매출은 10억 원이다."), body=body, author_located="B사 집계다. 매출은 10억 원이다.",
+            rc=recheck(located="B사 집계다. 매출은 10억 원이다."))
     assert C.machine_verify(CID)["ok"]
     m = C.load_yaml(C.claim_path(CID))["verification"]["match"]
-    assert m["target"]["nth"] == 1 and "B사 매출 【10억 원】" in m["context"]
+    assert m["target"]["nth"] == 1 and "B사 집계다. 【매출은 10억 원이다.】" in m["context"]
 
 
 @pytest.mark.skipif(not (shutil.which("pdftoppm") and shutil.which("pdftotext")), reason="poppler 없음")
@@ -801,13 +814,210 @@ def test_evidence_image_pdf_band_and_passage(tmp_path):
     text = K.extract_text(p, "pdf")["text"]
     ms = K.find_phrase(text, "4,321 tonnes")["matches"]
     assert len(ms) == 2
+    # 그 쪽에 문구가 두 번 나오면 띠로 자르지도 강조하지도 않고 쪽 전체 + 사유(다단 PDF 에서 -layout 과 -bbox 의 낱말 순서가 달라 다른 자리를 강조할 수 있다)
     r = K.evidence_image(CID, p, "pdf", text, "4,321 tonnes", ms[1]["offset"], {}, tmp_path / "e.png")
-    assert r["path"] and r["view"] == "pdf_band" and r["offset"] == ms[1]["offset"]
+    assert r["path"] and r["view"] == "pdf_page" and r["offset"] == ms[1]["offset"] and "2번" in r["note"]
     from PIL import Image
     with Image.open(r["path"]) as g:
-        assert g.width < 200 / 72 * 595        # 쪽 전체가 아니라 띠로 잘랐다
+        assert g.width >= 200 / 72 * 595 - 2   # 쪽 전체
+    one = K.find_phrase(text, "Carrot harvest was 4,321 tonnes as well.")["matches"]
+    assert len(one) == 1
+    r = K.evidence_image(CID, p, "pdf", text, "Carrot harvest was 4,321 tonnes as well.", one[0]["offset"], {}, tmp_path / "e1.png")
+    assert r["path"] and r["view"] == "pdf_band"
+    with Image.open(r["path"]) as g:
+        assert g.width < 200 / 72 * 595        # 한 번만 나오면 그 줄 둘레 띠
     h = K.html_text(HTML)
     m = K.find_phrase(h, "수확량은 4,321톤으로")["matches"][0]
     r = K.evidence_image(CID, tmp_path / "x.html", "html", h, "수확량은 4,321톤으로", m["offset"], {"url": URL}, tmp_path / "t.png", size_px=(600, 590))
     assert r["path"] and r["view"] == "text_passage"
     assert K.evidence_image(CID, p, "pdf", text, "4,321 tonnes", 3, {}, tmp_path / "z.png")["path"] == ""   # 대조한 자리가 아니면 그리지 않는다
+
+
+# ════ Codex 3차 검토 반례 · 통째 대목(규칙 1) · 낱말 일치(규칙 2) ═════════════
+import _fuzz_passage as FP  # noqa: E402
+
+
+def _bounds(text: str, passage: str) -> str:
+    """text 안에 한 번 나오는 passage 의 자리(정리한 글 기준)로 passage_bounds_error 를 부른다."""
+    norm, _ = K.normalize(text)
+    p = K._WS.sub(" ", passage).strip()
+    assert norm.count(p) == 1, (norm, p)
+    i = norm.index(p)
+    return K.passage_bounds_error(text, i, i + len(p))
+
+
+# 높음 1 — 줄바꿈이 수량 한가운데(PDF 줄바꿈)
+def test_line_break_inside_quantity_is_not_found_and_not_a_boundary():
+    assert not K.find_phrase("출하량은 3\n억원이다.", "3")["found"]
+    assert not K.find_phrase("손실은 −\n$3 million.", "$3 million")["found"]
+    assert "중간에서 시작" in _bounds("출하량은 3\n억원이다.", "3")                       # 줄 중간에서 시작
+    assert "수량 한가운데" in _bounds("출하량은 3\n억원이다.", "출하량은 3")               # 줄 경계 검사(3 억원 은 한 수량)
+    assert "수량 한가운데" in _bounds("손실은 −\n$3 million.", "$3 million.")              # 앞 줄이 부호로 끝난다
+    assert _bounds("손실은 −\n$3 million.", "손실은 − $3 million.") == ""                  # 문장 통째는 받는다
+
+
+# 높음 3 — 측정 단위 뒤의 범위
+@pytest.mark.parametrize("text,obs", [("예상 범위는 3명~5명이다.", "3명"), ("전망은 3달러∼5달러다.", "3달러"),
+                                      ("예상 범위는 3명~5명이다.", "5명"), ("범위는 3명 ~ 5명이다.", "3명")])
+def test_range_after_measure_unit(text, obs):
+    assert not K.find_phrase(text, obs)["found"]
+    norm, _ = K.normalize(text)
+    i = norm.index(obs)
+    assert K.passage_bounds_error(text, i, i + len(obs))                               # 규칙 1: 문장 중간
+    assert not K.find_value(text, obs)["found"]                                         # 규칙 2: 낱말 '3명~5명이다.' 와 다르다
+
+
+# 높음 4 · 중간 7 — 차트 표시 문자열
+@pytest.mark.parametrize("pt,ok", [(["가", 1, "1½%"], False), (["가", 2, "2¾%"], False), (["가", 2, "2²"], False), (["가", 3, "3①"], False),
+                                   (["가", 12, "１２"], False), (["가", 0.5, ".5%"], True), (["가", -0.5, "-.5%"], True), (["가", 0.5, ".6%"], False),
+                                   (["가", 4, "4명"], True)])
+def test_chart_display_string_numeric_tail_and_leading_dot(pt, ok):
+    from ozl.render import charts as G
+    ch = {"kind": "bar", "title": "가상", "unit": "%", "period": "2098", "source": "가상", "claims": ["x"], "series": [{"name": "a", "points": [pt]}]}
+    assert (G.validate_chart(ch) == []) is ok, G.validate_chart(ch)
+
+
+# 중간 5 · 6 — 정상 대목이 막히던 것
+@pytest.mark.parametrize("text,obs", [
+    ("최대\n3% 증가했다.", "최대 3%"), ("The index is up\n3 percent.", "up 3 percent"), (K.html_text(b"<td>growth<br>3%</td>"), "growth 3%"),
+    ("매출은 전년 대비\f3% 늘었다.", "전년 대비 3% 늘었다."), ("매출은 4,513억\f원을 기록했다.", "4,513억 원을"),
+])
+def test_line_and_page_break_inside_sentence_is_found(text, obs):
+    assert K.find_phrase(text, obs)["found"]
+
+
+def test_dash_in_other_cell_is_not_a_sign():
+    assert K.find_phrase("가\t-\t\n\t5,651,912\t", "5,651,912")["found"]          # 탭 너머 칸의 '-' 는 빈 칸 표시다
+    assert not K.find_phrase("값 - 5,651,912", "5,651,912")["found"]                  # 같은 칸이면 부호로 본다
+
+
+@pytest.mark.parametrize("text,obs", [("값은 3명\n5명이다", "3명 5명"), ("값은 3%\n−5%다", "3% −5%"), ("값은 1억\f2천만원", "1억 2천만원"),
+                                      ("값은 (3)\n4다", "(3) 4"), ("값은 70 million\n80 percent", "million 80")])
+def test_two_line_quantities_are_not_joined(text, obs):
+    assert not K.find_phrase(text, obs)["found"]
+
+
+# 규칙 1 — 통째 대목
+@pytest.mark.parametrize("text,passage,why", [
+    ("가. 감자 수확량은 4,321톤으로 늘었다. 끝.", "수확량은 4,321톤으로 늘었다.", "문장 중간에서 시작"),
+    ("가. 감자 수확량은 4,321톤으로 늘었다. 끝.", "감자 수확량은 4,321톤으로", "문장 끝"),
+    ("전망치는 3%~5%다. 끝.", "5%다.", "낱말 중간"),
+    ("성장률은 -0.8%다. 끝.", "0.8%다.", "낱말 중간"),
+    ("성장률은 − 0.8%다. 끝.", "0.8%다.", "문장 중간"),
+    ("감자\t1억\t2천만원\n끝", "1억 2천만원", "탭"),
+    ("출하량은 3\n억원이다.", "억원이다.", "수량 한가운데"),
+    ("전망치는 3%~\n5%다.", "5%다.", "수량 한가운데"),
+    ("전망치는 3%\n~5%다.", "전망치는 3%", "수량 한가운데"),
+    ("손실은 −\n$3 million.", "$3 million.", "수량 한가운데"),
+    ("값은 1억\n2천만원이다.", "2천만원이다.", "수량 한가운데"),
+    ("감자    4,321    7.5%\n당근", "4,321", "문장 중간"),             # PDF 표의 칸 하나는 따올 수 없다(줄 전체만)
+])
+def test_passage_bounds_rejects(text, passage, why):
+    err = _bounds(text, passage)
+    assert err and why in err, err
+
+
+@pytest.mark.parametrize("text,passage", [
+    ("가. 감자 수확량은 4,321톤으로 늘었다. 끝.", "감자 수확량은 4,321톤으로 늘었다."),                           # 한 문장
+    ("가. 감자는 4,321톤이다. 당근은 12톤이다. 끝.", "감자는 4,321톤이다. 당근은 12톤이다."),                     # 두 문장
+    ("가. 매출은 전년 대비\n3% 늘었다. 끝.", "매출은 전년 대비 3% 늘었다."),                                     # 줄을 넘기는 문장
+    ("가. 매출은 전년 대비\f3% 늘었다. 끝.", "매출은 전년 대비 3% 늘었다."),                                     # 쪽을 넘기는 문장
+    ("가. 출하량은 3\n억원이다. 끝.", "출하량은 3 억원이다."),                                                   # 줄바꿈이 수량 안이어도 통째면 받는다
+    (K.html_text(b"<table><tr><td>A</td><td>1,644,131</td></tr></table>"), "1,644,131"),                       # 표의 칸 하나
+    ("가.\n감자    4,321    7.5%\n당근", "감자    4,321    7.5%"),                                               # PDF 표의 줄 전체
+    ("가상의 섬 감자 통계 2098\n본문이다.", "가상의 섬 감자 통계 2098"),                                          # 마침표 없는 제목 줄
+    ('그는 "수확량이 3% 늘었다." 라고 했다.', '그는 "수확량이 3% 늘었다."'),                                     # 닫는 따옴표로 끝나는 문장
+    ('가. "수확량이 3% 늘었다." 라고 했다.', '"수확량이 3% 늘었다."'),
+    ("감자는 4,321톤이다.", "감자는 4,321톤이다."),                                                             # 글의 처음·끝
+    ("매출은 3%\n−5%다.", "−5%다."),                                                                            # − 는 언제나 부호 — 앞 줄과 이어지지 않는다
+])
+def test_passage_bounds_accepts(text, passage):
+    assert _bounds(text, passage) == ""
+
+
+def test_machine_verify_requires_whole_passages(desk):
+    # observed 가 문장 중간(찾기는 된다)
+    why = _refused(desk, base_claim(observed="수확량은 4,321톤으로"))
+    assert "observed 의 대조한 자리 가 통째 대목이 아니다" in why and "문장(마침표까지)·줄·칸을 통째로 따와야 한다" in why and "【수확량은 4,321톤으로】" in why
+    # 재대조 대목만 문장 중간
+    why = _refused(desk, base_claim(), rc=recheck(located=SENTENCE[:-1]))
+    assert "재대조한 쪽 대목(recheck.located) 가 통째 대목이 아니다" in why
+    why = _refused(desk, base_claim(), author_located="감자 통계 " + SENTENCE)   # 제목 줄 중간에서 시작
+    assert "쓴 쪽 대목(author.located) 가 통째 대목이 아니다" in why
+    # 제목 줄과 문장을 함께 따온 대목(줄바꿈을 건너는 통째 대목)은 받는다
+    prepare(desk, base_claim(), rc=recheck(located="가상의 섬 2098년 감자 통계 " + SENTENCE))
+    assert C.machine_verify(CID)["ok"]
+
+
+def test_strict_mode_rechecks_whole_passage(desk):
+    """올린 뒤에 observed 를 문장 중간 발췌로 바꿔 쓰면 덱 엄격 모드(fresh=False)가 받지 않는다."""
+    prepare(desk, base_claim())
+    assert C.machine_verify(CID)["ok"]
+    c = C.load_yaml(C.claim_path(CID))
+    assert S.accepted(c)
+    c["observed"] = "4,321톤으로 전년보다 7.5% 늘었다."
+    errs, _ = C.machine_check(c, fresh=False)
+    assert any("통째 대목이 아니다" in e for e in errs)
+    assert not S.accepted(c)
+
+
+# 규칙 2 — 차트 점 값은 공백으로 나뉜 낱말 하나
+@pytest.mark.parametrize("text,value,found", [
+    ("2026 66.60 71.83", "66.60", True), ("값 -0.8% 다음", "0.8%", False), ("값 △0.8% 다음", "0.8%", False), ("값 (0.8%) 다음", "0.8%", False),
+    ("값 3%~5% 다음", "5%", False), ("값 5%p 다음", "5%", False), ("값 11,234 다음", "1,234", False), ("직원은 4명이다.", "4명", False),
+    ("값 − 0.8 다음", "0.8", False), ("값 3% ~ 5% 다음", "3%", False), ("값 3% ~ 5% 다음", "5%", False), ("값 - 0.8 다음", "0.8", False),
+    ("값\t0.8\t다음", "0.8", True), ("값 6​6.60 다음", "66.60", False), ("값 66.60​ 다음", "66.60", False), ("값 ６６.60 다음", "66.60", False),
+    ("값 66.60 다음", "66.60​", False), ("값 -0.8% 다음", "-0.8%", True), ("값 .5% 다음", ".5%", True), ("값 0.5% 다음", ".5%", False),
+    ("가\t45.7\t\n\t-\t\n\t5,651,912\t", "45.7", True), ("가\t45.7\t\n\t-\t\n\t5,651,912\t", "5,651,912", True),   # 다른 칸의 '-'(빈 칸 표시)
+    ("가    45.7    -    5,651,912", "45.7", False),                                                                # PDF 표 — 칸을 가르지 못해 거부
+])
+def test_find_value_whole_word(text, value, found):
+    assert K.find_value(text, value)["found"] is found
+
+
+# 중간 8 — 긴 대목이 그림에 다 들어가지 않으면 성공이라 하지 않는다
+def test_evidence_passage_too_long_fails(tmp_path):
+    from ozl.render import charts as G
+    font = G.pick_font()["path"]
+    long = "가상의 섬 감자 수확량은 4,321톤이다. " * 80
+    text = "머리말. " + long + " 끝."
+    m = K.find_phrase(text, long)["matches"][0]
+    r = K.evidence_image(CID, tmp_path / "x.html", "html", text, long, m["offset"], {"url": URL}, tmp_path / "t.png", size_px=(600, 590), font_path=font)
+    assert r["path"] == "" and "다 들어가지 않는다" in r["reason"] and not (tmp_path / "t.png").exists()
+    mid = "가상의 섬 감자 수확량은 4,321톤이다. " * 6          # 큰 글자로는 넘치지만 줄이면 들어간다
+    text = "머리말. " + mid + " 끝."
+    m = K.find_phrase(text, mid.strip())["matches"][0]
+    r = K.evidence_image(CID, tmp_path / "x.html", "html", text, mid.strip(), m["offset"], {"url": URL}, tmp_path / "u.png", size_px=(600, 590), font_path=font)
+    assert r["path"] and (tmp_path / "u.png").is_file()
+    assert K.evidence_image(CID, tmp_path / "x.html", "html", text, mid.strip(), m["offset"], {"url": URL}, "", size_px=(600, 590), font_path=font,
+                            check_only=True)["reason"] == ""
+
+
+# 무작위 시험 — 만든 방법이 곧 정답(tests/_fuzz_passage.py)
+def test_fuzz_whole_passage_bounds():
+    r = random.Random(20261114)
+    bad, n, n_ok = [], 0, 0
+    for _ in range(120):
+        d = FP.passage_doc(r)
+        text = d.text
+        norm, pos = K.normalize(text)
+        for a, b, want in FP.spans(r, d, len(norm), pos):
+            n += 1
+            n_ok += want
+            if (K.passage_bounds_error(text, a, b) == "") is not want:
+                bad.append((want, norm[a:b], text))
+    assert n >= 4000 and 0 < n_ok < n and not bad, bad[:5]
+
+
+def test_fuzz_chart_value_whole_word():
+    r = random.Random(20261115)
+    bad, n, n_found = [], 0, 0
+    for _ in range(500):
+        text, items = FP.value_doc(r)
+        for q in FP.value_queries(r, items):
+            n += 1
+            want = FP.value_expected(items, q)
+            n_found += want
+            if K.find_value(text, q)["found"] is not want:
+                bad.append((want, q, text))
+    assert n >= 4000 and 0 < n_found < n and not bad, bad[:5]

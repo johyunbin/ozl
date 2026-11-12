@@ -6,21 +6,35 @@
 
     fetch(url, dest_dir)      원문을 받아 dest_dir/source.<확장자> 에 저장. 401·403·429·로그인 벽·봇 차단 화면은 예외가 아니라 ok=False
     extract_text(path, kind)  html(script·style 제외) · pdf(pdftotext -layout, 쪽 구분 \\f 유지) · xlsx(zipfile 로 셀 문자열) · text · json
-    find_phrase(text, phrase) 공백류(연속 공백·줄바꿈·NBSP 등 유니코드 공백)만 한 칸으로 정리한 뒤 부분 문자열로 찾는다
+    find_phrase(text, phrase) 공백류(연속 공백·줄바꿈·NBSP 등 유니코드 공백)만 한 칸으로 정리한 뒤 부분 문자열로 찾는다(자리 찾기)
+    passage_bounds_error(...) 규칙 1 — 찾은 자리가 통째 대목(문장 · 줄 · 표의 칸)인가
+    find_value(text, value)   규칙 2 — 차트 점 값이 공백으로 나뉜 낱말 하나와 글자 그대로 같은가
     snapshot(...)             capture_claim 이 만드는 미리 보기 그림(verification.image). 덱은 이것을 쓰지 않는다
     evidence_image(...)       덱의 원문 캡처 — 빌드 때 해시가 확인된 사본과 대조한 자리(match.target)에서 새로 그린다(Chrome 없이)
     refetch_check(claim)      내기 직전 원문을 새로 받아 다시 대조(기록·사본은 고치지 않는다)
 
 문구 대조에서 하지 않는 것: 쉼표 무시·단위 환산·반올림 허용·대소문자 무시·따옴표 통일. 원문 표기 그대로여야 한다.
 이 저장소에서는 그런 너그러운 규칙을 넓힐 때마다 오통과가 생겼다.
-더 긴 수의 조각인 자리는 찾은 것으로 치지 않는다(문구가 숫자·'.'·','로 시작하거나 끝날 때): 바로 앞뒤(보이지 않는 글자 Cf 는 건너뛴다)가
-숫자(전각 포함)·소수점·자릿점이거나, 앞이 부호 표기(- − – — ‐ ‑ ﹣ － + △ ▲ ▽ ▼, 공백 한 칸 건너도 같다)이거나, '(수)' 회계식 음수인 경우.
-판정은 수량 판독부(src/ozl/render/numbers.py 의 claim_tokens)의 토큰 경계가 먼저이고, 판독부가 부호로 읽지 않는 표기에만 좁은 보조 규칙을 둔다.
-일치 구간 안의 '숫자 공백 숫자' 가 원문에서 탭·줄바꿈·쪽 구분을 건넜으면(표의 다른 칸) 찾은 것으로 치지 않는다.
-알려진 한계: '공백 + 앞 숫자'는 조각으로 치지 않는다(표에서 뽑은 글은 열이 공백으로 나뉜다). 그래서 '1 234' 가 '1 234 567' 안에서,
-'345명' 이 '인구는 12 345명이다.'(공백으로 자릿수를 나눈 표기) 안에서 찾힌다.
-html 글 뽑기는 hidden·aria-hidden="true"·인라인 style(display:none·visibility:hidden·font-size:0)·textarea·option 을 건너뛴다.
-스타일시트(class)로 숨긴 글은 잡지 못한다.
+
+어디에서 무엇으로 막는가 — "발췌가 수량을 자른다"를 글자 종류로 가리던 방식은 막을 때마다 새 구멍과 오거부를 번갈아 냈다. 그래서 중심을 구조로 옮겼다.
+  규칙 1 · 통째 대목(passage_bounds_error · cards.machine_check 가 observed 의 대조한 자리와 author·recheck.located 에 적용, fresh=False 재검사도 같다)
+    시작은 글의 처음 · 탭 뒤 · 줄바꿈·쪽 구분 뒤 · 문장 끝('. ! ? 。 …' + 닫는 따옴표·괄호) 뒤 공백 뒤, 끝은 그 짝. 안쪽에서 탭을 건너면 거부
+    (칸은 하나씩). 줄바꿈·쪽 구분은 건너도 되지만, 그 줄바꿈이 수량 한가운데면(앞 줄 꼬리와 뒤 줄 머리를 이어 읽은 claim_tokens 가 따로 읽은 것과
+    다르거나, 앞 줄이 부호·범위 이음·여는 괄호·통화 기호로 끝나거나, 뒤 줄이 범위 이음으로 시작) 경계가 아니다. 발췌의 양끝이 문장·줄·칸 경계라서
+    부호·범위·복합 수량·단위가 발췌 안에 남고, 덱의 숫자 검사(numbers.py)가 그 문장 문맥으로 수량을 읽는다.
+  규칙 2 · 낱말 일치(find_value · spec.chart_errors) — 차트 점 값은 사본 글의 낱말 하나와 같아야 한다. 같은 칸에서 바로 앞이 부호·범위 이음만인
+    낱말이거나 바로 뒤가 범위 이음만인 낱말이면 세지 않는다(탭 너머 칸의 '-' 는 빈 칸 표시라 이웃으로 보지 않는다).
+  탭을 건너는 일치 거부(find_phrase) — 표의 다른 칸을 잇지 못한다('1억\t2천만원').
+  find_phrase 의 수 조각 판정은 이제 자리 찾기의 보조다(규칙 1 이 주 방어선): 앞뒤 경계 글자(숫자·자릿점·부호·범위 이음·크기 단위·'%'·'(수)' —
+  보이지 않는 글자 Cf 는 건너뛴다) · 전각 숫자 · 측정 단위 낱말 자르기('3달러' 의 '3달') · 범위의 앞쪽(측정 단위 뒤 '3명~5명' 포함) ·
+  수량 판독부의 토큰 경계(줄바꿈·쪽 구분은 공백으로 이어 읽고 탭만 끊는다) · 줄바꿈을 건넌 일치는 앞 줄이 수량으로 끝나고(claim_tokens 의
+  마지막 토큰이 줄 끝에 닿는다) 뒤 줄이 수로 시작할 때만 거부. 지운 것: 줄 끝 글자 집합(_LINE_UNITS — '최대'·'up' 의 끝 글자를 단위로 오인했다),
+  쪽 구분을 탭처럼 끊던 규칙(문장이 쪽을 넘기면 못 찾았다).
+알려진 한계: 공백으로 자릿수를 나눈 수('1 234')는 두 수로 읽어, 그 줄바꿈('1\n234')을 경계로 받는다. 스타일시트(class)로 숨긴 글은 잡지 못한다
+(html 글 뽑기는 hidden·aria-hidden="true"·인라인 style(display:none·visibility:hidden·font-size:0)·textarea·option 만 건너뛴다).
+PDF(pdftotext -layout) 표는 열이 여러 칸 공백이라 칸 하나만 따올 수 없고 줄 전체만 통째 대목이다. 같은 이유로 PDF 표의 '-'(빈 칸)는 값의 이웃으로 본다.
+같은 칸 값이 표에 두 번 나오면 그 칸을 담는 통째 대목이 칸 자신뿐이라 자리를 가리킬 수 없다(기계 대조로 올리지 못한다).
+차트의 칸(어느 달·어느 항목)과 값의 짝은 프로그램이 보지 못한다 — 문장 대조에서 본다.
 
 차단을 우회하지 않는다: User-Agent 는 하나로 고정하고 돌려쓰지 않는다. 쿠키를 넣지 않고, 재시도하지 않으며, CAPTCHA 를 다루지 않는다.
 Chrome 은 임시 --user-data-dir 로 띄우고, 제한 시간이 지나면 이 모듈이 띄운 프로세스 묶음(세션)만 끝낸다(이름 단위 종료를 쓰지 않는다).
@@ -439,15 +453,13 @@ _SIGNS = set("-+−–—‐‑﹣－＋△▲▽▼")   # 수 앞에 붙는 부
 _RANGE = set("~∼〜～–—")             # 범위 이음(양옆이 수량인 '-' 는 _SIGNS 쪽 규칙이 받는다)
 _SEPS = set(".,")
 _MAGS = set("십백천만억조경")          # 한글 크기 단위(수량의 일부)
-
-
-def _line_units() -> set[str]:
-    """줄바꿈 앞에 오면 '수량이 끝난 자리'로 보는 글자 — 숫자 판독부(numbers.py)의 측정 단위 낱말 끝 글자 + 크기 단위 + % · p."""
-    from ozl.render import numbers as N
-    return {w[-1] for w in N._UNITS.split("|") if w} | _MAGS | set("%p")
-
-
-_LINE_UNITS = _line_units()
+_CURRENCY = set("$€£¥₩")
+# 줄을 끊는 글자. 탭은 칸 구분이라 따로 다룬다(칸은 하나씩이다). 쪽 구분(\f)도 줄바꿈처럼 다룬다 — 문장은 줄과 쪽을 넘길 수 있다
+_LINE_BREAKS = "\n\r\f\v\x1c\x1d\x1e\x85  "
+_SENT_END = re.compile(r"[.!?。…][\"'”’)\]」』]*$")          # 문장 끝: 마침표류 뒤에 닫는 따옴표·괄호가 0개 이상
+_LINE_TAIL_CUT = set("-+−–—‐‑﹣－＋△▲▽▼~∼〜～(") | _CURRENCY    # 앞 줄이 이것으로 끝나면 그 줄바꿈은 수량 한가운데다
+_LINE_HEAD_CUT = set("~∼〜～–—")                                 # 뒤 줄이 범위 이음으로 시작해도 그렇다
+_LINE_SPAN = 40                                                   # 줄 경계 검사에서 보는 앞 줄 꼬리·뒤 줄 머리의 길이
 
 
 def _unit_words() -> list[str]:
@@ -456,11 +468,87 @@ def _unit_words() -> list[str]:
 
 
 _UNIT_WORDS = _unit_words()
+_TRAIL_UNIT = re.compile(r"(?: ?(?:" + "|".join(map(re.escape, sorted(_UNIT_WORDS, key=len, reverse=True))) + r"))?\)?$")
+_NUM_HEAD = re.compile(r"\(?[-+−–—‐‑﹣－＋△▲▽▼]?[$€£¥₩]?\.?\d")   # 줄 머리가 수(부호·괄호·통화 기호·소수점 앞자리 생략 포함)로 시작
+
+
+def _run(text: str, pos: list[int], k: int) -> str:
+    """정리한 글의 k 번째 글자(공백)가 원문에서 차지한 공백류 묶음."""
+    return text[pos[k]:pos[k + 1]] if k + 1 < len(pos) else text[pos[k]:]
+
+
+def _has_tab(run: str) -> bool:
+    return "\t" in run
+
+
+def _has_break(run: str) -> bool:
+    return any(x in run for x in _LINE_BREAKS)
 
 
 def _hard_at(text: str, pos: list[int], k: int) -> bool:
-    """정리한 글의 k 번째 공백이 원문에서 탭·줄바꿈·쪽 구분을 건넜는가."""
-    return k + 1 < len(pos) and any(x in "\t\n\r\f\v" for x in text[pos[k]:pos[k + 1]])
+    """정리한 글의 k 번째 공백이 원문에서 탭(표의 칸 구분)을 건넜는가. 줄바꿈·쪽 구분은 이어 읽는다."""
+    return k + 1 < len(pos) and _has_tab(text[pos[k]:pos[k + 1]])
+
+
+def _line_tail(text: str, r0: int, n: int = _LINE_SPAN) -> str:
+    """원문 r0 앞의 같은 줄·같은 칸 글(탭·줄바꿈에서 끊는다)의 끝 n 자 — 공백류는 한 칸으로."""
+    seg = text[:r0]
+    cut = max(seg.rfind(x) for x in "\t" + _LINE_BREAKS)
+    return _WS.sub(" ", seg[cut + 1:]).strip()[-n:]
+
+
+def _line_head(text: str, r1: int, n: int = _LINE_SPAN) -> str:
+    seg = text[r1:]
+    cuts = [x for x in (seg.find(c) for c in "\t" + _LINE_BREAKS) if x >= 0]
+    return _WS.sub(" ", seg[:min(cuts) if cuts else len(seg)]).strip()[:n]
+
+
+def _sig(t: str) -> list[tuple]:
+    from ozl.render.numbers import claim_tokens
+    return [(x.kind, x.canon, x.fragment) for x in claim_tokens(t)]
+
+
+def _line_break_is_boundary(text: str, pos: list[int], k: int) -> bool:
+    """정리한 글의 k 번째 공백(원문의 줄바꿈·쪽 구분)이 대목의 경계가 될 수 있는가 — 수량이 그 줄을 넘지 않는가.
+    앞 줄 꼬리 L 과 뒤 줄 머리 R 을 이어 읽은 토큰 열이 따로 읽어 이은 것과 다르면(3\\n억원 · 1억\\n2천만원) 경계가 아니다.
+    L 이 부호·범위 이음·여는 괄호·통화 기호로 끝나거나(−\\n$3) R 이 범위 이음으로 시작해도(3%\\n~5%) 경계가 아니다."""
+    L, R = _line_tail(text, pos[k]), _line_head(text, pos[k + 1]) if k + 1 < len(pos) else ""
+    if L and L[-1] in _LINE_TAIL_CUT:
+        return False
+    if R and R[0] in _LINE_HEAD_CUT:
+        return False
+    if not L or not R:
+        return True
+    return _sig(L + " " + R) == _sig(L) + _sig(R)
+
+
+def _ends_with_quantity(line: str) -> bool:
+    """줄 꼬리가 수량(뒤에 측정 단위 낱말·닫는 괄호가 붙어도)으로 끝나는가 — 수량 판독부의 마지막 토큰이 줄 끝에 닿는지로 본다.
+    낱말 하나(공백이 없어 판독부의 정리로 자리가 바뀌지 않는다)를, 그것만으로 수가 없으면 마지막 두 낱말을 본다('70 million' · '70 만')."""
+    from ozl.render.numbers import claim_tokens
+    words = _TRAIL_UNIT.sub("", line, count=1).split(" ")
+    for n in (1, 2):
+        if len(words) < n or not words[-1]:
+            return False
+        w = " ".join(words[-n:])
+        toks = claim_tokens(w)
+        if toks:
+            e = toks[-1].end
+            return e == len(w) or (n == 2 and e == len(w) - 1 and all(ch in _MAGS for ch in words[-1]))
+    return False
+
+
+def _joins_line_quantities(text: str, pos: list[int], k: int) -> bool:
+    """줄바꿈(쪽 구분) 앞 줄이 수량으로 끝나고 뒤 줄이 수(또는 부호+수)로 시작하는가 — 두 줄의 수량을 한 문구로 이은 자리."""
+    if k + 1 >= len(pos):
+        return False
+    return _ends_with_quantity(_line_tail(text, pos[k])) and bool(_NUM_HEAD.match(_line_head(text, pos[k + 1])))
+
+
+def _ends_with_unit_word(q: str) -> bool:
+    """문구가 '숫자[크기 단위·%] + 측정 단위 낱말' 로 끝나는가('3명' · '3억원' · '5 달러')."""
+    m = re.search(r"\d[" + "".join(_MAGS) + r"%]*(?: ?(" + "|".join(map(re.escape, sorted(_UNIT_WORDS, key=len, reverse=True))) + r"))$", q)
+    return bool(m)
 
 
 def _cuts_unit_word(norm: str, i: int, j: int, n: int) -> bool:
@@ -524,11 +612,12 @@ def _window_bounds(norm: str, i: int, j: int) -> tuple[int, int] | None:
 
 
 def _hard(text: str, norm: str, pos: list[int], a: int, b: int) -> str:
-    """norm[a:b] 에서 원문의 탭·줄바꿈·쪽 구분을 건넌 공백을 ' ¶ ' 로 바꾼다(칸·줄 경계에서 수량을 이어 읽지 않게)."""
+    """norm[a:b] 에서 원문의 탭을 건넌 공백을 ' ¶ ' 로 바꾼다(표의 칸 경계에서 수량을 이어 읽지 않게).
+    줄바꿈·쪽 구분은 공백으로 이어 읽는다 — PDF 의 줄바꿈이 수량 한가운데('3\\n억원' · '−\\n$3 million')일 수 있다."""
     out = []
     for k in range(a, b):
         ch = norm[k]
-        if ch == " " and k + 1 < len(pos) and any(x in "\t\n\r\f\v" for x in text[pos[k]:pos[k + 1]]):
+        if ch == " " and _hard_at(text, pos, k):
             out.append(" ¶ ")
         else:
             out.append(ch)
@@ -538,19 +627,15 @@ def _hard(text: str, norm: str, pos: list[int], a: int, b: int) -> str:
 def _token_cut(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
     """수량 판독부(src/ozl/render/numbers.py 의 claim_tokens)로 본 판정: 일치 구간의 경계가 수량 토큰을 자르면
     '앞+일치+뒤'를 한 번에 읽은 토큰 열과 셋을 따로 읽어 이은 토큰 열이 달라진다. 일치 구간 자체에 조각 토큰이 있어도 거부한다."""
-    from ozl.render.numbers import claim_tokens
     wb = _window_bounds(norm, i, j)
     if wb is None:
         return True
     a, b = wb
     left, mid, right = _hard(text, norm, pos, a, i), _hard(text, norm, pos, i, j), _hard(text, norm, pos, j, b)
-
-    def sig(t):
-        return [(x.kind, x.canon, x.fragment) for x in claim_tokens(t)]
-    m = sig(mid)
+    m = _sig(mid)
     if any(f for _, _, f in m):
         return True
-    return sig(left + mid + right) != sig(left) + m + sig(right)
+    return _sig(left + mid + right) != _sig(left) + m + _sig(right)
 
 
 def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
@@ -559,8 +644,9 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
     앞 경계(문구 첫 글자가 숫자·'.'·','·크기 단위·'%'): 앞이 숫자 · 부호 표기 · 범위 이음 · 크기 단위 · '%' · '.'/','+숫자 이면 거부.
       공백 한 칸 너머가 부호 표기·범위 이음이어도 거부. '(수)' 회계식 음수도 거부.
     앞 경계(문구 첫 글자가 부호·범위 이음): 앞이 숫자·크기 단위·'%' 면 거부(범위 '3-5' 의 '-5').
-    뒤 경계(문구 끝 글자가 숫자·'.'·','·크기 단위·'%'): 뒤가 숫자 · 크기 단위(숫자 뒤) · '%'(숫자 뒤) · '%p' 의 p · 숫자 뒤 영문자 ·
-      '.'/','+숫자 이면 거부. 뒤(공백 한 칸 건너도)가 범위 이음·'-' 이고 그 너머(공백 한 칸 건너도)가 숫자·부호면 거부(범위의 앞쪽).
+    뒤 경계(문구 끝이 숫자·'.'·','·크기 단위·'%', 또는 수 뒤의 측정 단위 낱말 '3명'·'3달러'): 뒤가 숫자 · 크기 단위(숫자 뒤) · '%'(숫자 뒤) ·
+      '%p' 의 p · 숫자 뒤 영문자 · '.'/','+숫자 이면 거부. 뒤(공백 한 칸 건너도, 탭은 건너지 않는다)가 범위 이음·'-' 이고 그 너머(공백 한 칸
+      건너도)가 숫자·부호·통화 기호면 거부(범위의 앞쪽 — '3%~5%' 의 '3%', '3명~5명' 의 '3명').
     측정 단위 낱말(원·명·톤·달러…)은 수량에 넣지 않는다(numbers.py 와 같다): '3억원' 안의 '3억' 은 찾는다."""
     first, last = norm[i], norm[j - 1]
     k, n = _prev(norm, i), _next(norm, j)
@@ -576,7 +662,7 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
                 k2 = _prev(norm, k)
                 if k2 >= 0 and _isdig(norm[k2]):
                     return True
-            if pc == " ":
+            if pc == " " and not _hard_at(text, pos, k):   # 탭 너머(다른 칸의 '-' — 빈 칸 표시)는 부호가 아니다
                 k2 = _prev(norm, k)
                 if k2 >= 0 and (norm[k2] in _SIGNS or norm[k2] in _RANGE):
                     return True
@@ -591,7 +677,8 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
         return True   # '3~' ← '3~5'
     if n < len(norm) and _cuts_unit_word(norm, i, j, n):
         return True
-    if n < len(norm) and (_isdig(last) or last in _SEPS or last in _MAGS or last == "%"):
+    numeric_end = _isdig(last) or last in _SEPS or last in _MAGS or last == "%"
+    if n < len(norm) and numeric_end:
         nc = norm[n]
         if _isdig(nc):
             return True
@@ -607,7 +694,9 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
             n2 = _next(norm, n + 1)
             if n2 < len(norm) and _isdig(norm[n2]):
                 return True
-        # 범위의 앞쪽: 바로 뒤의 범위 이음('~'·'–'·'—'·'-'), 또는 같은 줄에서 공백 한 칸 뒤의 '~'·'–' (공백 뒤 '-' 는 다음 수의 부호다)
+    if n < len(norm) and (numeric_end or _ends_with_unit_word(norm[i:j])):
+        # 범위의 앞쪽: 바로 뒤의 범위 이음('~'·'–'·'—'·'-'), 또는 탭을 건너지 않고 공백 한 칸 뒤의 '~'·'–' (공백 뒤 '-' 는 다음 수의 부호다)
+        nc = norm[n]
         if nc == " ":
             m = n + 1 if not _hard_at(text, pos, n) and n + 1 < len(norm) and norm[n + 1] in "~∼〜～–" else -1
         else:
@@ -616,7 +705,7 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
             m2 = m + 1
             if m2 < len(norm) and norm[m2] == " ":
                 m2 += 1
-            if m2 < len(norm) and (_isdig(norm[m2]) or norm[m2] in _SIGNS):
+            if m2 < len(norm) and (_isdig(norm[m2]) or norm[m2] in _SIGNS or norm[m2] in _CURRENCY):
                 return True
     if any(ch.isdigit() for ch in norm[i:j]) and _token_cut(text, norm, pos, i, j):
         return True
@@ -624,17 +713,15 @@ def _cuts_number(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
 
 
 def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool:
-    """일치 구간 안의 공백이 원문에서 탭·쪽 구분을 건넜으면 무조건(표의 다른 칸·다른 쪽), 줄바꿈을 건넜으면 줄바꿈 앞 글자가
-    숫자나 수 단위 글자이고 뒤 글자가 숫자일 때(앞 줄의 수량과 다음 줄의 수량을 이은 자리) 거부한다. 문장이 줄을 넘기는 것은 허용."""
-    for k in range(i + 1, j - 1):
+    """일치 구간 안의 공백이 원문에서 탭을 건넜으면 무조건(표의 다른 칸), 줄바꿈·쪽 구분을 건넜으면 앞 줄이 수량으로 끝나고 뒤 줄이
+    수(또는 부호+수)로 시작할 때만(두 줄의 수량을 한 문구로 이은 자리) 거부한다. 문장이 줄·쪽을 넘기는 것은 허용."""
+    for k in range(i, j):
         if norm[k] != " ":
             continue
-        run = text[pos[k]:pos[k + 1]]
-        if any(x in run for x in "\t\f\v"):
+        run = _run(text, pos, k)
+        if _has_tab(run):
             return True
-        after = norm[k + 1]
-        nxt_num = _isdig(after) or ((after in _SIGNS or after == "(") and k + 2 < j and _isdig(norm[k + 2]))
-        if ("\n" in run or "\r" in run) and (_isdig(norm[k - 1]) or norm[k - 1] in _LINE_UNITS or norm[k - 1] == ")") and nxt_num:
+        if _has_break(run) and _joins_line_quantities(text, pos, k):
             return True
     return False
 
@@ -642,7 +729,8 @@ def _crosses_cells(text: str, norm: str, pos: list[int], i: int, j: int) -> bool
 def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
     """{found, count, matches:[{offset, end, raw_offset, page, before, after}], cut}. offset·end 는 정리한 글 기준, raw_offset 은 원래 글 기준,
     page 는 원래 글의 쪽 구분(\\f)으로 센 쪽 번호(쪽 구분이 없으면 1). 공백 정리 말고는 아무것도 맞춰 주지 않는다.
-    문구가 숫자로 시작하거나 끝나면 더 긴 수의 조각인 자리(부호·자릿수가 다른 수)는 찾은 것으로 치지 않고 cut 에 센다."""
+    문구가 숫자로 시작하거나 끝나면 더 긴 수의 조각인 자리(부호·자릿수가 다른 수)는 찾은 것으로 치지 않고 cut 에 센다.
+    통째 대목인지(규칙 1)는 여기서 보지 않는다 — passage_bounds_error 를 따로 부른다."""
     norm, pos = normalize(text or "")
     needle = _WS.sub(" ", str(phrase or "")).strip()
     if not needle:
@@ -664,6 +752,90 @@ def find_phrase(text: str, phrase: str, context: int = CONTEXT) -> dict:
                         "before": norm[max(0, i - context):i], "after": norm[i + len(needle):i + len(needle) + context]})
         start = i + 1
     return {"found": bool(matches), "count": len(matches), "matches": matches, "cut": cut}
+
+
+# ── 규칙 1: 통째 대목 ──────────────────────────────────────────────────
+
+def _snip(norm: str, start: int, end: int, side: int = 25, mid: int = 60) -> str:
+    body = norm[start:end]
+    if len(body) > mid:
+        body = body[:mid // 2] + " … " + body[-mid // 2:]
+    return f"…{norm[max(0, start - side):start]}【{body}】{norm[end:end + side]}…"
+
+
+def passage_bounds_error(text: str, start: int, end: int) -> str:
+    """정리한 글(normalize) 기준의 자리 [start, end) 가 통째 대목(문장·줄·표의 칸)인가. 빈 글이면 통과, 아니면 사유(그 자리 앞뒤 글 포함).
+    시작: 글의 처음 · 탭 바로 뒤 · 줄바꿈·쪽 구분 바로 뒤(줄 경계 검사 통과) · 문장 끝('. ! ? 。 …' + 닫는 따옴표·괄호 0개 이상) 뒤 공백 바로 뒤.
+    끝:   글의 끝 · 탭 바로 앞 · 줄바꿈·쪽 구분 바로 앞(줄 경계 검사 통과) · 문장 끝 글자까지이고 그 뒤가 공백.
+    안쪽: 탭을 건너면 거부(칸은 하나씩). 줄바꿈·쪽 구분은 건너도 된다(문장이 줄·쪽을 넘기는 것은 정상이다).
+    줄 경계 검사(_line_break_is_boundary): 수량이 그 줄바꿈을 넘으면(3\\n억원 · −\\n$3 million · 3%~\\n5%) 그 줄바꿈은 경계가 아니다."""
+    norm, pos = normalize(text or "")
+    if not (0 <= start < end <= len(norm)):
+        return f"자리({start}~{end})가 글 밖이다"
+    if norm[start] == " " or norm[end - 1] == " ":
+        return "대목이 공백으로 시작하거나 끝난다"
+    where = _snip(norm, start, end)
+    for k in range(start, end):
+        if norm[k] == " " and _has_tab(_run(text, pos, k)):
+            return f"표의 칸 경계(탭)를 건넌다 — 칸은 하나씩 따온다: {where}"
+    if start > 0:
+        k = start - 1
+        if norm[k] != " ":
+            return f"낱말 중간에서 시작한다: {where}"
+        run = _run(text, pos, k)
+        if _has_tab(run):
+            pass
+        elif _has_break(run):
+            if not _line_break_is_boundary(text, pos, k):
+                return f"시작하는 줄바꿈이 수량 한가운데다(앞 줄 꼬리 '{_line_tail(text, pos[k], 15)}'): {where}"
+        elif not _SENT_END.search(norm[:k]):
+            return f"문장 중간에서 시작한다: {where}"
+    if end < len(norm):
+        k = end
+        if norm[k] != " ":
+            return f"낱말 중간에서 끝난다: {where}"
+        run = _run(text, pos, k)
+        if _has_tab(run):
+            pass
+        elif _has_break(run):
+            if not _line_break_is_boundary(text, pos, k):
+                return f"끝나는 줄바꿈이 수량 한가운데다(뒤 줄 머리 '{_line_head(text, pos[k + 1], 15)}'): {where}"
+        elif not _SENT_END.search(norm[start:end]):
+            return f"문장 끝(마침표 등)까지 따오지 않았다: {where}"
+    return ""
+
+
+# ── 규칙 2: 차트 점 값 = 공백으로 나뉜 낱말 하나 ──────────────────────
+
+_WORD_SIGNS = set("-+−–—‐‑﹣－＋△▲▽▼~∼〜～(")   # 이것만으로 된 낱말이 바로 앞이면 그 값은 세지 않는다(− 0.8 · ~ 5% · ( 0.8 )
+_WORD_RANGE = set("-–—~∼〜～")                  # 이것만으로 된 낱말이 바로 뒤이면 세지 않는다(3% ~ 5% 의 3%)
+_WORD_RX = re.compile(r"\S+")
+
+
+def find_value(text: str, notation: str) -> dict:
+    """{found, count, skipped}. 사본 글을 공백류로 나눈 낱말 가운데 notation 과 글자 그대로 같은 것의 수.
+    바로 앞 낱말이 부호·범위 이음만으로 되어 있거나 바로 뒤 낱말이 범위 이음만으로 되어 있으면 그 자리는 세지 않고 skipped 에 센다
+    (이웃은 같은 칸 안에서만 본다 — 탭 너머 칸의 '-' 는 빈 칸 표시다. PDF 표는 칸이 여러 칸 공백이라 가르지 못해 이웃으로 본다).
+    보이지 않는 글자(Cf)가 든 표기는 찾지 않는다. 조사가 붙은 낱말('4명이다.')·부호가 붙은 낱말('-0.8%')·범위 낱말('3%~5%')은
+    다른 낱말이라 찾은 것이 아니다 — 차트 자료는 표의 칸에서 온다."""
+    q = str(notation or "").strip()
+    out = {"found": False, "count": 0, "skipped": 0}
+    if not q or any(ch.isspace() for ch in q) or any(unicodedata.category(ch) == "Cf" for ch in q):
+        return out
+    t = text or ""
+    ms = list(_WORD_RX.finditer(t))
+    for x, m in enumerate(ms):
+        if m.group() != q:
+            continue
+        # 이웃 낱말은 같은 칸 안에서만 본다 — 탭 너머(다른 칸)의 '-' 는 빈 칸 표시·범례이지 이 값의 부호나 범위가 아니다
+        before = ms[x - 1].group() if x and "\t" not in t[ms[x - 1].end():m.start()] else ""
+        after = ms[x + 1].group() if x + 1 < len(ms) and "\t" not in t[m.end():ms[x + 1].start()] else ""
+        if (before and all(ch in _WORD_SIGNS for ch in before)) or (after and all(ch in _WORD_RANGE for ch in after)):
+            out["skipped"] += 1
+            continue
+        out["count"] += 1
+    out["found"] = out["count"] > 0
+    return out
 
 
 def context_of(m: dict, phrase: str) -> str:
@@ -948,8 +1120,10 @@ def _pdf_band(pdf: pathlib.Path, page: int, phrase: str, page_nth: int, page_cou
                 break
             occ.append(x)
             st = x + 1
-        if occ and len(occ) == page_count and page_nth < len(occ):
-            a = occ[page_nth]
+        # 그 쪽에 문구가 한 번만 나올 때만 띠·강조. 두 번 이상이면 -layout 글과 -bbox 낱말의 순서가 달라(다단 PDF) n번째끼리 맞춰도
+        # 다른 자리를 강조할 수 있다 — 쪽 전체를 넣고 사유를 남긴다
+        if page_count == 1 and len(occ) == 1 and page_nth == 0:
+            a = occ[0]
             b = a + len(needle)
             hit = [w for w, (s0, s1) in zip(words, spans) if s0 < b and a < s1]
             x0, y0 = min(w[0] for w in hit), min(w[1] for w in hit)
@@ -970,64 +1144,105 @@ def _pdf_band(pdf: pathlib.Path, page: int, phrase: str, page_nth: int, page_cou
             by0 = min(max(0.0, cy - bh / 2), max(0.0, ph - bh))
             img = img.crop((int(bx0 * k), int(by0 * k), int(min(pw, bx0 + bw) * k), int(min(ph, by0 + bh) * k)))
             note = "문구가 있는 줄 둘레(형광 표시)"
+        elif page_count > 1:
+            note = f"쪽 전체(그 쪽에 문구가 {page_count}번 나와 대조한 자리를 그림에서 가리지 못한다 — 띠로 자르지도 강조하지도 않았다)"
         elif occ:
             note = f"쪽 전체(쪽의 낱말 열에서 문구가 {len(occ)}번 보여 대조한 자리와 맞추지 못했다)"
+        else:
+            note = "쪽 전체(쪽의 낱말 열에서 문구를 찾지 못했다)"
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
     return {"path": str(out), "reason": "", "view": "pdf_band" if note.startswith("문구") else "pdf_page", "page": page, "note": note}
 
 
-def _passage_png(lines_head: list[str], before: str, phrase: str, after: str, out: pathlib.Path, size_px: tuple[int, int], font_path: str) -> dict:
-    """사본에서 뽑은 글의 대목을 그린 그림(원래 화면 모양 아님). 문구에 형광 표시."""
+_FONT_FRACS = (0.040, 0.036, 0.032, 0.028, 0.025, 0.022)   # 대목 글자 크기(그림 폭에 대한 비) — 큰 것부터, 마지막이 최소
+_HEAD_FRAC = 0.024
+
+
+def _passage_plan(lines_head: list[str], before: str, phrase: str, after: str, size_px: tuple[int, int], font_path: str):
+    """대목 그림의 배치. 문구 전체가 그림 안에 들어가는 가장 큰 글자 크기를 고르고(앞 문맥은 줄여 볼 수 있다), 그래도 안 되면 None.
+    돌려주는 것: (머리 글 줄 [(y, 글)], 머리 글꼴, 대목 글꼴, 상자 위 y, 글자 배치 [(x, y, 글자, 강조)])."""
     from PIL import Image, ImageDraw, ImageFont
     W, H = size_px
-    img = Image.new("RGB", (W, H), "white")
-    d = ImageDraw.Draw(img)
+    d = ImageDraw.Draw(Image.new("RGB", (8, 8), "white"))
     pad = int(W * 0.05)
-    small = ImageFont.truetype(font_path, int(W * 0.024))
-    big = ImageFont.truetype(font_path, int(W * 0.040))
-    y = pad
+    small = ImageFont.truetype(font_path, int(W * _HEAD_FRAC))
+    head, y = [], pad
     for ln in lines_head:   # 머리 글은 한 줄씩, 넘치면 글자 단위로 줄을 나눈다
         cur = ""
         for ch in ln:
             if d.textlength(cur + ch, font=small) > W - 2 * pad:
-                d.text((pad, y), cur, fill=(85, 85, 85), font=small)
+                head.append((y, cur))
                 y += int(small.size * 1.4)
                 cur = ""
             cur += ch
-        d.text((pad, y), cur, fill=(85, 85, 85), font=small)
+        head.append((y, cur))
         y += int(small.size * 1.4)
-    y += int(big.size * 0.6)
-    top = y
+    for frac in _FONT_FRACS:
+        big = ImageFont.truetype(font_path, int(W * frac))
+        lh = int(big.size * 1.55)
+        top = y + int(big.size * 0.6)
+        for bf in (before, before[-40:], ""):
+            segs = [("…" + bf, False), (phrase, True), (after + "…", False)]
+            x, yy, placed, marked = pad, top, [], 0
+            for seg, mark in segs:
+                for ch in seg:
+                    wch = d.textlength(ch, font=big)
+                    if x + wch > W - pad:
+                        x, yy = pad, yy + lh
+                    if yy + lh > H - pad:
+                        break
+                    placed.append((x, yy, ch, mark))
+                    marked += mark
+                    x += wch
+            if marked == len(phrase):
+                return head, small, big, top, placed
+    return None
+
+
+def _passage_png(lines_head: list[str], before: str, phrase: str, after: str, out: pathlib.Path, size_px: tuple[int, int], font_path: str,
+                 check_only: bool = False) -> dict:
+    """사본에서 뽑은 글의 대목을 그린 그림(원래 화면 모양 아님). 문구에 형광 표시. 글자 크기를 정해 둔 최소(_FONT_FRACS 끝)까지 줄여도
+    대조한 문구 전체가 들어가지 않으면 그리지 않고 사유를 돌려준다(강조할 수치가 그림 밖으로 잘린 채 성공하지 않게).
+    check_only 면 배치만 해 보고 파일은 쓰지 않는다."""
+    from PIL import Image, ImageDraw
+    plan = _passage_plan(lines_head, before, phrase, after, size_px, font_path)
+    if plan is None:
+        return {"path": "", "reason": f"대조한 문구({len(phrase)}자)가 가장 작은 글자 크기로도 그림({size_px[0]}×{size_px[1]})에 다 들어가지 않는다 — 더 짧은 대목으로 따온다",
+                "view": "text_passage"}
+    if check_only:
+        return {"path": "", "reason": "", "view": "text_passage", "fits": True}
+    head, small, big, top, placed = plan
+    W, H = size_px
+    img = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(img)
+    pad = int(W * 0.05)
+    for y, t in head:
+        d.text((pad, y), t, fill=(85, 85, 85), font=small)
     d.rectangle([pad // 2, top - big.size // 2, W - pad // 2, H - pad // 2], outline=(187, 187, 187), width=2)
-    segs = [("…" + before, False), (phrase, True), (after + "…", False)]
-    x, lh = pad, int(big.size * 1.55)
-    for seg, mark in segs:
-        for ch in seg:
-            wch = d.textlength(ch, font=big)
-            if x + wch > W - pad:
-                x, y = pad, y + lh
-            if y + lh > H - pad:
-                break
-            if mark:
-                d.rectangle([x, y - 2, x + wch, y + big.size + 6], fill=(255, 224, 102))
-            d.text((x, y), ch, fill=(17, 17, 17), font=big)
-            x += wch
+    for x, y, ch, mark in placed:
+        if mark:
+            d.rectangle([x, y - 2, x + d.textlength(ch, font=big), y + big.size + 6], fill=(255, 224, 102))
+        d.text((x, y), ch, fill=(17, 17, 17), font=big)
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
     return {"path": str(out), "reason": "", "view": "text_passage"}
 
 
 def evidence_image(claim_id: str, source_path, kind: str, text: str, phrase: str, offset: int, meta: dict, out_png,
-                   size_px: tuple[int, int] = (1200, 1177), font_path: str = "") -> dict:
+                   size_px: tuple[int, int] = (1200, 1177), font_path: str = "", check_only: bool = False) -> dict:
     """덱의 원문 캡처 — 해시가 확인된 사본과 대조한 자리(offset: 정리한 글 기준)에서 그때 새로 그린다. 기록의 verification.image 는 쓰지 않는다.
-    pdf = 그 자리가 있는 쪽(낱말 자리를 얻으면 줄 둘레 띠) · 그 밖 = 그 자리의 대목(원래 화면 모양 아님). 만들지 못하면 path 가 빈다."""
+    pdf = 그 자리가 있는 쪽(그 쪽에 문구가 한 번만 나오고 낱말 자리를 얻으면 줄 둘레 띠와 강조, 두 번 이상이면 쪽 전체와 사유 note)
+    · 그 밖 = 그 자리의 대목(원래 화면 모양 아님 · 문구 전체가 안 들어가면 실패). 만들지 못하면 path 가 비고 reason 에 사유.
+    check_only 면 그리지 않고 그릴 수 있는지만 본다(덱 검사 — pdf 는 쪽 그림이라 늘 들어간다)."""
     out = pathlib.Path(out_png)
     m, all_m = _match_at(text, phrase, offset)
     if m is None:
         return {"path": "", "reason": "대조한 자리를 사본 글에서 다시 찾지 못했다", "offset": offset}
     try:
         if kind == "pdf":
+            if check_only:
+                return {"path": "", "reason": "", "offset": offset, "fits": True}
             same = [x for x in all_m if x["page"] == m["page"]]
             r = _pdf_band(pathlib.Path(source_path), m["page"], phrase, same.index(m), len(same), out)
         else:
@@ -1036,7 +1251,7 @@ def evidence_image(claim_id: str, source_path, kind: str, text: str, phrase: str
                 font_path = G.pick_font()["path"]
             head = [f"{claim_id} · 저장한 사본에서 뽑은 글의 대목(원래 화면 모양 아님)", f"주소 {meta.get('url', '')}",
                     f"받은 시각 {meta.get('fetched_at', '')} · sha256 {str(meta.get('sha256', ''))[:16]}…"]
-            r = _passage_png(head, m["before"][-90:], _WS.sub(" ", phrase).strip(), m["after"][:90], out, size_px, font_path)
+            r = _passage_png(head, m["before"][-90:], _WS.sub(" ", phrase).strip(), m["after"][:90], out, size_px, font_path, check_only=check_only)
     except Exception as e:  # noqa: BLE001 — 그림을 못 만들면 사유를 남기고 넘어간다
         return {"path": "", "reason": f"{type(e).__name__}: {e}", "offset": offset}
     r["offset"] = offset

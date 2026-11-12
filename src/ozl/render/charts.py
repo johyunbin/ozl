@@ -187,7 +187,8 @@ def _label(pt) -> str | None:
     return None
 
 
-_DISPLAY = re.compile(r"^([+\-−]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*([^\d]*)$")
+# [부호] 숫자(쉼표 자릿점 허용)[.소수] 또는 소수점 앞자리를 생략한 꼴(.5 · -.5) — 숫자는 ASCII 만(전각·다른 문자 체계의 숫자는 꼴이 아니다)
+_DISPLAY = re.compile(r"^([+\-−]?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+))\s*([^\d]*)$", re.ASCII)
 
 
 def _decimal_of(v) -> Decimal | None:
@@ -206,11 +207,11 @@ def _decimal_of(v) -> Decimal | None:
 
 
 def _display_matches(display: str, value) -> bool | None:
-    """표시 문자열이 '[부호]숫자(쉼표 허용)[.소수]' 뒤에 숫자 없는 단위 꼬리만 붙은 꼴(4명 · 123.93 · 1,644,131 · -70.9%)이면
+    """표시 문자열이 '[부호]숫자(쉼표 허용)[.소수]'(또는 .5 · -.5) 뒤에 숫자 없는 단위 꼬리만 붙은 꼴(4명 · 123.93 · 1,644,131 · -70.9% · .5%)이면
     그 수가 좌표값과 Decimal 로 정확히 같은지. 그 꼴이 아니면(1억 2,345 · 약 4명) None — 검사가 오류로 본다(표시 문자열로 실제 값을 숨기지 못하게)."""
     m = _DISPLAY.match(display.strip())
-    if not m:
-        return None
+    if not m or any(ch.isnumeric() for ch in m.group(2)):
+        return None   # 단위 꼬리에 수의 성질을 가진 글자(½ ¾ ² ① 전각 숫자 …)가 있으면 값과 같은지 판정할 수 없다
     try:
         shown = Decimal(m.group(1).replace(",", "").replace("−", "-"))
     except InvalidOperation:

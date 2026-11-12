@@ -482,6 +482,18 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
                 errs.append("재대조한 쪽 대목이 쓴 쪽의 자리(observed 가 나온 자리)를 통째로 담지 않는다")
             elif n_in != 1:
                 errs.append(f"재대조한 쪽 대목 안에 observed 가 {n_in}번 나와 같은 자리라고 할 수 없다")
+    # 규칙 1: observed 의 대조한 자리와 두 located 는 통째 대목(문장 · 줄 · 표의 칸)이어야 한다 — 발췌가 수량을 자르는 일을 구조로 막는다
+    spans = [("observed 의 대조한 자리", target)]
+    for what, who in (("쓴 쪽 대목(author.located)", au), ("재대조한 쪽 대목(recheck.located)", rc)):
+        if not _blank(who.get("located")):
+            f = K.find_phrase(text, who["located"])
+            if f["count"] == 1:
+                spans.append((what, (f["matches"][0]["offset"], f["matches"][0]["end"])))
+    for what, span in spans:
+        if span:
+            why = K.passage_bounds_error(text, span[0], span[1])
+            if why:
+                errs.append(f"{what} 가 통째 대목이 아니다 — 문장(마침표까지)·줄·칸을 통째로 따와야 한다. {why}")
     errs += recheck_check_errors(c)
     if target:   # 대조한 자리 하나 — 문맥·그림은 이 자리의 것이다(첫째 자리가 아니라)
         m = next(x for x in obs["matches"] if (x["offset"], x["end"]) == target)

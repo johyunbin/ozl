@@ -2,7 +2,7 @@
 claim_id: 2026-01-02-am-01-c1
 card_id: 2026-01-02-am-01
 text: "지어낸 주장 문장(무엇이·언제·얼마)"
-observed: "12.3%"                  # 원문에 적힌 값 그대로 — 사람이 눈으로 대조할 문자열
+observed: "12.3%"                  # 원문에 적힌 표기 그대로 — 사람이 눈으로 대조할 문자열. 기계 대조(verification)를 쓰는 기록은 문장(마침표까지)·줄·표의 칸을 통째로 따온다(문장 중간에서 끊지 않는다)
 source:
   url: "https://example.org/stat"
   tier: T1
@@ -37,8 +37,8 @@ human_verified: false
 #   capture: {url, final_url, fetched_at, sha256, path, kind, text_path}
 #   match: {found, count, offsets, context}
 #   image: {path, reason}             # 미리 보기일 뿐이다. 덱은 이 그림을 쓰지 않고, 빌드할 때 해시가 확인된 사본의 대조한 자리에서 새로 그린다
-#   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목
-#   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
+#   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목(이것도 문장·줄·칸 통째 — 앞뒤 문장까지 넓힌다)
+#   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목(문장·줄·칸 통째)", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
 #   verified_at: ""                # machine-verify 가 채운다 → status verified · 표시 「원문 일치」(human_verified 는 false 그대로)
 links: {video_id: "", time_range: "", slide_id: ""}
 revision: 1

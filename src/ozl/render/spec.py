@@ -16,12 +16,15 @@
   ④ 그림(chart · capture): 그림 자리가 있는 종류(VISUAL_KINDS)에서 image·chart·capture 가운데 하나만 쓴다.
      - chart: charts.validate_chart 오류 · chart.claims 는 그 쪽 claim_ids 안 · 그림에 찍히는 수량(chart_quantities)은 ①과 같은 규칙
        · 그려지는 모든 점의 값(꼬리표가 없는 점 포함)은 chart.claims 가운데 한 기록의 원문 사본 글에 그 표기로 있어야 한다
-         (capture.find_phrase — 공백만 정리, 더 긴 수의 조각은 찾은 것으로 치지 않는다). 사본이 없는 기록(사람이 대조한 옛 기록)은 observed·text 에서 찾는다.
+         (capture.find_value — 공백으로 나뉜 낱말 하나와 글자 그대로 같아야 한다. '-0.8%' 안의 '0.8%', '3%~5%' 안의 '5%', '4명이다.' 안의 '4명'은
+         찾은 것이 아니다. 바로 앞 낱말이 부호·범위 이음만이거나 바로 뒤 낱말이 범위 이음만이면 세지 않는다). 사본이 없는 기록(사람이 대조한 옛 기록)은
+         observed·text 에서 같은 함수로 찾는다.
        · 못 하는 것: 값이 사본에 있는지만 프로그램이 봤다. 칸(어느 달·어느 항목)과 값의 짝은 문장 대조에서 본다.
          세로축 눈금 숫자는 대조하지 않는다(자료가 아니라 축척이다). y_from_zero: false 는 러닝시트에 적힌다.
      - capture: <claim_id> — 그 기록의 원문 캡처. 빌드 때 해시가 확인된 사본에서 대조한 자리(match.target)의 그림을 새로 그린다
        (verification.image 는 미리 보기일 뿐 쓰지 않는다). claim_ids 안이어야 하고, 엄격 모드는 받는 기록(acceptance_error 빈 문자열)이며
-       사본이 그림을 그릴 수 있고(copy_source 통과) 대조한 자리가 하나로 정해져야 한다. 초안 모드는 기록이 아직 받아들여지지 않으면
+       사본이 그림을 그릴 수 있고(copy_source 통과) 대조한 자리가 하나로 정해져야 하며, 사본 글의 대목 그림이면 대조한 문구 전체가 그림 자리에
+       들어가야 한다(글자 크기를 최소까지 줄여도 안 들어가면 실패). 초안 모드는 기록이 아직 받아들여지지 않으면
        그 쪽을 '그림 대기'로 표시한다(pending 에 '그림:<claim_id>').
      - 엄격 모드에서 image_text 쪽에 그림이 하나도 없으면 경고(글만 있는 장이 의도일 수 있어 실패는 아니다).
 
@@ -274,12 +277,13 @@ def chart_errors(sl: dict, claims: dict[str, dict]) -> list[str]:
     for s in ch["series"]:
         for pt in s["points"]:
             nota = point_notation(pt)
-            hits = [K.find_phrase(t, nota) for _, t in texts]
+            hits = [K.find_value(t, nota) for _, t in texts]
             if any(h["found"] for h in hits):
                 continue
-            cut = sum(h["cut"] for h in hits)
-            errs.append(f"chart 계열 '{s['name']}' 점 {pt[0]}: 값 '{nota}' 이 chart.claims({', '.join(used)})의 {where}에 그 표기로 없다"
-                        + (f"(더 긴 수의 조각인 자리 {cut}곳은 찾은 것으로 치지 않았다)" if cut else ""))
+            skipped = sum(h["skipped"] for h in hits)
+            errs.append(f"chart 계열 '{s['name']}' 점 {pt[0]}: 값 '{nota}' 이 chart.claims({', '.join(used)})의 {where}에 "
+                        "공백으로 나뉜 낱말 하나로 그 표기 그대로 없다(표의 칸 값이어야 한다 — 부호·범위·조사가 붙은 낱말이나 더 긴 수의 조각은 찾은 것이 아니다)"
+                        + (f" — 바로 앞이 부호·범위 이음이거나 바로 뒤가 범위 이음인 자리 {skipped}곳은 세지 않았다" if skipped else ""))
     return errs
 
 
@@ -302,9 +306,31 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     src = C.copy_source(c)
     if not src["ok"]:
         return [f"capture {cid} 의 원문 사본으로 그림을 그릴 수 없다 — {src['reason']}"], None
-    if not capture_target(c):
+    from ozl.research import capture as K
+    target = capture_target(c)
+    if not target:
         return [f"capture {cid} 의 대조한 자리를 정하지 못했다 — observed 가 사본에 한 번만 나오거나 재대조 기록이 자리를 정해야 한다"], None
+    fit = K.evidence_image(cid, src["path"], src["kind"], src["text"], _s(c.get("observed")), target["offset"], capture_meta(src["cap"]),
+                           "", size_px=capture_size(sl), check_only=True)
+    if fit.get("reason"):
+        return [f"capture {cid} 의 원문 캡처를 그릴 수 없다 — {fit['reason']}"], None
     return [], None
+
+
+def capture_meta(cap: dict) -> dict:
+    """원문 캡처 그림 머리에 적는 사본 정보 — 검사와 빌드가 같은 것을 쓴다(머리 글 줄 수가 대목 자리에 영향을 준다)."""
+    return {"url": cap.get("final_url") or cap.get("url"), "fetched_at": cap.get("fetched_at"), "sha256": cap.get("sha256")}
+
+
+def capture_size(sl: dict) -> tuple[int, int]:
+    """이 쪽 원문 캡처 그림의 픽셀 크기 — 빌드(render_visuals)와 같은 계산."""
+    from ozl.render import build as B
+    from ozl.render import charts as G
+    try:
+        ims = [im for im in B.plan_slide(sl).imgs if im.kind == "capture"]
+    except Exception:  # noqa: BLE001 — 쪽 배치가 안 되는 사양은 다른 검사가 실패시킨다. 여기서는 기본 크기로 본다
+        ims = []
+    return B.chart_png_size(ims[0]) if ims else G.DEFAULT_SIZE_PX
 
 
 def capture_target(c: dict) -> dict | None:

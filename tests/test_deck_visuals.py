@@ -23,9 +23,12 @@ CID = f"{CARD}-c1"          # 기계 대조 기록(원문 사본이 있다)
 OLD = f"{CARD}-c2"          # 사람이 대조한 옛 기록(사본 없음)
 URL = "https://stats.example.org/potato.html"
 PAD = "가상의 섬 통계청은 해마다 감자 값을 집계해 알린다. 이 문서의 수치는 전부 지어낸 것이다. " * 3
+SENTENCE = "2098년 12월 감자 값은 18,250이다."   # observed·located 는 통째 대목(문장·줄·칸)이어야 한다
 HTML = ("<!doctype html><html><head><title>가상 섬 통계</title></head><body>"
-        "<p>2098년 1월 감자 값은 12.5였고 6월 값은 20.40이었으며 12월 값은 18,250이다.</p>"
-        "<p>같은 해 출하는 11,234상자였다.</p>"
+        f"<p>{SENTENCE}</p>"
+        "<table><tr><th>월</th><th>감자 값</th></tr><tr><td>2098-01</td><td>12.5</td></tr><tr><td>2098-06</td><td>20.40</td></tr>"
+        "<tr><td>2098-12</td><td>18,250</td></tr></table>"   # 차트 점 값은 표의 칸(공백으로 나뉜 낱말 하나)에서 찾는다
+        "<p>같은 해 출하는 11,234상자였다.</p><table><tr><td>출하(상자)</td><td>11,234</td></tr></table>"
         f"<p>{PAD}</p></body></html>").encode("utf-8")
 
 
@@ -44,7 +47,7 @@ class Resp:
 
 
 def base_claim():
-    return {"claim_id": CID, "card_id": CARD, "text": "가상의 섬 2098년 12월 감자 값은 18,250이다.", "observed": "12월 값은 18,250이다",
+    return {"claim_id": CID, "card_id": CARD, "text": "가상의 섬 2098년 12월 감자 값은 18,250이다.", "observed": SENTENCE,
             "source": {"url": URL, "tier": "T1", "publisher": "가상 섬 통계청", "accessed": "2099-01-02", "archived": ""},
             "cross_check": [], "status": "pending",
             "checks": {"unit_ok": True, "base_period": "2098", "real_vs_nominal": "n/a", "seasonally_adjusted": "n/a", "methodology_match": "n/a",
@@ -69,7 +72,7 @@ def desk(tmp_path, monkeypatch):
     return tmp_path
 
 
-def pending_claim(tmp, body: bytes = HTML, observed: str = "", author_located: str = "", recheck_located: str = "12월 값은 18,250이다") -> dict:
+def pending_claim(tmp, body: bytes = HTML, observed: str = "", author_located: str = "", recheck_located: str = SENTENCE) -> dict:
     """사본을 받고(주입한 응답) 재대조 기록까지 붙였지만 아직 machine_verify 전(pending)인 기록 — 정본 위치(임시)에 저장한다."""
     c = base_claim()
     if observed:
@@ -311,16 +314,25 @@ def test_capture_ignores_recorded_image_path(desk):
 
 def test_capture_uses_the_matched_place_not_the_first(desk, monkeypatch):
     """observed 가 사본에 두 번 나오고 둘째 자리를 대조했으면 문맥과 그림은 둘째 자리의 것이다."""
-    body = ("<!doctype html><html><body><p>가상 1분기 감자 값은 18,250이다.</p><p>가상 4분기 당근 값은 18,250이다.</p>"
+    body = ("<!doctype html><html><body><p>가상 1분기 감자 집계다. 값은 18,250이다.</p><p>가상 4분기 당근 집계다. 값은 18,250이다.</p>"
             f"<p>{PAD}</p></body></html>").encode("utf-8")
-    c = machine_claim(desk, image=False, body=body, observed="값은 18,250이다", author_located="4분기 당근 값은 18,250이다",
-                      recheck_located="가상 4분기 당근 값은 18,250이다.")
+    c = machine_claim(desk, image=False, body=body, observed="값은 18,250이다.", author_located="가상 4분기 당근 집계다. 값은 18,250이다.",
+                      recheck_located="가상 4분기 당근 집계다. 값은 18,250이다.")
     m = c["verification"]["match"]
-    assert m["count"] == 2 and m["target"]["nth"] == 1 and "당근" in m["context"] and "감자 값은【" not in m["context"]
+    assert m["count"] == 2 and m["target"]["nth"] == 1 and "당근" in m["context"] and "감자 집계다. 【" not in m["context"]
     text = C.copy_text(c)[1]
-    second = K.find_phrase(text, "값은 18,250이다")["matches"][1]["offset"]
+    second = K.find_phrase(text, "값은 18,250이다.")["matches"][1]["offset"]
     seen = []
     real = K.evidence_image
     monkeypatch.setattr(K, "evidence_image", lambda *a, **k: seen.append(a[5]) or real(*a, **k))
     _build_capture_png(desk, c, "o4")
     assert seen == [second]
+
+
+def test_capture_passage_that_does_not_fit_fails_strict(desk):
+    """대조한 문구가 글자 크기를 최소로 줄여도 그림 자리에 다 들어가지 않으면 엄격 모드가 실패시킨다(잘린 그림으로 성공하지 않는다)."""
+    long = "가상의 섬 감자 값은 " + "해마다 조금씩 다르게 집계되어 왔고 " * 90 + "18,250이다."
+    body = f"<!doctype html><html><body><p>{long}</p><p>{PAD}</p></body></html>".encode("utf-8")
+    c = machine_claim(desk, image=False, body=body, observed=long, recheck_located=long)
+    errs = errors(slide(capture=CID), {CID: c})
+    assert any("원문 캡처를 그릴 수 없다" in e and "다 들어가지 않는다" in e for e in errs), errs

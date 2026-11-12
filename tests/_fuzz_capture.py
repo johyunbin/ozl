@@ -5,7 +5,8 @@
 복합 수량(1억2만원 · 1억 2천만원)과 범위(3~5 · 3%~5% · 3억~5억원)는 전체(와 측정 단위를 뗀 전체)만 온전하다.
 기대값: 온전한 표기(위)가 글에 그 표기로 있으면 찾는다. 그 밖에 숫자를 담은 진부분 문자열·범위의 한쪽·복합의 일부·
 탭·줄바꿈을 건너 두 수량을 이은 문구는 찾지 않는다.
-모호한 꼴은 만들지 않는다(ambiguous_space): 같은 줄에서 공백 한 칸으로 이은 '숫자 공백 숫자'·'크기 단위 공백 숫자'·'공백 -수'."""
+모호한 꼴은 만들지 않는다(ambiguous_space): 같은 줄에서 공백 한 칸으로 이은 '숫자 공백 숫자'·'크기 단위 공백 숫자'·'공백 -수'.
+줄바꿈은 이어 읽는다(탭만 칸을 끊는다). 그래서 같은 꼴을 줄바꿈으로 이은 자리는 만들되, 그 양옆 수량의 기대값은 '거부'다(expected)."""
 from __future__ import annotations
 
 import random
@@ -66,6 +67,13 @@ def ambiguous_space(prev: str, nxt: str) -> bool:
     return ((prev[-1].isdigit() or prev[-1] == ")" or prev[-1] in MAGS) and nxt[0].isdigit()) or nxt[0] in "-–"
 
 
+def ambiguous_newline(prev: str, nxt: str) -> bool:
+    """줄바꿈으로 이은 두 수량 가운데 이어 읽으면 한 수량과 가를 수 없는 꼴 — '크기 단위\n숫자'(1억\n2,345 = 복합 수량)와
+    '수량(단위 낱말 없이)\n-수'(12%\n-3% = 범위). 측정 단위 낱말 뒤의 '-' 는 다음 수의 부호이고, '숫자\n숫자' 는 두 수로 읽는다."""
+    last = prev[-1]
+    return (last in MAGS and nxt[0].isdigit()) or (nxt[0] in "-–" and (last.isdigit() or last in MAGS or last == "%" or prev.endswith("%p")))
+
+
 def document(r: random.Random, n: int = 6) -> tuple[str, list[dict]]:
     parts, items = [], []
     for x in range(n):
@@ -75,6 +83,8 @@ def document(r: random.Random, n: int = 6) -> tuple[str, list[dict]]:
             prev = parts[-1]
             if sep == " " and ambiguous_space(prev, q["text"]):
                 sep = " 및 "
+            if sep == "\n" and ambiguous_newline(prev, q["text"]):
+                items[-1]["ambig"] = q["ambig"] = True   # 줄바꿈은 이어 읽으므로(PDF 줄바꿈이 수량 한가운데일 수 있다) 같은 꼴이 모호하다 → 둘 다 거부
             parts.append(sep)
             q["sep_before"] = sep
         parts.append(q["text"])
@@ -108,7 +118,9 @@ def queries(r: random.Random, items: list[dict], k: int = 12) -> list[tuple[str,
 
 
 def expected(text: str, items: list[dict], query: str, why: str) -> bool:
-    """온전한 표기 가운데 query 와 같은 것이 글에 있으면 찾는다. 그 밖은 찾지 않는다."""
+    """온전한 표기 가운데 query 와 같은 것이 글에 있으면 찾는다. 그 밖은 찾지 않는다.
+    모호한 줄바꿈(ambiguous_space 꼴을 줄바꿈으로 이은 자리) 양옆의 수량은 온전한 표기라도 찾지 않는다 — 줄바꿈을 공백으로 이어 읽으면
+    '3억\n3,000' 은 복합 수량 '3억 3,000' 과, '12%\n-3%' 는 범위와 가를 수 없다."""
     if why == "cross":
         return False
-    return any(query in it["whole"] for it in items)
+    return any(query in it["whole"] and not it.get("ambig") for it in items)
