@@ -213,7 +213,8 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
     clusters = []
     for c in cluster(body):
         lead = c["items"][0]
-        sens = sensitive.worst([sensitive.classify(f"{i['title']} {i['summary']}") for i in c["items"]])   # 묶음의 모든 항목을 본다
+        ctx = " ".join(i["title"] for i in c["items"])   # 해외·국내 표지는 묶음 전체에서 찾는다(다른 기사 제목에만 있는 경우)
+        sens = sensitive.worst([sensitive.classify_item(i["title"], i["summary"], ctx) for i in c["items"]])   # 묶음의 모든 항목을 본다
         outlets = sorted({i["outlet"] for i in c["items"]})
         cov = coverage.recent_overlap(c["tok"], catalog, date) if (catalog and c["lang"] == "ko") else []
         clusters.append({
