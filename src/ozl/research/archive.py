@@ -47,7 +47,7 @@ def ledger_rows() -> list[dict]:
         ev = C.event_times(c)
         rows.append({"card_id": c["card_id"], "date": c.get("date", ""), "slot": c.get("slot", ""), "rank": c.get("rank", ""),
                      "title": (c.get("titles") or [""])[0], "category": c.get("category", ""), "topic": c.get("topic", ""),
-                     "state": c.get("state", ""), "badge": C.BADGE_KO.get(c.get("badge"), c.get("badge") or ""),
+                     "state": c.get("state", ""), "badge": C.badge_ko(c, claims),
                      "publish": C.publish_status(c, claims), **ev, "revision": c.get("revision", ""), "claims": len(claims),
                      "human_verified": sum(x.get("human_verified") is True for x in claims),
                      "videos": len((c.get("coverage") or {}).get("videos") or [])})
@@ -179,7 +179,7 @@ def build_index(include: list[tuple[str, str]] | tuple = (), path: pathlib.Path 
         if not C.publishable(c, C.claims_for(c["card_id"])):
             continue   # 상태(반려 등)와 무관하게 발행 판정 하나로만 고른다
         cards.append({"card_id": c["card_id"], "date": c["date"], "slot": c["slot"], "title": c["titles"][0],
-                      "category": c.get("category", ""), "badge": C.BADGE_KO[c["badge"]], "url": R.page_url(c["card_id"])})
+                      "category": c.get("category", ""), "badge": C.badge_ko(c), "url": R.page_url(c["card_id"])})
     cards.sort(key=lambda c: str(c.get("card_id", "")))
     idx = {"schema": 1, "reports": reports, "cards": cards}
     errs = index_errors(idx)

@@ -32,5 +32,13 @@ verifiers:
   gemini: ""
   chatgpt: ""
 human_verified: false
+# verification:                    # 새로 쓰는 기록에만(옛 기록에 칸을 더하면 승인 지문이 바뀐다). capture 명령이 capture·match·image 를 채운다
+#   method: machine
+#   capture: {url, final_url, fetched_at, sha256, path, kind, text_path}
+#   match: {found, count, offsets, context}
+#   image: {path, reason}
+#   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목
+#   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
+#   verified_at: ""                # machine-verify 가 채운다 → status verified · 표시 「원문 일치」(human_verified 는 false 그대로)
 links: {video_id: "", time_range: "", slide_id: ""}
 revision: 1

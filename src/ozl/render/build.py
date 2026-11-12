@@ -113,6 +113,8 @@ class Img:
     what: str
     source: str
     caption: str = ""
+    kind: str = "slot"  # slot = 종전 회색 자리(image) · chart = charts.render_chart PNG · capture = 기록의 원문 화면 그림
+    ref: str = ""       # capture 의 claim_id
 
 
 @dataclass
@@ -206,8 +208,14 @@ def _title_box(sl) -> Box:
 
 
 def _img(sl, left, top, width, height) -> Img | None:
+    v = S.visual_of(sl)
+    if v == "chart" and isinstance(sl["chart"], dict):
+        ch = sl["chart"]
+        return Img(left, top, width, height, str(ch.get("title", "")), str(ch.get("source", "")), kind="chart")
+    if v == "capture":
+        return Img(left, top, width, height, "원문 화면", "", kind="capture", ref=str(sl["capture"]).strip())
     im = sl.get("image")
-    if not im:
+    if not im or not isinstance(im, dict):
         return None
     return Img(left, top, width, height, str(im.get("what", "")), str(im.get("source", "")), str(im.get("caption") or ""))
 
@@ -357,6 +365,62 @@ def draw_img(slide, im: Img):
         draw_box(slide, cb)
 
 
+VISUALS_DIR = "visuals"   # 산출 폴더 안 — 렌더한 차트 PNG
+CREDIT_SIZE = 11          # 원문 캡처 아래 출처 줄(pt)
+
+
+def chart_png_size(im: Img) -> tuple[int, int]:
+    """그림 자리와 같은 가로세로 비의 픽셀 크기. 왼쪽 그림 자리(charts.SLOT_W_IN × SLOT_H_IN)면 charts.DEFAULT_SIZE_PX 그대로."""
+    from ozl.render import charts as G
+    if abs(im.width - G.SLOT_W_IN) < 1e-6 and abs(im.height - G.SLOT_H_IN) < 1e-6:
+        return G.DEFAULT_SIZE_PX
+    w = G.DEFAULT_SIZE_PX[0]
+    return w, round(w * im.height / im.width)
+
+
+def capture_credit(c: dict) -> str:
+    """원문 캡처 아래 출처 줄: 원문 주소의 호스트 · 받은 날짜(검사가 붙이는 구조 글 — 부록의 링크·기준 시점 칸처럼 숫자 대조에서 뺀다)."""
+    import urllib.parse
+    cap = ((c.get("verification") or {}).get("capture") or {}) if isinstance(c.get("verification"), dict) else {}
+    url = str(cap.get("final_url") or cap.get("url") or (c.get("source") or {}).get("url") or "")
+    host = urllib.parse.urlsplit(url).hostname or url
+    day = str(cap.get("fetched_at") or "")[:10]
+    return "원문: " + host + (f" · 받은 날 {day}" if day else "")
+
+
+def fit_inside(img_w: int, img_h: int, box_w: float, box_h: float) -> tuple[float, float, float, float]:
+    """(왼쪽 띄움, 위 띄움, 폭, 높이) in — 비율을 지켜 자리 안쪽에 맞춘다(잘리지 않는다)."""
+    k = min(box_w / img_w, box_h / img_h)
+    w, h = img_w * k, img_h * k
+    return (box_w - w) / 2, (box_h - h) / 2, w, h
+
+
+def draw_visual(slide, im: Img, png: pathlib.Path | None, credit: str = ""):
+    """chart·capture 그림을 그림 자리에 넣는다. png 가 없으면(초안 모드 그림 대기) 회색 자리에 대기 문구를 적는다."""
+    if png is None:
+        draw_img(slide, Img(im.left, im.top, im.width, im.height, f"그림 대기 — {im.ref.rsplit('-', 1)[-1]} 원문 화면 그림이 아직 없다", credit or "원문 캡처"))
+        return None
+    if im.kind == "chart":
+        pic = slide.shapes.add_picture(str(png), Inches(im.left), Inches(im.top), Inches(im.width), Inches(im.height))
+        pic.name = "차트"
+        return pic
+    from PIL import Image
+    with Image.open(png) as g:
+        pw, ph = g.size
+    dx, dy, w, h = fit_inside(pw, ph, im.width, im.height)
+    pic = slide.shapes.add_picture(str(png), Inches(im.left + dx), Inches(im.top + dy), Inches(w), Inches(h))
+    pic.name = "원문 캡처"
+    pic.line.color.rgb = RGBColor(0xBB, 0xBB, 0xBB)
+    pic.line.width = Pt(0.75)
+    if credit:
+        size = CREDIT_SIZE
+        while size > 8 and S.measure(credit, size) > (im.width - 2 * PAD) * 72:
+            size -= 1
+        b = Box("원문 캡처 출처", im.left, im.top + dy + h + 0.06, im.width, 0.35, [Para(credit, GREY)], size=size, spacing=1.0, align=PP_ALIGN.CENTER, max_lines=1)
+        draw_box(slide, b)
+    return pic
+
+
 def _no_grid(tbl):
     tblPr = tbl._tbl.tblPr
     tblPr.set("firstRow", "0")
@@ -413,6 +477,11 @@ footnote_text = S.footnote_text  # 각주 글을 만드는 함수는 하나 — 
 
 def notes_text(sl: dict, claims: dict, stage: str) -> str:
     lines = [f"[{stage} · {sl.get('kind')}]"]
+    if S.visual_of(sl) == "chart":
+        ch = sl["chart"]
+        lines.append(f"그림: 차트({ch.get('kind')}) · 쓴 기록 {', '.join(map(str, ch.get('claims') or []))} — " + chart_limit(ch, claims))
+    elif S.visual_of(sl) == "capture":
+        lines.append(f"그림: 원문 캡처 {sl['capture']} — {capture_credit(claims.get(str(sl['capture'])) or {})}")
     ids = [str(x) for x in sl.get("claim_ids") or []]
     if ids:
         lines.append("claim_id: " + ", ".join(ids))
@@ -428,6 +497,16 @@ def notes_text(sl: dict, claims: dict, stage: str) -> str:
     if sl.get("transition"):
         lines.append("넘어가기: " + str(sl["transition"]).strip())
     return "\n".join(lines)
+
+
+CHART_LIMIT = "값이 사본에 있는지만 프로그램이 봤다. 칸과 값의 짝은 문장 대조에서 본다."
+CHART_LIMIT_NO_COPY = "값이 기록의 observed·text 에 있는지만 프로그램이 봤다(사본 없는 기록). 칸과 값의 짝은 문장 대조에서 본다."
+
+
+def chart_limit(ch: dict, claims: dict) -> str:
+    """러닝시트·노트의 차트 줄 — 무엇을 프로그램이 봤고 무엇을 못 봤는가."""
+    has_copy = any(S.copy_text(claims.get(str(c)) or {})[0] for c in ch.get("claims") or [])
+    return (CHART_LIMIT if has_copy else CHART_LIMIT_NO_COPY) + (" 세로축이 0에서 시작하지 않는다(y_from_zero: false)." if ch.get("y_from_zero") is False else "")
 
 
 # ── 부록 ────────────────────────────────────────────────────────────────
@@ -493,6 +572,7 @@ def visual_rows(spec: dict, pending: dict[int, list[str]] | None = None) -> list
 
 
 PENDING_MARK = "[검증 대기]"
+WAIT_MARK = "[그림 대기]"   # 초안 모드: capture 기록의 원문 화면 그림이 아직 없다
 SRC_HEADER = ["클레임", "기관", "문서 위치", "링크", "기준 시점", "쪽"]
 SRC_WIDTHS = [1.0, 1.9, 3.0, 3.3, 1.2, 1.01]
 VIS_HEADER = ["쪽", "무엇을", "어느 공식 출처에서", "역검색", "400% 확대", "지도 표기"]
@@ -566,8 +646,12 @@ def appendix_problems(spec: dict, claims: dict, card: dict | None, pending=None)
 
 def draw_pending(slide, ids: list[str]):
     """사람 대조 전 기록을 인용한 슬라이드 — 오른쪽 위에 빨간 테두리 딱지(초안 모드 전용)."""
-    ids = list(dict.fromkeys("보도" if str(c).startswith("보도:") else str(c).split(" ")[0] for c in ids))  # 'c13 교차' → 'c13' · 사양 보도 → '보도' · 중복 제거
-    label = PENDING_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in ids)
+    waits = [str(c)[len(S.WAIT_IMAGE):] for c in ids if str(c).startswith(S.WAIT_IMAGE)]  # 원문 화면 그림 대기(capture)
+    ids = list(dict.fromkeys("보도" if str(c).startswith("보도:") else str(c).split(" ")[0] for c in ids if not str(c).startswith(S.WAIT_IMAGE)))  # 'c13 교차' → 'c13' · 사양 보도 → '보도' · 중복 제거
+    parts = [PENDING_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in ids)] if ids else []
+    if waits:
+        parts.append(WAIT_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in dict.fromkeys(waits)))
+    label = " · ".join(parts)
     w = min(SW - 2 * ML, max(3.3, S.measure(label, 14, True) / 72 + 0.4))  # 글이 딱지 밖으로 나가지 않게 폭을 맞춘다
     box = slide.shapes.add_shape(1, Inches(SW - ML - w), Inches(0.12), Inches(w), Inches(0.42))
     box.name = "검증 대기"
@@ -585,15 +669,52 @@ def draw_pending(slide, ids: list[str]):
     _style_run(r, 14, True, deck.EMPH_RGB)
 
 
+def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int, tuple[pathlib.Path | None, str]]:
+    """쪽 번호 → (넣을 PNG | None, 출처 줄). chart 는 vis_dir 에 그리고, capture 는 기록의 화면 그림 파일을 그대로 쓴다(복사하지 않는다)."""
+    from ozl.render import charts as G
+    out: dict[int, tuple[pathlib.Path | None, str]] = {}
+    for idx, sl in enumerate(spec.get("slides") or [], 1):
+        v = S.visual_of(sl)
+        if v not in ("chart", "capture"):
+            continue
+        ims = [im for im in plan_slide(sl).imgs if im.kind == v]
+        if not ims:
+            continue
+        im = ims[0]
+        if v == "chart":
+            vis_dir.mkdir(parents=True, exist_ok=True)
+            png = G.render_chart(sl["chart"], vis_dir / f"{idx:02d}_chart.png", size_px=chart_png_size(im), slot_width_in=im.width)
+            out[idx] = (png, "")
+        else:
+            c = claims.get(im.ref) or {}
+            out[idx] = (S.image_path(c), capture_credit(c))
+    return out
+
+
+def visual_label(sl: dict, waiting: bool = False) -> str:
+    v = S.visual_of(sl)
+    if v == "chart":
+        return f"차트({'선' if sl['chart'].get('kind') == 'line' else '막대'})"
+    if v == "capture":
+        return f"원문 캡처 {str(sl['capture']).rsplit('-', 1)[-1]}" + (" " + WAIT_MARK if waiting else "")
+    if v == "image":
+        return "그림 자리(회색)"
+    return "없음"
+
+
 def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending: dict[int, list[str]] | None = None) -> dict:
     prs = deck.new_deck()
     pending = pending or {}
     labels = spec.get("source_labels") or {}
+    visuals = render_visuals(spec, claims, out.parent / VISUALS_DIR)
     for idx, sl in enumerate(spec["slides"], 1):
         s = deck._blank(prs)
         pl = plan_slide(sl)
         for im in pl.imgs:
-            draw_img(s, im)
+            if im.kind in ("chart", "capture") and idx in visuals:
+                draw_visual(s, im, *visuals[idx])
+            else:
+                draw_img(s, im)
         for b in pl.boxes:
             draw_box(s, b)
         for t in pl.tables:
@@ -604,7 +725,10 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
         nt = notes_text(sl, claims, str(sl.get("stage")))
         if idx in pending:
             draw_pending(s, pending[idx])
-            nt = f"{PENDING_MARK} 사람 대조 전·대기 폴더 기록: {', '.join(pending[idx])}\n" + nt
+            recs = [c for c in pending[idx] if not str(c).startswith(S.WAIT_IMAGE)]
+            waits = [c[len(S.WAIT_IMAGE):] for c in pending[idx] if str(c).startswith(S.WAIT_IMAGE)]
+            nt = (f"{PENDING_MARK} 사람 대조 전·대기 폴더 기록: {', '.join(recs)}\n" if recs else "") + \
+                 (f"{WAIT_MARK} 원문 화면 그림이 아직 없다: {', '.join(waits)}\n" if waits else "") + nt
         s.notes_slide.notes_text_frame.text = nt
     n_main = len(spec["slides"])
     appx = []
@@ -633,17 +757,22 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
     slides = spec["slides"]
     total = sum(int(sl.get("seconds") or 0) for sl in slides)
     why = str(spec.get("why_this") or "").strip()
+    cited = {str(c) for sl in slides for c in sl.get("claim_ids") or []}
+    machine = sorted(c for c in cited if C.grade_label(claims.get(c) or {}) == C.GRADE_MACHINE)
+    basis = ("숫자는 전부 사람이 대조한 검증 기록(claim_id)에서만" if not machine else
+             f"숫자는 전부 검증 기록(claim_id)에서만 — 사람 대조 '{C.GRADE_HUMAN}' {len(cited) - len(machine)}건 · 기계 대조 「{C.GRADE_MACHINE}」 {len(machine)}건"
+             f"({', '.join(c.rsplit('-', 1)[-1] for c in machine)} · 사람이 원문을 본 것은 아니다)")
     lines = [
         f"# 러닝시트 — {card.get('card_id', spec.get('card_id'))}",
         "",
         f"왜 이 소재를 골랐는가: {why if why else '＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿ (지원자가 한 줄로 쓴다)'}",
         "",
-        f"초안 {ts} · 본편 {len(slides)}장 · 예상 발화 {total // 60}분 {total % 60}초 · " + ("숫자는 전부 사람이 대조한 검증 기록(claim_id)에서만" if not pending else f"**초안 모드 — [검증 대기] 기록을 인용한 쪽 {len(pending)}장({', '.join(map(str, pending))}쪽). 사람 대조 전에는 제출·발행하지 않는다**") + " · 슬라이드 문구와 말은 사람이 다듬는다.",
+        f"초안 {ts} · 본편 {len(slides)}장 · 예상 발화 {total // 60}분 {total % 60}초 · " + (basis if not pending else f"**초안 모드 — [검증 대기] 기록을 인용한 쪽 {len(pending)}장({', '.join(map(str, pending))}쪽). 사람 대조 전에는 제출·발행하지 않는다**") + " · 슬라이드 문구와 말은 사람이 다듬는다.",
         "",
         "## 장별 진행",
         "",
-        "| 쪽 | 단계 | 제목 | 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | 근거 |",
-        "|---|---|---|---|---|---|---|",
+        "| 쪽 | 단계 | 제목 | 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | 근거 | 그림 |",
+        "|---|---|---|---|---|---|---|---|",
     ]
 
     def cell(x):
@@ -653,8 +782,15 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
     for i, sl in enumerate(slides, 1):
         sec = int(sl.get("seconds") or 0)
         t += sec
-        ids = ", ".join(str(c).rsplit("-", 1)[-1] for c in sl.get("claim_ids") or []) + (" [검증 대기]" if i in pending else "")
-        lines.append(f"| {i} | {cell(sl.get('stage'))} | {cell(sl.get('title'))} | {cell(sl.get('spoken'))} | {cell(sl.get('transition'))} | {sec} | {ids} |")
+        ids = ", ".join(str(c).rsplit("-", 1)[-1] + (f"「{C.GRADE_MACHINE}」" if str(c) in machine else "") for c in sl.get("claim_ids") or []) + (" [검증 대기]" if any(not str(c).startswith(S.WAIT_IMAGE) for c in pending.get(i, [])) else "")
+        waiting = any(str(c).startswith(S.WAIT_IMAGE) for c in pending.get(i, []))
+        lines.append(f"| {i} | {cell(sl.get('stage'))} | {cell(sl.get('title'))} | {cell(sl.get('spoken'))} | {cell(sl.get('transition'))} | {sec} | {ids} | {cell(visual_label(sl, waiting))} |")
+    charts_ = [(i, sl["chart"]) for i, sl in enumerate(slides, 1) if S.visual_of(sl) == "chart"]
+    if charts_:
+        lines += ["", "## 차트", ""]
+        for i, ch in charts_:
+            lines.append(f"- {i}쪽 차트({'선' if ch.get('kind') == 'line' else '막대'}) · 쓴 기록 "
+                         f"{', '.join(str(c).rsplit('-', 1)[-1] for c in ch.get('claims') or [])}: {chart_limit(ch, claims)}")
     lines += ["", "## 단계별 시간", "", "| 단계 | 장수 | 초 |", "|---|---|---|"]
     agg: dict[str, list[int]] = {}
     order: list[str] = []
@@ -718,7 +854,7 @@ def build(spec_path: pathlib.Path, export: bool = True, draft: bool = False, cla
     outdir, pptx = out_paths(str(sp["card_id"]), ts, draft)
     outdir.mkdir(parents=False, exist_ok=False)
     md = outdir / f"running_sheet_{ts}{'_draft' if draft else ''}.md"
-    for f in (pptx, md, pptx.with_suffix(".pdf"), md.with_suffix(".pdf"), outdir / (pptx.stem + "_png")):
+    for f in (pptx, md, pptx.with_suffix(".pdf"), md.with_suffix(".pdf"), outdir / (pptx.stem + "_png"), outdir / VISUALS_DIR):
         safe_new_file(outdir, f)
     info = build_pptx(sp, claims, card, pptx, rep.pending if draft else None)
     md.write_text(running_sheet(sp, card, claims, ts, rep.pending if draft else None), encoding="utf-8")

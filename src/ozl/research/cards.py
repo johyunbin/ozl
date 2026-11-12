@@ -179,7 +179,10 @@ def validate_claim(c: dict, deep: bool = True) -> list[str]:
         e.append(f"{cid}: T5 출처는 인용할 수 없다 — pending·unverified_rumor 만")
     if st == "verified":
         if hv is not True:
-            e.append(f"{cid}: verified 인데 human_verified 가 아님 — 사람 육안 대조 전에는 pending")
+            if "verification" not in c:
+                e.append(f"{cid}: verified 인데 human_verified 가 아님 — 사람 육안 대조 전에는 pending")
+            else:
+                e += [f"{cid}: {x}" for x in machine_struct_errors(c)]
         if tier not in ("T1", "T2") and not (tier == "T3" and ind):
             e.append(f"{cid}: verified 는 T1/T2 원문이거나, 원출처가 다른 교차 출처가 있는 T3 여야 한다")
         if ch.get("unit_ok") is not True:
@@ -207,6 +210,298 @@ def validate_claim(c: dict, deep: bool = True) -> list[str]:
             if _blank(ct.get(k)):
                 e.append(f"{cid}: counter.{k} 비어 있음")
     return e
+
+
+# ── 기계 대조(사람 대조 대신 저장한 원문 사본으로) ──────────────────────
+# 설계 정본: ~/.claude/plans/ozl_redesign_plan_20261113_014132.md 3-2절. `verification` 칸은 새로 쓰는 기록에만 생긴다
+# (칸이 없는 옛 기록은 종전과 똑같이 판정된다 · 이미 발행한 기록에 칸을 더하면 내용 지문이 바뀌어 승인이 풀린다).
+#
+#   verification:
+#     method: machine
+#     capture: {url, final_url, fetched_at, status, content_type, charset, bytes, sha256, path, kind, text_path}   # capture 명령이 채운다
+#     match: {found, count, offsets, context}            # 프로그램이 채운다(machine_verify 가 다시 계산해 덮어쓴다)
+#     image: {path, reason}                               # 그림을 못 만들면 path 가 비고 reason 에 사유
+#     author: {by, located}                               # 쓴 쪽. located 는 observed 가 사본에 여러 번 나올 때 어느 자리인지 가리키는 대목
+#     recheck: {by, located, checks: {unit, as_of, status, population, speaker}, at}   # 쓴 쪽과 다른 에이전트가 채운다
+#     verified_at: …                                      # machine_verify 가 채운다
+GRADE_HUMAN = "확인"
+GRADE_MACHINE = "원문 일치"
+RECHECK_STATUS = ("확정", "잠정", "전망", "주장")
+_REVISION_TO_STATUS = {"final": "확정", "preliminary": "잠정"}   # 그 밖의 값(n/a 등)은 견주지 않고 채워졌는가만 본다
+
+
+def _same_agent(a, b) -> bool:
+    return str(a or "").strip().casefold() == str(b or "").strip().casefold()
+
+
+def machine_struct_errors(c: dict) -> list[str]:
+    """기계 대조로 verified 가 된 기록의 구조 검사(파일 재해시·문구 재대조는 machine_verify 가 한다). 빈 목록이면 구조는 맞다."""
+    e: list[str] = []
+    v = c.get("verification")
+    if not isinstance(v, dict) or v.get("method") != "machine":
+        return ["verified 인데 human_verified 도 아니고 verification.method 가 machine 도 아님"]
+    src = c.get("source") or {}
+    if src.get("tier") not in ("T1", "T2"):
+        e.append(f"기계 대조는 T1/T2 출처만(지금 {src.get('tier')})")
+    cap = v.get("capture") or {}
+    for k in ("url", "fetched_at", "sha256", "path", "kind"):
+        if _blank(cap.get(k)):
+            e.append(f"verification.capture.{k} 없음")
+    if cap.get("url") and cap.get("url") != src.get("url"):
+        e.append("verification.capture.url 이 source.url 과 다름")
+    if (v.get("match") or {}).get("found") is not True:
+        e.append("verification.match.found 가 true 가 아님")
+    au, rc = v.get("author") or {}, v.get("recheck") or {}
+    if _blank(au.get("by")):
+        e.append("verification.author.by 없음")
+    if _blank(rc.get("by")):
+        e.append("verification.recheck.by 없음")
+    elif _same_agent(au.get("by"), rc.get("by")):
+        e.append("쓴 쪽과 재대조한 쪽의 식별자가 같다")
+    if _blank(rc.get("located")):
+        e.append("verification.recheck.located 없음")
+    rch = rc.get("checks") or {}
+    for k in ("unit", "as_of", "status"):
+        if _blank(rch.get(k)):
+            e.append(f"verification.recheck.checks.{k} 비어 있음")
+    if not _blank(rch.get("status")) and rch.get("status") not in RECHECK_STATUS:
+        e.append(f"verification.recheck.checks.status 는 {'|'.join(RECHECK_STATUS)}")
+    if _blank(v.get("verified_at")):
+        e.append("verification.verified_at 없음")
+    return e
+
+
+def grade_label(c: dict) -> str:
+    """기록 한 건의 표시 문구. 사람이 대조한 verified 만 '확인', 기계 대조로 올라간 verified 는 「원문 일치」."""
+    st = c.get("status")
+    if st == "verified":
+        if c.get("human_verified") is True:
+            return GRADE_HUMAN
+        return GRADE_MACHINE if "verification" in c and not machine_struct_errors(c) else "검증 오류"
+    return BADGE_KO.get(st, "?")
+
+
+_PERIOD_FORMS = [
+    ("date", re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})|(\d{4})년 ?(\d{1,2})월 ?(\d{1,2})일")),
+    ("month", re.compile(r"(\d{4})-(\d{1,2})|(\d{4})년 ?(\d{1,2})월")),
+    ("quarter", re.compile(r"(\d{4})-[Qq]([1-4])|(\d{4})년 ?([1-4])분기")),
+    ("year", re.compile(r"(\d{4})년?")),
+]
+
+
+def _period_one(s: str):
+    for kind, rx in _PERIOD_FORMS:
+        m = rx.fullmatch(s)
+        if m:
+            return (kind,) + tuple(int(x) for x in m.groups() if x is not None)
+    return None
+
+
+def _period_key(s) -> tuple:
+    """기준 시점의 종류를 보존한 키 — 연 · 분기 · 월 · 날짜 · 범위(A~B, 양끝을 각각 판독). 종류가 다르면 다른 시점이다
+    ('2026년 1월' ≠ '2026년 1분기'). 판독하지 못하는 표기는 공백만 정리한 문자열로 견준다."""
+    t = re.sub(r"\s+", " ", str(s)).strip()
+    one = _period_one(t)
+    if one:
+        return one
+    if t.count("~") == 1:
+        a, b = (_period_one(x.strip()) for x in t.split("~"))
+        if a and b:
+            return ("range", a, b)
+    return ("s", t.casefold())
+
+
+def recheck_check_errors(c: dict) -> list[str]:
+    """재대조한 쪽의 맥락 칸을 쓴 쪽의 checks 와 견준다. 견줄 수 없는 칸은 채워졌는가만 본다."""
+    e: list[str] = []
+    ch = c.get("checks") or {}
+    rch = ((c.get("verification") or {}).get("recheck") or {}).get("checks") or {}
+    for k in ("unit", "as_of", "status"):
+        if _blank(rch.get(k)):
+            e.append(f"재대조 맥락 칸 {k} 비어 있음")
+    if e:
+        return e
+    if ch.get("unit_ok") is not True:
+        e.append("쓴 쪽 checks.unit_ok 가 true 가 아닌데 재대조는 단위를 적었다 — 단위 판단이 어긋난다")
+    bp = ch.get("base_period")
+    if not _blank(bp) and str(bp).strip().casefold() != "n/a" and _period_key(bp) != _period_key(rch["as_of"]):
+        e.append(f"기준 시점 불일치: 쓴 쪽 base_period {bp!r} · 재대조 as_of {rch['as_of']!r}")
+    if rch["status"] not in RECHECK_STATUS:
+        e.append(f"재대조 status 값 오류({rch['status']}) — {'|'.join(RECHECK_STATUS)}")
+    want = _REVISION_TO_STATUS.get(str(ch.get("revision_status") or "").strip())
+    if want and rch["status"] != want:
+        e.append(f"확정·잠정 불일치: 쓴 쪽 revision_status {ch.get('revision_status')!r} → {want} · 재대조 {rch['status']}")
+    return e
+
+
+def _resolve(p) -> pathlib.Path:
+    q = pathlib.Path(str(p))
+    return q if q.is_absolute() else ROOT / q
+
+
+def _inside_captures(p) -> bool:
+    """사본 경로로 받는 것: '..' 조각이 없고, 풀어 쓴 경로의 조상 폴더 가운데 이름이 captures 인 것이 있다.
+    기록에 해시만 맞게 적으면 아무 로컬 파일이나 사본으로 인정되는 길을 막는다."""
+    raw = pathlib.Path(str(p))
+    if ".." in raw.parts:
+        return False
+    return any(a.name == "captures" for a in _resolve(raw).resolve().parents)
+
+
+def _unique_span(norm_find: dict, what: str, errs: list[str]):
+    if not norm_find["found"]:
+        errs.append(f"{what} 가 사본 글에 없다")
+        return None
+    if norm_find["count"] > 1:
+        errs.append(f"{what} 가 사본 글에 {norm_find['count']}번 나와 자리를 하나로 정할 수 없다 — 더 긴 대목을 적는다")
+        return None
+    m = norm_find["matches"][0]
+    return (m["offset"], m["end"])
+
+
+_TEXT_CACHE: dict[tuple[str, str, str, str], dict] = {}   # (사본 경로, sha256, 종류, charset) → 뽑은 글. 덱 검사가 같은 사본을 장마다 다시 읽지 않게
+
+
+def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
+    """기록을 저장한 사본으로 다시 검사한다. (사유 목록, 다시 계산한 match). 기록에 적힌 found·offsets 는 믿지 않는다.
+    fresh=True 는 등급을 올리기 전의 검사(pending 이고 사람 대조 전이어야 한다). fresh=False 는 이미 「원문 일치」인 기록을
+    쓸 때마다 다시 확인하는 검사다 — 기록 파일에 verified 라고 적혀 있다는 것만으로는 받지 않는다(덱 엄격 모드가 부른다)."""
+    from . import capture as K
+    errs: list[str] = []
+    cid = c.get("claim_id", "?")
+    src = c.get("source") or {}
+    if src.get("tier") not in ("T1", "T2"):
+        errs.append(f"출처 등급이 {src.get('tier')} — 기계 대조는 T1/T2 원문만")
+    if fresh:
+        if c.get("human_verified") is True:
+            errs.append("이미 사람이 대조한 기록이다")
+        if c.get("status") != "pending":
+            errs.append(f"status 가 pending 이 아니다({c.get('status')})")
+    v = c.get("verification")
+    if not isinstance(v, dict) or v.get("method") != "machine":
+        return errs + ["verification(method: machine) 묶음이 없다 — capture 명령을 먼저 돌린다"], {}
+    cap = v.get("capture") or {}
+    if cap.get("url") != src.get("url"):
+        errs.append("사본을 받은 주소가 source.url 과 다르다")
+    if cap.get("kind") not in K.KINDS:
+        errs.append(f"사본 종류 오류({cap.get('kind')})")
+    for k in ("path", "text_path"):
+        if not _blank(cap.get(k)) and not _inside_captures(cap.get(k)):
+            return errs + [f"사본 경로가 사본 폴더(captures) 밖이다(capture.{k}: {cap.get(k)})"], {}
+    path = _resolve(cap.get("path") or "")
+    if _blank(cap.get("path")) or not path.is_file():
+        return errs + [f"사본 파일이 없다({cap.get('path')})"], {}
+    if K.sha256_file(path) != cap.get("sha256"):
+        return errs + ["사본 파일의 sha256 이 기록과 다르다(받은 뒤에 바뀌었다)"], {}
+    key = (str(path), str(cap.get("sha256")), str(cap.get("kind")), str(cap.get("charset") or ""))
+    if key not in _TEXT_CACHE:
+        _TEXT_CACHE[key] = K.extract_text(path, cap.get("kind"), cap.get("charset") or "")
+    ex = _TEXT_CACHE[key]
+    if not ex["ok"]:
+        return errs + [ex["reason"]], {}
+    text = ex["text"]
+    obs = K.find_phrase(text, c.get("observed") or "")
+    match = {"found": obs["found"], "count": obs["count"], "offsets": [m["offset"] for m in obs["matches"]],
+             "context": K.context_of(obs["matches"][0], c["observed"]) if obs["found"] else ""}
+    if not obs["found"]:
+        errs.append("observed 가 사본 글에 없다(공백만 정리해 비교)")
+    au, rc = v.get("author") or {}, v.get("recheck") or {}
+    if _blank(au.get("by")):
+        errs.append("쓴 쪽 식별자(author.by)가 없다")
+    if _blank(rc.get("by")):
+        errs.append("재대조한 쪽 식별자(recheck.by)가 없다")
+    elif _same_agent(au.get("by"), rc.get("by")):
+        errs.append("쓴 쪽과 재대조한 쪽의 식별자가 같다")
+    # 쓴 쪽이 가리키는 자리(target)는 observed 가 나온 자리 정확히 하나: observed 가 한 번만 나오거나, author.located 안에 정확히 한 번
+    target: tuple[int, int] | None = None
+    occ = [(m["offset"], m["end"]) for m in obs["matches"]] if obs["found"] else []
+    if occ:
+        if _blank(au.get("located")):
+            if len(occ) == 1:
+                target = occ[0]
+            else:
+                errs.append(f"observed 가 사본에 {len(occ)}번 나온다 — 쓴 쪽이 author.located 로 어느 자리인지 가리켜야 한다")
+        else:
+            span = _unique_span(K.find_phrase(text, au["located"]), "쓴 쪽 대목(author.located)", errs)
+            if span:
+                inside = [o for o in occ if span[0] <= o[0] and o[1] <= span[1]]
+                if len(inside) == 1:
+                    target = inside[0]
+                elif not inside:
+                    errs.append("쓴 쪽 대목(author.located) 안에 observed 가 없다")
+                else:
+                    errs.append(f"쓴 쪽 대목(author.located) 안에 observed 가 {len(inside)}번 나와 어느 자리인지 정해지지 않는다")
+    if _blank(rc.get("located")):
+        errs.append("재대조한 쪽 대목(recheck.located)이 없다")
+    else:
+        span = _unique_span(K.find_phrase(text, rc["located"]), "재대조한 쪽 대목(recheck.located)", errs)
+        if span and target:
+            n_in = sum(1 for o in occ if span[0] <= o[0] and o[1] <= span[1])
+            if not (span[0] <= target[0] and target[1] <= span[1]):
+                errs.append("재대조한 쪽 대목이 쓴 쪽의 자리(observed 가 나온 자리)를 통째로 담지 않는다")
+            elif n_in != 1:
+                errs.append(f"재대조한 쪽 대목 안에 observed 가 {n_in}번 나와 같은 자리라고 할 수 없다")
+    errs += recheck_check_errors(c)
+    return [f"{cid}: {x}" for x in errs], match
+
+
+def machine_verify(claim_id: str, path: pathlib.Path | str | None = None, save: bool = True) -> dict:
+    """저장한 원문 사본과 재대조 기록을 프로그램이 다시 검사해 통과하면 status 를 verified 로 올린다(human_verified 는 false 그대로).
+    {ok, claim_id, reasons, claim}. 못 채우면 아무것도 저장하지 않는다. path 를 주면 그 파일(시험 사본 등)을 읽고 쓴다 —
+    그때는 카드 파일을 건드리지 않는다. 정본 폴더의 기록이면 human_verify 와 같게 카드 배지를 다시 계산한다."""
+    p = pathlib.Path(path) if path else claim_path(claim_id)
+    if not p.is_file():
+        return {"ok": False, "claim_id": claim_id, "reasons": [f"{claim_id}: 기록 파일 없음({p})"], "claim": None}
+    c = load_yaml(p)
+    if c.get("claim_id") != claim_id:
+        return {"ok": False, "claim_id": claim_id, "reasons": [f"{claim_id}: 파일의 claim_id 가 다르다({c.get('claim_id')})"], "claim": None}
+    reasons, match = machine_check(c)
+    if not reasons:
+        new = json.loads(json.dumps(c, ensure_ascii=False, default=str))
+        new["verification"]["match"] = match
+        new["verification"]["verified_at"] = now_kst()
+        new["status"] = "verified"
+        new["human_verified"] = False
+        new["revision"] = int(c.get("revision", 1)) + 1
+        reasons = validate_claim(new, deep=True)
+        if not reasons:
+            c = new
+    if reasons:
+        return {"ok": False, "claim_id": claim_id, "reasons": reasons, "claim": None}
+    if save:
+        save_yaml(p, c)
+        if path is None and card_path(c["card_id"]).is_file():
+            card = load_card(c["card_id"])
+            card["badge"] = badge_of(claims_for(c["card_id"]))
+            _touch(card, f"기계 대조 1건({claim_id}) → 배지 {card['badge']}")
+            save_yaml(card_path(c["card_id"]), card)
+    return {"ok": True, "claim_id": claim_id, "reasons": [], "claim": c}
+
+
+def _verified_word(card: dict, claims: list[dict] | None) -> str | None:
+    """카드 배지가 verified 일 때 넘겨받은 기록으로 다시 판정한다: 기록이 하나 이상이고 전부 verified 이면서 사람 대조 → 'human',
+    전부 verified 인데 기계 대조가 섞임 → 'machine', 그 밖 → badge_of(claims) 의 상태(낡은 배지로 '확인'을 붙이지 않는다)."""
+    cl = claims if claims is not None else claims_for(card["card_id"])
+    if cl and all(c.get("status") == "verified" for c in cl):
+        return "human" if all(c.get("human_verified") is True for c in cl) else "machine"
+    return badge_of(cl)
+
+
+def badge_ko(card: dict, claims: list[dict] | None = None) -> str:
+    """카드 배지의 표시 낱말. verified 는 기록으로 다시 판정한다(사람 대조만 '확인', 기계 대조가 섞이면 「원문 일치」)."""
+    b = card.get("badge")
+    if b != "verified":
+        return BADGE_KO.get(b, b or "")
+    w = _verified_word(card, claims)
+    return GRADE_HUMAN if w == "human" else GRADE_MACHINE if w == "machine" else BADGE_KO.get(w, w)
+
+
+def badge_label(card: dict, claims: list[dict] | None = None) -> str:
+    b = card.get("badge")
+    if b != "verified":
+        return BADGE_LABEL[b]
+    w = _verified_word(card, claims)
+    return BADGE_LABEL["verified"] if w == "human" else f"[{GRADE_MACHINE}]" if w == "machine" else BADGE_LABEL[w]
 
 
 def badge_of(claims: list[dict]) -> str:
@@ -241,7 +536,12 @@ def publishable(card: dict, claims: list[dict]) -> bool:
         return False   # 공개되는 수치는 전부 클레임 레코드가 있어야 한다
     if any(validate_claim(c, deep=(card.get("depth") == "full")) for c in claims):
         return False
-    return pub.get("digest") == content_digest(card, claims)
+    if pub.get("digest") != content_digest(card, claims):
+        return False
+    # 기계 대조 기록은 구조만 보지 않고 저장한 사본으로 증거를 다시 검사한다(사본 없는 위조 묶음을 막는다).
+    # 사람 대조 기록과 verification 없는 옛 기록은 이 검사를 받지 않는다(종전 판정 그대로).
+    return not any(machine_check(c, fresh=False)[0] for c in claims
+                   if c.get("status") == "verified" and c.get("human_verified") is not True)
 
 
 def publish_status(card: dict, claims: list[dict]) -> str:

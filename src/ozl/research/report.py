@@ -53,7 +53,7 @@ def _stats(date: str, slot: str) -> dict | None:
 
 def _claim_mark(c: dict) -> str:
     if c.get("status") == "verified":
-        return "확인"
+        return C.grade_label(c)   # 사람 대조만 '확인', 기계 대조는 「원문 일치」
     if c.get("status") == "pending":
         return "원문 대조함 · 사람 확인 대기" if (c.get("verifiers") or {}).get("claude") else "검증 전"
     return C.BADGE_KO.get(c.get("status"), "?")
@@ -92,7 +92,7 @@ def render_card(card: dict, claims: list[dict], n: int, public: bool) -> str:
     sens = card["sensitivity"]
     # 제목을 "N. " 로 시작해 PDF 엔진의 자동 장 번호와 겹치지 않게 한다. 앵커는 사이트·저장소 화면 양쪽에서 통하는 HTML 로 둔다.
     L = [f'<a id="{anchor(cid)}"></a>', "", f"## {n}. {card['titles'][0]}", "",
-         f"`{cid}` · {card.get('topic', '')} · 민감도 {sens['level']} · {C.BADGE_LABEL[card['badge']]} · 상태 {card['state']} · r{card['revision']}", ""]
+         f"`{cid}` · {card.get('topic', '')} · 민감도 {sens['level']} · {C.badge_label(card)} · 상태 {card['state']} · r{card['revision']}", ""]
     L += ["**① 제목 후보**", ""] + [f"{i}. {t}" for i, t in enumerate(card["titles"], 1)] + [""]
     L += [f"**② 한 줄 훅** — {card['hook']}", ""]
     wt = card["why_today"]
@@ -108,7 +108,7 @@ def render_card(card: dict, claims: list[dict], n: int, public: bool) -> str:
     L += [""]
     if card.get("sources"):
         L += ["1차 출처: " + " · ".join(f"[{s['name']}]({s['url']})({s['tier']})" for s in card["sources"]), ""]
-    L += [f"**⑤ 검증 배지** — {C.BADGE_LABEL[card['badge']]}" + (f" {card['badge_note']}" if card.get("badge_note") else ""), ""]
+    L += [f"**⑤ 검증 배지** — {C.badge_label(card)}" + (f" {card['badge_note']}" if card.get("badge_note") else ""), ""]
     cov = card["coverage"]
     L += [f"**⑥ 슈카월드 기존 커버리지** — {cov['summary']}"]
     vids = cov.get("videos") or []
@@ -164,7 +164,7 @@ def render_private(date: str, slot: str) -> str:
         L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳 · 최근 {st['hours']:g}시간 {st['items']}건 → 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
     L += ["", "**채택 대기**", ""]
     wait = [c for c in cards if c["state"] == "제안"]
-    L += [f"- `{c['card_id']}` {c['titles'][0]} — {C.BADGE_LABEL[c['badge']]}" for c in wait] or ["없음"]
+    L += [f"- `{c['card_id']}` {c['titles'][0]} — {C.badge_label(c)}" for c in wait] or ["없음"]
     L += ["", "채택: `/ozl pick <card_id>` 또는 Notion 상태를 `채택`으로. 공개 발행: 검증 시트로 원문을 대조한 뒤 `/ozl publish <card_id>`.", ""]
     for i, c in enumerate(cards, 1):
         L += ["---", "", render_card(c, C.claims_for(c["card_id"]), i, public=False)]
@@ -220,7 +220,7 @@ def render_public(date: str, slot: str) -> str:
     if hold:
         L += ["---", "", "## 검증·승인 대기", "", "| 카드 | 분야 | 계기 | 민감도 | 상태 |", "|---|---|---|---|---|"]
         for c in hold:
-            L += [f"| `{c['card_id']}` | {c.get('topic', '')} | {c['why_today']['trigger_type']} | {c['sensitivity']['level']} | {C.BADGE_LABEL[c['badge']]} |"]
+            L += [f"| `{c['card_id']}` | {c.get('topic', '')} | {c['why_today']['trigger_type']} | {c['sensitivity']['level']} | {C.badge_label(c)} |"]
         L += [""]
     return "\n".join(L) + "\n"
 
@@ -254,7 +254,7 @@ def notion_rows(date: str, slot: str) -> list[dict]:
         props = {
             "제목": c["titles"][0], "card_id": c["card_id"], "date:날짜:start": c["date"], "date:날짜:is_datetime": 0,
             "회차": c["slot"], "상태": c["state"], "주제": c["category"], "민감도": c["sensitivity"]["level"],
-            "배지": C.BADGE_KO[c["badge"]], "출처 수": n_src, "왜 오늘인가": c["why_today"]["text"][:1900],
+            "배지": C.badge_ko(c), "출처 수": n_src, "왜 오늘인가": c["why_today"]["text"][:1900],
             "반전 포인트": c["angles"]["twist"][:1900], "기존 커버리지": cov[:1900],
             "Pages 링크": page_url(c["card_id"]) if approved else None, "revision": c["revision"]}
         ev = C.event_times(c)

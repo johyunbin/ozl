@@ -4,15 +4,24 @@
 사양은 사람이(또는 대화 세션의 모델이) 카드와 클레임을 읽고 직접 쓴다. 이 모듈은 문장을 짓지 않고 검사만 한다.
 
 검사 항목
-  ① 숫자 규칙: 슬라이드에 보이는 숫자는 그 슬라이드가 인용한 클레임(`human_verified: true`)의 `observed`·`text` 에 같은 표기로 있어야 한다.
+  ① 숫자 규칙: 슬라이드에 보이는 숫자는 그 슬라이드가 인용한 클레임(사람 대조 `human_verified: true` 또는 기계 대조 「원문 일치」)의 `observed`·`text` 에 같은 표기로 있어야 한다.
      - 숫자가 있는데 `claim_ids` 가 없으면 실패
-     - 인용한 클레임이 없거나 사람 대조 전이면 실패
+     - 인용한 클레임이 없거나, 사람 대조 전이면서 「원문 일치」도 아니면 실패
      - 표기가 원문에 없으면 실패. 단위를 바꿔 적었으면 `conversions`(보이는 표기 · 원문 표기 · 클레임 · 환산 근거)를 적어야 통과
      - 숫자 판독(토큰 종류·부호·범위·면제·못 잡는 것)은 numbers.py 머리말이 정본이다. 달력·식별자는 대조하지 않고, 수량·기간·수량 낱말은 대조한다
      - 환산 원문(source)은 기록 안의 완전한 숫자 토큰이어야 한다(복합 수량의 조각·숫자 없는 말은 안 된다)
   ② 단계 순서: 구성 템플릿(tracks/syuka/style/composition_template_v0.json)의 단계 위치 중앙값 순서를 거꾸로 가면 실패.
      전개·반전·여담은 한 편에 여러 번 나오는 단계라 중간 어디에나 둘 수 있다. 첫 단계는 여는 장(또는 우회 도입), 마지막은 닫는 장이나 시사점.
   ③ 글 배치: 어절 단위로 줄을 나눈 결과가 글상자 줄 수를 넘거나, 제목이 한 줄을 넘으면 실패.
+  ④ 그림(chart · capture): 그림 자리가 있는 종류(VISUAL_KINDS)에서 image·chart·capture 가운데 하나만 쓴다.
+     - chart: charts.validate_chart 오류 · chart.claims 는 그 쪽 claim_ids 안 · 그림에 찍히는 수량(chart_quantities)은 ①과 같은 규칙
+       · 그려지는 모든 점의 값(꼬리표가 없는 점 포함)은 chart.claims 가운데 한 기록의 원문 사본 글에 그 표기로 있어야 한다
+         (capture.find_phrase — 공백만 정리, 더 긴 수의 조각은 찾은 것으로 치지 않는다). 사본이 없는 기록(사람이 대조한 옛 기록)은 observed·text 에서 찾는다.
+       · 못 하는 것: 값이 사본에 있는지만 프로그램이 봤다. 칸(어느 달·어느 항목)과 값의 짝은 문장 대조에서 본다.
+         세로축 눈금 숫자는 대조하지 않는다(자료가 아니라 축척이다). y_from_zero: false 는 러닝시트에 적힌다.
+     - capture: <claim_id> — 그 기록의 원문 화면 그림(verification.image.path). claim_ids 안이어야 하고, 엄격 모드는 받는 기록(acceptance_error 빈 문자열)이며
+       그림 파일이 실제로 있어야 한다. 초안 모드는 그림이 없으면 그 쪽을 '그림 대기'로 표시한다(pending 에 '그림:<claim_id>').
+     - 엄격 모드에서 image_text 쪽에 그림이 하나도 없으면 경고(글만 있는 장이 의도일 수 있어 실패는 아니다).
 
     python -m ozl.render check <사양.yaml>
 """
@@ -59,8 +68,17 @@ def numeric_tokens(text, exempt: bool = True, identifiers=()) -> list[str]:
     return [t.canon for t in toks if any(c.isdigit() for c in t.canon)]
 
 
+def basis_texts(claim: dict) -> list[str]:
+    """숫자 근거가 되는 글. 사람이 대조한 기록과 옛 기록은 observed·text 둘 다(사람이 문장까지 보았다).
+    기계 대조 기록(`verification` 묶음이 있고 사람 대조는 아닌 것)은 사본과 대조한 observed 만 —
+    text 는 쓴 쪽의 문장이고 프로그램이 원문과 견준 적이 없다."""
+    if claim.get("human_verified") is not True and isinstance(claim.get("verification"), dict):
+        return [_s(claim.get("observed"))]
+    return [_s(claim.get("observed")), _s(claim.get("text"))]
+
+
 def source_tokens(claim: dict) -> set[str]:
-    return N.pool(claim.get("observed"), claim.get("text"))
+    return N.pool(*basis_texts(claim))
 
 
 def _s(v) -> str:
@@ -95,8 +113,24 @@ def spoken_text(sl: dict) -> list[str]:
     return [_s(sl.get(k)) for k in ("spoken", "transition") if _s(sl.get(k))]
 
 
+def acceptance_error(c: dict) -> str:
+    """엄격 모드가 이 기록을 받지 않는 까닭. 빈 문자열이면 받는다.
+    받는 기록 = 사람이 대조했거나(종전 그대로 human_verified 가 참), 기계 대조로 「원문 일치」가 됐고 **지금 다시 검사해도** 증거가 맞는 것.
+    기록 파일에 verified 라고 적혀 있다는 것만으로는 받지 않는다 — 사본 해시, 문구, 재대조 대목을 쓸 때마다 다시 본다."""
+    if c.get("human_verified") is True:
+        return ""
+    if C.grade_label(c) != C.GRADE_MACHINE:
+        return f"사람 대조 전이다(human_verified 아님 · 「{C.GRADE_MACHINE}」도 아님)"
+    errs = C.machine_check(c, fresh=False)[0] or C.validate_claim(c, deep=True)   # 등급을 올릴 때 본 것을 쓸 때도 전부 다시 본다
+    return f"「{C.GRADE_MACHINE}」 기록인데 지금 다시 검사하니 증거가 맞지 않는다 — {errs[0]}" if errs else ""
+
+
+def accepted(c: dict) -> bool:
+    return not acceptance_error(c)
+
+
 def claim_state_errors(ids: list[str], claims: dict[str, dict], draft: bool = False, staged: set[str] | None = None) -> tuple[list[str], list[str]]:
-    """(실패, 검증 대기 claim_id). 엄격 모드: 없거나 사람 대조 전이거나 대기 폴더(--claims-dir) 기록이면 실패.
+    """(실패, 검증 대기 claim_id). 엄격 모드: 없거나 사람 대조 전(「원문 일치」도 아님)이거나 대기 폴더(--claims-dir) 기록이면 실패.
     초안 모드: 기록이 있기만 하면 되고, 사람 대조 전·대기 폴더 기록은 '검증 대기'로 돌려준다."""
     errs, pending = [], []
     staged = staged or set()
@@ -105,12 +139,13 @@ def claim_state_errors(ids: list[str], claims: dict[str, dict], draft: bool = Fa
         if c is None:
             errs.append(f"클레임 {cid} 를 찾지 못했다")
             continue
-        unverified = c.get("human_verified") is not True
+        why = acceptance_error(c)
+        unverified = bool(why)
         if not draft:
             if cid in staged:
                 errs.append(f"클레임 {cid} 는 대기 폴더(--claims-dir)의 기록이다 — 초안 모드(--draft)에서만 쓸 수 있다")
             elif unverified:
-                errs.append(f"클레임 {cid} 는 사람 대조 전이다(human_verified 아님)")
+                errs.append(f"클레임 {cid} 는 {why}")
         elif unverified or cid in staged:
             pending.append(cid)
     return errs, pending
@@ -139,7 +174,7 @@ def number_errors(sl: dict, claims: dict[str, dict], draft: bool = False, staged
             errs.append(f"{where}: {cid} 가 이 슬라이드의 claim_ids 에 없다")
             continue
         c = claims.get(cid) or {}
-        if N.complete_in(src, _s(c.get("observed")), True) is None and N.complete_in(src, _s(c.get("text")), True) is None:
+        if all(N.complete_in(src, b, True) is None for b in basis_texts(c)):
             errs.append(f"{where}: 원문 표기 '{src}' 가 {cid} 의 observed·text 에 완전한 수량 토큰으로 없다(숫자가 든 토큰 전체여야 한다)")
             continue
         covered |= {t.canon for t in own if t.needs_claim}
@@ -164,6 +199,152 @@ def number_errors(sl: dict, claims: dict[str, dict], draft: bool = False, staged
         if missing:
             errs.append(f"{label}의 숫자·수량 {missing} 가 인용한 클레임({', '.join(ids)})의 observed·text 에 없다 — 같은 표기로 쓰거나 conversions 에 환산 근거를 적는다")
     return errs
+
+
+# ── 그림(차트 · 원문 캡처) ───────────────────────────────────────────────
+VISUAL_KINDS = ("image_text", "number")  # build.plan_slide 가 왼쪽 그림 자리(deck.IMG_W × IMG_H)를 두는 종류
+VISUAL_KEYS = ("image", "chart", "capture")
+WAIT_IMAGE = "그림:"  # 초안 모드 pending 항목 머리 — '그림:<claim_id>' = 원문 화면 그림 대기
+
+
+def visual_of(sl: dict) -> str:
+    """이 쪽 그림 자리에 들어갈 것: 'chart' · 'capture' · 'image'(종전 회색 자리) · ''(없음). 둘 이상이면 앞의 것(검사가 실패시킨다)."""
+    for k in ("chart", "capture", "image"):
+        if sl.get(k) not in (None, "", {}, []):
+            return k
+    return ""
+
+
+def copy_text(c: dict) -> tuple[bool, str | None, str]:
+    """기록의 원문 사본 글. (사본 묶음이 있는가, 글 | None, 못 읽은 사유).
+    cards.machine_check 와 같은 길로 읽는다: 사본 파일을 다시 해시해 기록과 같을 때만, 같은 캐시(cards._TEXT_CACHE)로 글을 뽑는다.
+    text_path(뽑아 둔 글 파일)는 해시로 묶여 있지 않아 쓰지 않는다."""
+    from ozl.research import capture as K
+    v = c.get("verification")
+    cap = v.get("capture") if isinstance(v, dict) else None
+    if not isinstance(cap, dict) or not _s(cap.get("path")).strip():
+        return False, None, ""
+    path = C._resolve(cap["path"])
+    if not path.is_file():
+        return True, None, f"사본 파일이 없다({cap.get('path')})"
+    if K.sha256_file(path) != cap.get("sha256"):
+        return True, None, "사본 파일의 sha256 이 기록과 다르다"
+    key = (str(path), str(cap.get("sha256")))
+    if key not in C._TEXT_CACHE:
+        C._TEXT_CACHE[key] = K.extract_text(path, cap.get("kind"), cap.get("charset") or "")
+    ex = C._TEXT_CACHE[key]
+    if not ex["ok"]:
+        return True, None, ex["reason"]
+    return True, ex["text"], ""
+
+
+def point_notation(pt) -> str:
+    """대조할 점 값의 표기: 표시 문자열(셋째 칸)이 있으면 그것, 없으면 입력 값의 표기(문자열은 그대로, 수는 str)."""
+    if len(pt) >= 3 and isinstance(pt[2], str) and pt[2].strip():
+        return pt[2].strip()
+    v = pt[1]
+    return v.strip() if isinstance(v, str) else str(v)
+
+
+def chart_screen_text(sl: dict) -> list[str]:
+    """차트 그림에 글자로 찍히는 수량(charts.chart_quantities) — number_errors 의 화면 글에 더한다. 사양 오류면 빈 목록(오류는 chart_errors 가 낸다)."""
+    from ozl.render import charts as G
+    ch = sl.get("chart")
+    if not isinstance(ch, dict) or G.validate_chart(ch):
+        return []
+    return list(G.chart_quantities(ch))
+
+
+def chart_errors(sl: dict, claims: dict[str, dict]) -> list[str]:
+    from ozl.research import capture as K
+    from ozl.render import charts as G
+    ch = sl.get("chart")
+    errs = [f"chart: {e}" for e in G.validate_chart(ch)]
+    if errs:
+        return errs
+    ids = [str(x) for x in sl.get("claim_ids") or []]
+    used = [str(x) for x in ch["claims"]]
+    out_ids = [c for c in used if c not in ids]
+    if out_ids:
+        errs.append(f"chart.claims {out_ids} 가 이 쪽의 claim_ids 에 없다 — 차트가 쓴 기록은 그 쪽이 인용한 기록이어야 한다")
+    texts: list[tuple[str, str]] = []   # (claim_id, 대조할 글) — 사본이 있으면 사본 글, 없으면 observed·text
+    for cid in used:
+        c = claims.get(cid)
+        if c is None:
+            if cid in ids:
+                continue  # claim_state_errors 가 '찾지 못했다'를 낸다
+            errs.append(f"chart.claims {cid} 를 찾지 못했다")
+            continue
+        has, text, why = copy_text(c)
+        if has:
+            if text is None:
+                errs.append(f"chart.claims {cid} 의 원문 사본 글을 읽지 못했다 — {why}")
+            else:
+                texts.append((cid, text))
+        else:
+            texts += [(cid, _s(c.get("observed"))), (cid, _s(c.get("text")))]
+    if not texts:
+        return errs
+    where = "원문 사본 글(사본이 없는 기록은 observed·text)"
+    for s in ch["series"]:
+        for pt in s["points"]:
+            nota = point_notation(pt)
+            hits = [K.find_phrase(t, nota) for _, t in texts]
+            if any(h["found"] for h in hits):
+                continue
+            cut = sum(h["cut"] for h in hits)
+            errs.append(f"chart 계열 '{s['name']}' 점 {pt[0]}: 값 '{nota}' 이 chart.claims({', '.join(used)})의 {where}에 그 표기로 없다"
+                        + (f"(더 긴 수의 조각인 자리 {cut}곳은 찾은 것으로 치지 않았다)" if cut else ""))
+    return errs
+
+
+def image_path(c: dict) -> pathlib.Path | None:
+    p = _s(((c.get("verification") or {}).get("image") or {}).get("path") if isinstance(c.get("verification"), dict) else "").strip()
+    if not p:
+        return None
+    q = C._resolve(p)
+    return q if q.is_file() else None
+
+
+def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:
+    """(실패, 그림 대기 claim_id | None)."""
+    cid = _s(sl.get("capture")).strip()
+    ids = [str(x) for x in sl.get("claim_ids") or []]
+    if not C.CLAIM_ID.match(cid):
+        return [f"capture '{cid}' 는 claim_id 하나여야 한다"], None
+    if cid not in ids:
+        return [f"capture {cid} 가 이 쪽의 claim_ids 에 없다 — 원문 캡처는 그 쪽이 인용한 기록의 것이어야 한다"], None
+    c = claims.get(cid)
+    if c is None:
+        return [], None  # claim_state_errors 가 '찾지 못했다'를 낸다
+    if image_path(c) is not None:
+        return ([] if draft or not acceptance_error(c) else [f"capture {cid} 는 {acceptance_error(c)}"]), None
+    if draft:
+        return [], cid
+    errs = [f"capture {cid} 의 원문 화면 그림(verification.image.path)이 없다 — 초안 모드(--draft)에서만 '그림 대기'로 둘 수 있다"]
+    why = acceptance_error(c)
+    if why:
+        errs.append(f"capture {cid} 는 {why}")
+    return errs, None
+
+
+def visual_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:
+    """그림 칸 검사 (실패, 그림 대기 claim_id | None)."""
+    have = [k for k in VISUAL_KEYS if sl.get(k) not in (None, "", {}, [])]
+    errs: list[str] = []
+    if len(have) > 1:
+        errs.append(f"그림 자리는 하나다 — {' · '.join(have)} 가운데 하나만 쓴다")
+    kind = sl.get("kind")
+    for k in ("chart", "capture"):
+        if k in have and kind not in VISUAL_KINDS:
+            errs.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
+    if errs:
+        return errs, None
+    if "chart" in have:
+        return chart_errors(sl, claims), None
+    if "capture" in have:
+        return capture_errors(sl, claims, draft)
+    return [], None
 
 
 # ── 각주(화면에 찍히는 글 — 생성과 검사가 같은 함수를 쓴다) ─────────────────
@@ -447,6 +628,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         if not str(ps["url"]).startswith(("https://", "http://")):
             r.errors.append(f"press_sources[{k}]: url 이 주소가 아니다")
         press[str(ps["name"])] = ps
+    bare: list[int] = []  # 엄격 모드: 그림이 하나도 없는 image_text 쪽(경고 한 줄로 모은다)
     for i, sl in enumerate(slides, 1):
         tag = f"{i}쪽"
         if not isinstance(sl, dict):
@@ -485,7 +667,7 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
             for x in N.exempt_identifiers(t, idents):
                 if x not in r.exempt_idents:
                     r.exempt_idents.append(x)
-        for e in number_errors(sl, claims, draft, staged, [foot], idents):
+        for e in number_errors(sl, claims, draft, staged, [foot] + chart_screen_text(sl), idents):
             r.errors.append(f"{tag}: {e}")
         if draft:
             _, pend = claim_state_errors([str(x) for x in sl.get("claim_ids") or []], claims, True, staged)
@@ -505,11 +687,19 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
                     r.errors.append(f"{tag}: refs '{ref}' 는 사양 press_sources 에만 있다 — 카드 sources 에 반영되기 전에는 초안 모드(--draft)에서만 쓸 수 있다")
             elif card is not None or press:
                 r.errors.append(f"{tag}: refs '{ref}' 가 카드 sources 와 사양 press_sources 의 name 에 없다")
+        verrs, wait = visual_errors(sl, claims, draft)
+        r.errors += [f"{tag}: {e}" for e in verrs]
+        if wait:
+            r.pending.setdefault(i, []).append(WAIT_IMAGE + wait)
+        if not draft and kind == "image_text" and not visual_of(sl):
+            bare.append(i)
         if sl.get("seconds") is None:
             r.warnings.append(f"{tag}: 예상 발화 시간(seconds)이 없다")
         if layout_fn is not None:
             for e in layout_fn(sl):
                 r.errors.append(f"{tag}: {e}")
+    if bare:
+        r.warnings.append(f"그림 자리가 비었다(image_text 인데 chart·capture·image 가 없다): {', '.join(map(str, bare))}쪽 — 글만 있는 장이 의도면 그대로 둔다")
     errs, warns = stage_errors([str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides], template)
     r.errors += errs
     r.warnings += warns
