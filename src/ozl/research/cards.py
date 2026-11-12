@@ -362,6 +362,60 @@ def _unique_span(norm_find: dict, what: str, errs: list[str]):
 _TEXT_CACHE: dict[tuple[str, str, str, str], dict] = {}   # (사본 경로, sha256, 종류, charset) → 뽑은 글. 덱 검사가 같은 사본을 장마다 다시 읽지 않게
 
 
+_STRONG_KINDS = {"html", "pdf", "xlsx"}   # 바이트만으로 가를 수 있는 종류
+
+
+def copy_source(c: dict) -> dict:
+    """기록의 원문 사본을 읽는 단 하나의 길 — machine_check 와 덱 검사(spec.copy_text)·빌드가 모두 이것만 쓴다.
+    {has(사본 묶음이 있는가), ok, text, reason, path, kind, cap}. 경로 규칙(captures 안 · '..' 없음) → 파일 있음 → 재해시 →
+    종류 재판별(바이트가 html·pdf·zip 이면 기록의 kind 와 같아야 한다 — kind 만 바꿔 숨긴 글을 꺼내는 길을 막는다) → 추출(캐시)."""
+    from . import capture as K
+    v = c.get("verification")
+    cap = v.get("capture") if isinstance(v, dict) else None
+    out = {"has": False, "ok": False, "text": None, "reason": "", "path": None, "kind": "", "cap": cap if isinstance(cap, dict) else {}}
+    if not isinstance(cap, dict) or _blank(cap.get("path")):
+        out["reason"] = f"사본 파일이 없다({(cap or {}).get('path') if isinstance(cap, dict) else None})"
+        return out
+    out["has"] = True
+    kind = cap.get("kind")
+    if kind not in K.KINDS:
+        out["reason"] = f"사본 종류 오류({kind})"
+        return out
+    for k in ("path", "text_path"):
+        if not _blank(cap.get(k)) and not _inside_captures(cap.get(k)):
+            out["reason"] = f"사본 경로가 사본 폴더(captures) 밖이다(capture.{k}: {cap.get(k)})"
+            return out
+    path = _resolve(cap["path"])
+    if not path.is_file():
+        out["reason"] = f"사본 파일이 없다({cap.get('path')})"
+        return out
+    if K.sha256_file(path) != cap.get("sha256"):
+        out["reason"] = "사본 파일의 sha256 이 기록과 다르다(받은 뒤에 바뀌었다)"
+        return out
+    with open(path, "rb") as f:
+        head = f.read(8192)
+    bk = K.byte_kind(head)
+    if (bk in _STRONG_KINDS and bk != kind) or (kind in ("pdf", "xlsx") and bk != kind):
+        out["reason"] = f"사본 바이트는 {bk or '판별 불가'} 인데 기록의 kind 는 {kind} 다 — 종류를 바꿔 읽지 않는다"
+        return out
+    key = (str(path), str(cap.get("sha256")), str(kind), str(cap.get("charset") or ""))
+    if key not in _TEXT_CACHE:
+        _TEXT_CACHE[key] = K.extract_text(path, kind, cap.get("charset") or "")
+    ex = _TEXT_CACHE[key]
+    out.update(path=path, kind=kind)
+    if not ex["ok"]:
+        out["reason"] = ex["reason"]
+        return out
+    out.update(ok=True, text=ex["text"])
+    return out
+
+
+def copy_text(c: dict) -> tuple[bool, str | None, str]:
+    """(사본 묶음이 있는가, 사본 글 | None, 못 읽은 사유). copy_source 의 짧은 꼴."""
+    r = copy_source(c)
+    return r["has"], r["text"], r["reason"]
+
+
 def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
     """기록을 저장한 사본으로 다시 검사한다. (사유 목록, 다시 계산한 match). 기록에 적힌 found·offsets 는 믿지 않는다.
     fresh=True 는 등급을 올리기 전의 검사(pending 이고 사람 대조 전이어야 한다). fresh=False 는 이미 「원문 일치」인 기록을
@@ -383,23 +437,10 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
     cap = v.get("capture") or {}
     if cap.get("url") != src.get("url"):
         errs.append("사본을 받은 주소가 source.url 과 다르다")
-    if cap.get("kind") not in K.KINDS:
-        errs.append(f"사본 종류 오류({cap.get('kind')})")
-    for k in ("path", "text_path"):
-        if not _blank(cap.get(k)) and not _inside_captures(cap.get(k)):
-            return errs + [f"사본 경로가 사본 폴더(captures) 밖이다(capture.{k}: {cap.get(k)})"], {}
-    path = _resolve(cap.get("path") or "")
-    if _blank(cap.get("path")) or not path.is_file():
-        return errs + [f"사본 파일이 없다({cap.get('path')})"], {}
-    if K.sha256_file(path) != cap.get("sha256"):
-        return errs + ["사본 파일의 sha256 이 기록과 다르다(받은 뒤에 바뀌었다)"], {}
-    key = (str(path), str(cap.get("sha256")), str(cap.get("kind")), str(cap.get("charset") or ""))
-    if key not in _TEXT_CACHE:
-        _TEXT_CACHE[key] = K.extract_text(path, cap.get("kind"), cap.get("charset") or "")
-    ex = _TEXT_CACHE[key]
-    if not ex["ok"]:
-        return errs + [ex["reason"]], {}
-    text = ex["text"]
+    src_copy = copy_source(c)
+    if not src_copy["ok"]:
+        return [f"{cid}: {x}" for x in errs + [src_copy["reason"]]], {}
+    text = src_copy["text"]
     obs = K.find_phrase(text, c.get("observed") or "")
     match = {"found": obs["found"], "count": obs["count"], "offsets": [m["offset"] for m in obs["matches"]],
              "context": K.context_of(obs["matches"][0], c["observed"]) if obs["found"] else ""}
@@ -442,6 +483,11 @@ def machine_check(c: dict, fresh: bool = True) -> tuple[list[str], dict]:
             elif n_in != 1:
                 errs.append(f"재대조한 쪽 대목 안에 observed 가 {n_in}번 나와 같은 자리라고 할 수 없다")
     errs += recheck_check_errors(c)
+    if target:   # 대조한 자리 하나 — 문맥·그림은 이 자리의 것이다(첫째 자리가 아니라)
+        m = next(x for x in obs["matches"] if (x["offset"], x["end"]) == target)
+        match["target"] = {"offset": m["offset"], "end": m["end"], "raw_offset": m["raw_offset"], "page": m["page"],
+                           "nth": obs["matches"].index(m)}
+        match["context"] = K.context_of(m, c["observed"])
     return [f"{cid}: {x}" for x in errs], match
 
 

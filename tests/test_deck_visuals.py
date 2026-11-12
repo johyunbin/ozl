@@ -69,16 +69,25 @@ def desk(tmp_path, monkeypatch):
     return tmp_path
 
 
-def machine_claim(tmp, image=True) -> dict:
-    """사본을 받고(주입한 응답) 재대조 기록을 붙여 machine_verify 로 「원문 일치」까지 올린 기록. image=True 면 원문 화면 그림(가짜 PNG)도 둔다."""
+def pending_claim(tmp, body: bytes = HTML, observed: str = "", author_located: str = "", recheck_located: str = "12월 값은 18,250이다") -> dict:
+    """사본을 받고(주입한 응답) 재대조 기록까지 붙였지만 아직 machine_verify 전(pending)인 기록 — 정본 위치(임시)에 저장한다."""
     c = base_claim()
-    got = K.capture_claim(c, tmp / "captures", C.ROOT, fetcher=lambda u, d: K.fetch(u, d, opener=lambda req, timeout: Resp(HTML)), shot=False)
-    c["verification"] = {"method": "machine", **got, "author": {"by": "agent-a", "located": ""},
-                         "recheck": {"by": "agent-b", "located": "12월 값은 18,250이다",
+    if observed:
+        c["observed"] = observed
+    got = K.capture_claim(c, tmp / "captures", C.ROOT, fetcher=lambda u, d: K.fetch(u, d, opener=lambda req, timeout: Resp(body)), shot=False)
+    c["verification"] = {"method": "machine", **got, "author": {"by": "agent-a", "located": author_located},
+                         "recheck": {"by": "agent-b", "located": recheck_located,
                                      "checks": {"unit": "원", "as_of": "2098년", "status": "확정", "population": "가상", "speaker": "가상 섬 통계청"},
                                      "at": "2099-01-02T10:00:00+09:00"},
                          "verified_at": ""}
     C.save_yaml(C.claim_path(CID), c)
+    return c
+
+
+def machine_claim(tmp, image=True, **kw) -> dict:
+    """pending_claim 을 machine_verify 로 「원문 일치」까지 올린 기록. image=True 면 기록의 verification.image 에 가짜 PNG 를 적는다
+    (덱은 이것을 쓰지 않는다 — 빌드가 사본에서 새로 그린다)."""
+    pending_claim(tmp, **kw)
     r = C.machine_verify(CID)
     assert r["ok"], r["reasons"]
     c = C.load_yaml(C.claim_path(CID))
@@ -191,13 +200,21 @@ def test_chart_and_capture_together_fails(desk):
 
 
 # ── 원문 캡처 ────────────────────────────────────────────────────────────
-def test_capture_without_image_fails_strict_and_waits_in_draft(desk):
-    c = machine_claim(desk, image=False)
+def test_capture_not_yet_accepted_fails_strict_and_waits_in_draft(desk):
+    c = pending_claim(desk)                                       # 사본은 있지만 아직 「원문 일치」가 아니다
     errs = errors(slide(capture=CID), {CID: c})
-    assert any("원문 화면 그림" in e and "없다" in e for e in errs), errs
+    assert any(e.startswith("3쪽: capture ") and "사람 대조 전" in e for e in errs), errs
     rep = S.check(spec_of([slide(capture=CID)]), {CID: c}, TEMPLATE, draft=True, layout_fn=B.layout_problems)
     assert rep.ok, rep.errors
-    assert rep.pending == {3: [S.WAIT_IMAGE + CID]}
+    assert rep.pending[3] == [CID, S.WAIT_IMAGE + CID]
+    # 받아들여지는 기록이면 그림 파일 없이도(빌드가 사본에서 그린다) 엄격 모드가 통과한다
+    c = machine_claim(desk, image=False)
+    assert errors(slide(capture=CID), {CID: c}) == []
+
+
+def test_capture_needs_drawable_copy_for_human_record_without_copy():
+    errs = errors(slide(claim_ids=[OLD], capture=OLD), {OLD: old_claim()})
+    assert any("원문 사본으로 그림을 그릴 수 없다" in e for e in errs), errs
 
 
 def test_capture_must_be_cited_and_accepted(desk):
@@ -231,7 +248,7 @@ def test_build_puts_chart_and_capture_pictures_in_pptx(desk):
     assert rep.ok, rep.errors
     out = desk / "out" / "d.pptx"
     B.build_pptx(sp, {CID: c}, {"card_id": CARD}, out)
-    assert sorted(p.name for p in (out.parent / B.VISUALS_DIR).iterdir()) == ["03_chart.png", "04_chart.png"]
+    assert sorted(p.name for p in (out.parent / B.VISUALS_DIR).iterdir()) == ["03_chart.png", "04_chart.png", "05_capture.png"]
     prs = Presentation(str(out))
     slides = list(prs.slides)
     for k in (2, 3):
@@ -240,7 +257,10 @@ def test_build_puts_chart_and_capture_pictures_in_pptx(desk):
         assert abs(pics[0].width / pics[0].height - (B.deck.IMG_W / B.deck.IMG_H)) < 0.01   # 그림 자리와 같은 비(찌그러지지 않는다)
     pics = _pictures(slides[4])
     assert len(pics) == 1 and pics[0].name == "원문 캡처"
-    assert abs(pics[0].width / pics[0].height - 900 / 1400) < 0.01                        # 비율을 지켰다
+    from PIL import Image
+    with Image.open(out.parent / B.VISUALS_DIR / "05_capture.png") as g:
+        gw, gh = g.size
+    assert abs(pics[0].width / pics[0].height - gw / gh) < 0.01                             # 새로 그린 그림의 비율을 지켰다
     assert pics[0].height <= B.deck.IMG_H + 1 and pics[0].width <= B.deck.IMG_W + 1          # 자리 안쪽
     texts = [sh.text_frame.text for sh in slides[4].shapes if sh.has_text_frame]
     assert any(t.startswith("원문: stats.example.org · 받은 날 ") for t in texts), texts
@@ -253,15 +273,54 @@ def test_build_puts_chart_and_capture_pictures_in_pptx(desk):
 
 def test_draft_build_marks_waiting_capture(desk):
     from pptx import Presentation
-    c = machine_claim(desk, image=False)
+    c = pending_claim(desk)
     sp = spec_of([slide(capture=CID)])
     rep = S.check(sp, {CID: c}, TEMPLATE, draft=True, layout_fn=B.layout_problems)
     out = desk / "out" / "w.pptx"
     B.build_pptx(sp, {CID: c}, {"card_id": CARD}, out, pending=rep.pending)
     s3 = Presentation(str(out)).slides[2]
     texts = [sh.text_frame.text for sh in s3.shapes if sh.has_text_frame]
-    assert any(t == "[그림 대기] c1" for t in texts), texts
+    assert any(t == "[검증 대기] c1 · [그림 대기] c1" for t in texts), texts      # 아직 받아들여지지 않은 기록 = 검증 대기이자 그림 대기
     assert any("그림 대기 — c1" in t for t in texts) and not _pictures(s3)
-    assert "[그림 대기]" in s3.notes_slide.notes_text_frame.text and "[검증 대기]" not in s3.notes_slide.notes_text_frame.text
+    assert "[그림 대기]" in s3.notes_slide.notes_text_frame.text
     md = B.running_sheet(sp, {"card_id": CARD}, {CID: c}, "x", rep.pending)
     assert "| 원문 캡처 c1 [그림 대기] |" in md
+
+
+def _build_capture_png(desk, c, name):
+    sp = spec_of([slide(capture=CID)])
+    out = desk / name / "d.pptx"
+    B.build_pptx(sp, {CID: c}, {"card_id": CARD}, out)
+    return (out.parent / B.VISUALS_DIR / "03_capture.png").read_bytes()
+
+
+def test_capture_ignores_recorded_image_path(desk):
+    """기록의 verification.image.path 를 무관한 PNG 로 바꿔도 덱의 원문 캡처는 달라지지 않는다(빌드가 사본에서 새로 그린다)."""
+    from PIL import Image
+    c = machine_claim(desk)
+    a = _build_capture_png(desk, c, "o1")
+    junk = desk / "captures" / "junk.png"
+    Image.new("RGB", (50, 50), "red").save(junk)
+    c2 = copy.deepcopy(c)
+    c2["verification"]["image"] = {"path": str(junk), "reason": ""}
+    assert _build_capture_png(desk, c2, "o2") == a
+    c3 = copy.deepcopy(c)
+    c3["verification"]["image"] = {"path": "", "reason": "없음"}
+    assert _build_capture_png(desk, c3, "o3") == a
+
+
+def test_capture_uses_the_matched_place_not_the_first(desk, monkeypatch):
+    """observed 가 사본에 두 번 나오고 둘째 자리를 대조했으면 문맥과 그림은 둘째 자리의 것이다."""
+    body = ("<!doctype html><html><body><p>가상 1분기 감자 값은 18,250이다.</p><p>가상 4분기 당근 값은 18,250이다.</p>"
+            f"<p>{PAD}</p></body></html>").encode("utf-8")
+    c = machine_claim(desk, image=False, body=body, observed="값은 18,250이다", author_located="4분기 당근 값은 18,250이다",
+                      recheck_located="가상 4분기 당근 값은 18,250이다.")
+    m = c["verification"]["match"]
+    assert m["count"] == 2 and m["target"]["nth"] == 1 and "당근" in m["context"] and "감자 값은【" not in m["context"]
+    text = C.copy_text(c)[1]
+    second = K.find_phrase(text, "값은 18,250이다")["matches"][1]["offset"]
+    seen = []
+    real = K.evidence_image
+    monkeypatch.setattr(K, "evidence_image", lambda *a, **k: seen.append(a[5]) or real(*a, **k))
+    _build_capture_png(desk, c, "o4")
+    assert seen == [second]

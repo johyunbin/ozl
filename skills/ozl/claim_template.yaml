@@ -36,7 +36,7 @@ human_verified: false
 #   method: machine
 #   capture: {url, final_url, fetched_at, sha256, path, kind, text_path}
 #   match: {found, count, offsets, context}
-#   image: {path, reason}
+#   image: {path, reason}             # 미리 보기일 뿐이다. 덱은 이 그림을 쓰지 않고, 빌드할 때 해시가 확인된 사본의 대조한 자리에서 새로 그린다
 #   author: {by: "쓴 쪽 식별자", located: ""}      # observed 가 사본에 여러 번 나오면 어느 자리인지 가리키는 대목
 #   recheck: {by: "재대조한 쪽 식별자", located: "사본에서 스스로 찾은 대목", checks: {unit, as_of, status: 확정|잠정|전망|주장, population, speaker}, at}
 #   verified_at: ""                # machine-verify 가 채운다 → status verified · 표시 「원문 일치」(human_verified 는 false 그대로)

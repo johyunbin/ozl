@@ -670,7 +670,7 @@ def draw_pending(slide, ids: list[str]):
 
 
 def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int, tuple[pathlib.Path | None, str]]:
-    """쪽 번호 → (넣을 PNG | None, 출처 줄). chart 는 vis_dir 에 그리고, capture 는 기록의 화면 그림 파일을 그대로 쓴다(복사하지 않는다)."""
+    """쪽 번호 → (넣을 PNG | None, 출처 줄). chart 와 capture 모두 vis_dir 에 그때 새로 그린다(capture 는 해시가 확인된 사본에서 — capture_png)."""
     from ozl.render import charts as G
     out: dict[int, tuple[pathlib.Path | None, str]] = {}
     for idx, sl in enumerate(spec.get("slides") or [], 1):
@@ -687,8 +687,25 @@ def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int,
             out[idx] = (png, "")
         else:
             c = claims.get(im.ref) or {}
-            out[idx] = (S.image_path(c), capture_credit(c))
+            out[idx] = (capture_png(c, vis_dir / f"{idx:02d}_capture.png", chart_png_size(im)), capture_credit(c))
     return out
+
+
+def capture_png(c: dict, out: pathlib.Path, size_px: tuple[int, int]) -> pathlib.Path | None:
+    """원문 캡처를 빌드 때 새로 그린다 — 기록이 받아들여지고(acceptance_error 빈 문자열), 해시가 확인된 사본에서, 대조한 자리(match.target)의 그림.
+    기록의 verification.image 는 쓰지 않는다(아무 PNG 로 바꿔 넣을 수 있다). 그리지 못하면 None(그림 대기 자리)."""
+    from ozl.research import capture as K
+    if not c or S.acceptance_error(c):
+        return None
+    target = S.capture_target(c)
+    src = C.copy_source(c)
+    if not target or not src["ok"]:
+        return None
+    cap = src["cap"]
+    r = K.evidence_image(str(c.get("claim_id")), src["path"], src["kind"], src["text"], str(c.get("observed") or ""), target["offset"],
+                         {"url": cap.get("final_url") or cap.get("url"), "fetched_at": cap.get("fetched_at"), "sha256": cap.get("sha256")},
+                         out, size_px=size_px)
+    return pathlib.Path(r["path"]) if r.get("path") else None
 
 
 def visual_label(sl: dict, waiting: bool = False) -> str:

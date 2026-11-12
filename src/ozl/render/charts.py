@@ -187,17 +187,38 @@ def _label(pt) -> str | None:
     return None
 
 
-def _display_matches(display: str, value: float) -> bool | None:
-    """표시 문자열이 수만으로 된 표기(쉼표·소수·부호·끝 %)면 값과 같은지. 판단할 수 없는 표기면 None."""
-    s = display.strip()
-    if s.endswith("%"):
-        s = s[:-1]
-    if not _PLAIN_NUM.match(s) or not re.search(r"\d", s):
-        return None
+_DISPLAY = re.compile(r"^([+\-−]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*([^\d]*)$")
+
+
+def _decimal_of(v) -> Decimal | None:
     try:
-        return Decimal(s.replace(",", "").replace("−", "-")) == Decimal(repr(value))
+        if isinstance(v, bool):
+            return None
+        if isinstance(v, int):
+            return Decimal(v)
+        if isinstance(v, float):
+            return Decimal(repr(v))
+        if isinstance(v, str):
+            return Decimal(v.strip().replace(",", "").replace("−", "-"))
     except InvalidOperation:
         return None
+    return None
+
+
+def _display_matches(display: str, value) -> bool | None:
+    """표시 문자열이 '[부호]숫자(쉼표 허용)[.소수]' 뒤에 숫자 없는 단위 꼬리만 붙은 꼴(4명 · 123.93 · 1,644,131 · -70.9%)이면
+    그 수가 좌표값과 Decimal 로 정확히 같은지. 그 꼴이 아니면(1억 2,345 · 약 4명) None — 검사가 오류로 본다(표시 문자열로 실제 값을 숨기지 못하게)."""
+    m = _DISPLAY.match(display.strip())
+    if not m:
+        return None
+    try:
+        shown = Decimal(m.group(1).replace(",", "").replace("−", "-"))
+    except InvalidOperation:
+        return None
+    want = _decimal_of(value)
+    if want is None:
+        return None
+    return shown == want
 
 
 # ── 검사 ─────────────────────────────────────────────────────────────────
@@ -280,8 +301,13 @@ def validate_chart(spec) -> list[str]:
                 if len(pt) == 3:
                     if not _nonempty_str(pt[2]):
                         errs.append(f"{tag} 점 {pi}({x}): 표시 문자열이 비었거나 문자열이 아니다")
-                    elif fv is not None and _display_matches(pt[2], fv) is False:
-                        errs.append(f"{tag} 점 {pi}({x}): 표시 문자열 '{pt[2]}' 이 값 {v!r} 과 다르다")
+                    elif fv is not None:
+                        same = _display_matches(pt[2], v)
+                        if same is None:
+                            errs.append(f"{tag} 점 {pi}({x}): 표시 문자열 '{pt[2]}' 은 [부호]숫자(쉼표)[.소수] 뒤에 숫자 없는 단위 꼬리만 붙은 꼴이어야 한다"
+                                        " — 값과 같은지 판정할 수 없다")
+                        elif not same:
+                            errs.append(f"{tag} 점 {pi}({x}): 표시 문자열 '{pt[2]}' 이 값 {v!r} 과 다르다")
             if len(set(xs)) != len(xs):
                 errs.append(f"{tag}: 가로축 칸이 겹친다")
             xs_all.append(xs)

@@ -708,3 +708,106 @@ def test_stale_verified_badge_is_rejudged_from_claims():
     single = {**base_claim(), "status": "single_source"}
     human = {**base_claim(), "status": "verified", "human_verified": True}
     assert C.badge_ko(card, [human, single]) == "단독"
+
+
+# ════ Codex 2차 검토 반례 ═══════════════════════════════════════════════
+import random  # noqa: E402
+
+import _fuzz_capture as FZ  # noqa: E402
+
+
+# A1 양끝에 단위가 있는 범위의 한쪽 · A3 공백 없는 긴 문맥 · A2 단위가 낀 표 칸
+@pytest.mark.parametrize("text,obs,want", [
+    ("전망치는 3%~5%다.", "5%", False), ("전망치는 3%~5%다.", "3%", False), ("전망치는 3%~5%다.", "3%~5%", True),
+    ("금액은 3억~5억원이다.", "5억원", False), ("금액은 3억~5억원이다.", "3억~5억원", True), ("금액은 3억원이다.", "3억", True),
+    ("격차는 5%p" + "가" * 61, "5%", False), ("예산은 1억2만원" + "가" * 61, "1억", False), ("가" * 61 + "1억2만원", "2만원", False),
+    ("가" * 500 + " 값은 3%다", "3%", True),
+    ("70\t만 배럴", "70 만 배럴", False), ("…감소한\n4,513억 원", "감소한 4,513억 원", True),
+    ("값은 3명\n5명이다", "3명 5명", False), ("값은 3%\n−5%다", "3% −5%", False),
+])
+def test_find_phrase_ranges_cells_and_long_context(text, obs, want):
+    assert K.find_phrase(text, obs)["found"] is want
+
+
+def test_html_table_cells_are_tab_separated():
+    t = K.html_text("<table><tr><td>1억</td><td>2천만원</td></tr><tr><td>가</td><td>나</td></tr></table>".encode())
+    assert "1억\t" in t and "\t2천만원" in t
+    assert not K.find_phrase(t, "1억 2천만원")["found"]
+
+
+def test_window_without_space_up_to_limit_is_rejected():
+    assert not K.find_phrase("가" * 450 + "3%" + "가" * 450, "3%")["found"]
+
+
+# A4 무작위 시험 — 문법으로 만든 글과 문구, 만든 방법이 곧 정답(tests/_fuzz_capture.py)
+def test_fuzz_quantity_pieces_never_found_and_wholes_found():
+    r = random.Random(20261113)
+    bad = []
+    n = 0
+    for _ in range(300):
+        text, items = FZ.document(r)
+        for q, why in FZ.queries(r, items):
+            n += 1
+            want = FZ.expected(text, items, q, why)
+            if K.find_phrase(text, q)["found"] is not want:
+                bad.append((why, want, q, text))
+    assert n > 3000 and not bad, bad[:5]
+
+
+# B1 종류를 바꿔 숨긴 글을 꺼낸다
+def test_kind_swap_cannot_reveal_hidden_text(desk):
+    body = ("<!doctype html><html><head><script>var v='9876';</script></head><body>"
+            f"<p>{PAD}</p></body></html>").encode("utf-8")
+    claim = prepare(desk, base_claim(observed="9876"), body=body, rc=recheck(located="9876"))
+    claim["verification"]["capture"]["kind"] = "text"
+    C.save_yaml(C.claim_path(CID), claim)
+    r = C.machine_verify(CID)
+    assert not r["ok"] and any("종류를 바꿔 읽지 않는다" in x for x in r["reasons"])
+
+
+@pytest.mark.parametrize("head,kind,ok", [(b"%PDF-1.4", "html", False), (b"PK\x03\x04", "text", False), (b"<html><body>", "json", False),
+                                          (b'{"a": 1}', "json", True), (b"plain words", "text", True), (b"plain words", "pdf", False)])
+def test_byte_kind_rule(desk, head, kind, ok):
+    p = desk / "captures" / CID / "source.bin"
+    p.parent.mkdir(parents=True)
+    p.write_bytes(head + b" " * 10)
+    c = {"verification": {"capture": {"path": str(p), "kind": kind, "sha256": K.sha256_file(p)}}}
+    r = C.copy_source(c)
+    assert ("종류를 바꿔 읽지 않는다" in r["reason"]) is (not ok)
+
+
+# B2 사본 글은 한 곳에서만
+def test_spec_copy_text_is_cards_copy_text(desk):
+    import inspect
+    claim = prepare(desk, base_claim())
+    assert S.copy_text(claim) == C.copy_text(claim)
+    src = inspect.getsource(S)
+    assert "C._" not in src and "_TEXT_CACHE" not in src
+
+
+# D 대조한 자리 — match.target · 문맥
+def test_match_target_is_the_place_rechecked(desk):
+    body = doc("A사 매출 10억 원.", "B사 매출 10억 원.")
+    prepare(desk, base_claim(observed="10억 원"), body=body, author_located="B사 매출 10억 원.", rc=recheck(located="B사 매출 10억 원."))
+    assert C.machine_verify(CID)["ok"]
+    m = C.load_yaml(C.claim_path(CID))["verification"]["match"]
+    assert m["target"]["nth"] == 1 and "B사 매출 【10억 원】" in m["context"]
+
+
+@pytest.mark.skipif(not (shutil.which("pdftoppm") and shutil.which("pdftotext")), reason="poppler 없음")
+def test_evidence_image_pdf_band_and_passage(tmp_path):
+    p = tmp_path / "a.pdf"
+    _pdf(p, ["Imaginary Island potato harvest was 4,321 tonnes in 2098.", "Carrot harvest was 4,321 tonnes as well."] + ["Filler line."] * 20)
+    text = K.extract_text(p, "pdf")["text"]
+    ms = K.find_phrase(text, "4,321 tonnes")["matches"]
+    assert len(ms) == 2
+    r = K.evidence_image(CID, p, "pdf", text, "4,321 tonnes", ms[1]["offset"], {}, tmp_path / "e.png")
+    assert r["path"] and r["view"] == "pdf_band" and r["offset"] == ms[1]["offset"]
+    from PIL import Image
+    with Image.open(r["path"]) as g:
+        assert g.width < 200 / 72 * 595        # 쪽 전체가 아니라 띠로 잘랐다
+    h = K.html_text(HTML)
+    m = K.find_phrase(h, "수확량은 4,321톤으로")["matches"][0]
+    r = K.evidence_image(CID, tmp_path / "x.html", "html", h, "수확량은 4,321톤으로", m["offset"], {"url": URL}, tmp_path / "t.png", size_px=(600, 590))
+    assert r["path"] and r["view"] == "text_passage"
+    assert K.evidence_image(CID, p, "pdf", text, "4,321 tonnes", 3, {}, tmp_path / "z.png")["path"] == ""   # 대조한 자리가 아니면 그리지 않는다

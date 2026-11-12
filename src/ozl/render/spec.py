@@ -19,8 +19,10 @@
          (capture.find_phrase — 공백만 정리, 더 긴 수의 조각은 찾은 것으로 치지 않는다). 사본이 없는 기록(사람이 대조한 옛 기록)은 observed·text 에서 찾는다.
        · 못 하는 것: 값이 사본에 있는지만 프로그램이 봤다. 칸(어느 달·어느 항목)과 값의 짝은 문장 대조에서 본다.
          세로축 눈금 숫자는 대조하지 않는다(자료가 아니라 축척이다). y_from_zero: false 는 러닝시트에 적힌다.
-     - capture: <claim_id> — 그 기록의 원문 화면 그림(verification.image.path). claim_ids 안이어야 하고, 엄격 모드는 받는 기록(acceptance_error 빈 문자열)이며
-       그림 파일이 실제로 있어야 한다. 초안 모드는 그림이 없으면 그 쪽을 '그림 대기'로 표시한다(pending 에 '그림:<claim_id>').
+     - capture: <claim_id> — 그 기록의 원문 캡처. 빌드 때 해시가 확인된 사본에서 대조한 자리(match.target)의 그림을 새로 그린다
+       (verification.image 는 미리 보기일 뿐 쓰지 않는다). claim_ids 안이어야 하고, 엄격 모드는 받는 기록(acceptance_error 빈 문자열)이며
+       사본이 그림을 그릴 수 있고(copy_source 통과) 대조한 자리가 하나로 정해져야 한다. 초안 모드는 기록이 아직 받아들여지지 않으면
+       그 쪽을 '그림 대기'로 표시한다(pending 에 '그림:<claim_id>').
      - 엄격 모드에서 image_text 쪽에 그림이 하나도 없으면 경고(글만 있는 장이 의도일 수 있어 실패는 아니다).
 
     python -m ozl.render check <사양.yaml>
@@ -216,26 +218,9 @@ def visual_of(sl: dict) -> str:
 
 
 def copy_text(c: dict) -> tuple[bool, str | None, str]:
-    """기록의 원문 사본 글. (사본 묶음이 있는가, 글 | None, 못 읽은 사유).
-    cards.machine_check 와 같은 길로 읽는다: 사본 파일을 다시 해시해 기록과 같을 때만, 같은 캐시(cards._TEXT_CACHE)로 글을 뽑는다.
-    text_path(뽑아 둔 글 파일)는 해시로 묶여 있지 않아 쓰지 않는다."""
-    from ozl.research import capture as K
-    v = c.get("verification")
-    cap = v.get("capture") if isinstance(v, dict) else None
-    if not isinstance(cap, dict) or not _s(cap.get("path")).strip():
-        return False, None, ""
-    path = C._resolve(cap["path"])
-    if not path.is_file():
-        return True, None, f"사본 파일이 없다({cap.get('path')})"
-    if K.sha256_file(path) != cap.get("sha256"):
-        return True, None, "사본 파일의 sha256 이 기록과 다르다"
-    key = (str(path), str(cap.get("sha256")))
-    if key not in C._TEXT_CACHE:
-        C._TEXT_CACHE[key] = K.extract_text(path, cap.get("kind"), cap.get("charset") or "")
-    ex = C._TEXT_CACHE[key]
-    if not ex["ok"]:
-        return True, None, ex["reason"]
-    return True, ex["text"], ""
+    """기록의 원문 사본 글. (사본 묶음이 있는가, 글 | None, 못 읽은 사유). cards.copy_text 그대로 —
+    machine_check 와 같은 한 길(경로 규칙 · 재해시 · 종류 재판별 · 추출 캐시)로 읽는다."""
+    return C.copy_text(c)
 
 
 def point_notation(pt) -> str:
@@ -298,16 +283,10 @@ def chart_errors(sl: dict, claims: dict[str, dict]) -> list[str]:
     return errs
 
 
-def image_path(c: dict) -> pathlib.Path | None:
-    p = _s(((c.get("verification") or {}).get("image") or {}).get("path") if isinstance(c.get("verification"), dict) else "").strip()
-    if not p:
-        return None
-    q = C._resolve(p)
-    return q if q.is_file() else None
-
-
 def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:
-    """(실패, 그림 대기 claim_id | None)."""
+    """(실패, 그림 대기 claim_id | None). 원문 캡처 그림은 빌드 때 해시가 확인된 사본에서 새로 그린다(기록의 verification.image 는 쓰지 않는다).
+    그래서 여기서는 그림 파일이 아니라 '기록이 받아들여지는가(acceptance_error 빈 문자열)'와 '사본에서 그림을 그릴 수 있는가'를 본다.
+    초안 모드의 그림 대기 = 기록이 아직 받아들여지지 않을 때."""
     cid = _s(sl.get("capture")).strip()
     ids = [str(x) for x in sl.get("claim_ids") or []]
     if not C.CLAIM_ID.match(cid):
@@ -317,15 +296,31 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     c = claims.get(cid)
     if c is None:
         return [], None  # claim_state_errors 가 '찾지 못했다'를 낸다
-    if image_path(c) is not None:
-        return ([] if draft or not acceptance_error(c) else [f"capture {cid} 는 {acceptance_error(c)}"]), None
-    if draft:
-        return [], cid
-    errs = [f"capture {cid} 의 원문 화면 그림(verification.image.path)이 없다 — 초안 모드(--draft)에서만 '그림 대기'로 둘 수 있다"]
     why = acceptance_error(c)
     if why:
-        errs.append(f"capture {cid} 는 {why}")
-    return errs, None
+        return ([], cid) if draft else ([f"capture {cid} 는 {why}"], None)
+    src = C.copy_source(c)
+    if not src["ok"]:
+        return [f"capture {cid} 의 원문 사본으로 그림을 그릴 수 없다 — {src['reason']}"], None
+    if not capture_target(c):
+        return [f"capture {cid} 의 대조한 자리를 정하지 못했다 — observed 가 사본에 한 번만 나오거나 재대조 기록이 자리를 정해야 한다"], None
+    return [], None
+
+
+def capture_target(c: dict) -> dict | None:
+    """원문 캡처를 그릴 자리 — machine_check 가 정한 유일한 자리(match.target). 사람이 대조한 기록은 observed 가 사본에 한 번만 나올 때 그 자리."""
+    from ozl.research import capture as K
+    _, match = C.machine_check(c, fresh=False)
+    if match.get("target"):
+        return match["target"]
+    if c.get("human_verified") is True:
+        src = C.copy_source(c)
+        if src["ok"]:
+            f = K.find_phrase(src["text"], _s(c.get("observed")))
+            if f["count"] == 1:
+                m = f["matches"][0]
+                return {"offset": m["offset"], "end": m["end"], "page": m["page"]}
+    return None
 
 
 def visual_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:

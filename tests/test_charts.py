@@ -215,3 +215,11 @@ def test_missing_glyph_refused(tmp_path):
     spec = line_spec(source="가상 협회 \uA9C1")  # 어느 글꼴에도 없는 글자 → 네모로 찍지 않고 거절
     with pytest.raises(ValueError, match="글꼴에 없는 글자"):
         CH.render_chart(spec, tmp_path / "x.png")
+
+
+@pytest.mark.parametrize("display,ok", [("4명", False), ("999명", True), ("999", True), ("1억 2,345", False), ("약 999", False), ("999.0", True),
+                                        ("9,99", False), ("-999", False)])
+def test_display_string_cannot_hide_the_value(display, ok):
+    """표시 문자열로 실제 값을 숨기지 못한다: 막대가 999 로 그려지는데 '4명' 이라고 적으면 오류. 판정할 수 없는 꼴도 오류다."""
+    spec = line_spec(series=[{"name": "갑", "points": [["가", 999, display], ["나", 2]]}], highlight=[])
+    assert (CH.validate_chart(spec) == []) is ok
