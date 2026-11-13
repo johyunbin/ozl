@@ -420,6 +420,33 @@ def _wrap(fig, renderer, text: str, size: float, max_px: float, bold: bool = Fal
     return lines or [""]
 
 
+ITEM_SEP = " · "
+
+
+def _wrap_items(fig, renderer, text: str, size: float, max_px: float, sep: str = ITEM_SEP) -> list[str]:
+    """구분자(' · ')에서만 줄을 바꾼다 — 한 항목('기간: 2025년 3분기', '2026년 2분기') 안에서는 끊지 않는다.
+    항목 하나가 줄보다 길 때만 그 항목을 어절 단위(_wrap)로 나눈다."""
+    lines: list[str] = []
+    cur = ""
+    for item in text.split(sep):
+        cand = f"{cur}{sep}{item}" if cur else item
+        if _text_w(fig, renderer, cand, size) <= max_px:
+            cur = cand
+            continue
+        if cur:
+            lines.append(cur + sep.rstrip())
+            cur = ""
+        if _text_w(fig, renderer, item, size) <= max_px:
+            cur = item
+        else:
+            parts = _wrap(fig, renderer, item, size, max_px)
+            lines += parts[:-1]
+            cur = parts[-1]
+    if cur:
+        lines.append(cur)
+    return lines or [""]
+
+
 def _fmt_tick(x, _pos) -> str:
     if abs(x) < 1e-12:
         return "0"
@@ -473,7 +500,7 @@ def _draw(fig, spec, labels, W: int, H: int) -> None:
         fig.text(pad / W, y / H, line, fontsize=TITLE_PT, fontweight="bold", color=TEXT, va="top", ha="left")
         y -= TITLE_PT * 1.3 * pt2px
     y -= 0.15 * TITLE_PT * pt2px
-    for line in _wrap(fig, r, _sub_line(spec), SUB_PT, inner):
+    for line in _wrap_items(fig, r, _sub_line(spec), SUB_PT, inner):
         fig.text(pad / W, y / H, line, fontsize=SUB_PT, color=SUBTLE, va="top", ha="left")
         y -= SUB_PT * 1.3 * pt2px
     legend_top = y - 0.25 * SUB_PT * pt2px

@@ -571,16 +571,71 @@ def visual_rows(spec: dict, pending: dict[int, list[str]] | None = None) -> list
     return rows
 
 
+def _fetched(at) -> str:
+    """받은 시각 '2026-11-13T08:02:23+09:00' → '2026-11-13 08:02'(한 어절이 칸 폭을 넘지 않게)."""
+    t = str(at or "")
+    m = re.match(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})", t)
+    return f"{m.group(1)} {m.group(2)}" if m else t
+
+
+CAPTURE_VIEW = {"text_passage": "원문의 글을 옮겨 그림", "pdf_band": "PDF 쪽에서 자름", "pdf_page": "PDF 쪽 전체"}
+
+
+def visual_check_rows(spec: dict, claims: dict, pending=None, views: dict[int, str] | None = None) -> list[list[str]]:
+    """차트·원문 캡처마다 한 행. 그림 안에서 뺀 내부 정보(기록 번호·주소·받은 시각·사본 해시)를 이 표가 맡는다.
+    views = 빌드 때 실제로 그린 그림의 종류(쪽 → evidence_image 의 view). 없으면(검사 때) 사본 종류로 어림한다."""
+    rows = []
+    for i, sl in enumerate(spec.get("slides") or [], 1):
+        v = S.visual_of(sl)
+        pg = str(i) + (f"\n{PENDING_MARK}" if i in (pending or {}) else "")
+        if v == "chart" and isinstance(sl["chart"], dict):
+            ch = sl["chart"]
+            ids = ", ".join(str(c).rsplit("-", 1)[-1] for c in ch.get("claims") or [])
+            has_copy = any(S.copy_text(claims.get(str(c)) or {})[0] for c in ch.get("claims") or [])
+            scope = ("값이 사본에 있는지는 프로그램이 확인" if has_copy else "값이 기록 observed·text 에 있는지는 프로그램이 확인") + \
+                " · 칸과 값의 짝은 문장 대조에서 확인" + (" · 세로축이 0에서 시작하지 않음" if ch.get("y_from_zero") is False else "")
+            rows.append([pg, f"차트({'선' if ch.get('kind') == 'line' else '막대'})", f"{ch.get('title', '')} · 기록 {ids}",
+                         f"단위 {ch.get('unit', '')} · 기간 {ch.get('period', '')}", "", scope])
+        elif v == "capture":
+            cid = str(sl["capture"]).strip()
+            c = claims.get(cid) or {}
+            cap = ((c.get("verification") or {}).get("capture") or {}) if isinstance(c.get("verification"), dict) else {}
+            url = str(cap.get("final_url") or cap.get("url") or (c.get("source") or {}).get("url") or "")
+            view = (views or {}).get(i) or ("pdf_band" if cap.get("kind") == "pdf" else "text_passage")
+            label = CAPTURE_VIEW.get(view, view)
+            if view == "text_passage" and cap.get("kind") == "pdf":
+                label = "PDF 의 글을 옮겨 그림"
+            sha = str(cap.get("sha256") or "")[:12]
+            rows.append([pg, "원문 캡처", f"기록 {cid.rsplit('-', 1)[-1]}", url, f"{_fetched(cap.get('fetched_at'))} · sha256 {sha}", label])
+    return rows
+
+
 PENDING_MARK = "[검증 대기]"
 WAIT_MARK = "[그림 대기]"   # 초안 모드: capture 기록의 원문 화면 그림이 아직 없다
 SRC_HEADER = ["클레임", "기관", "문서 위치", "링크", "기준 시점", "쪽"]
 SRC_WIDTHS = [1.0, 1.9, 3.0, 3.3, 1.2, 1.01]
 VIS_HEADER = ["쪽", "무엇을", "어느 공식 출처에서", "역검색", "400% 확대", "지도 표기"]
 VIS_WIDTHS = [1.2, 3.3, 3.9, 1.0, 1.0, 1.01]
+VC_HEADER = ["쪽", "종류", "무엇을", "원문 주소 · 단위·기간", "받은 시각 · 사본", "검증 범위 · 그림"]
+VC_WIDTHS = [0.8, 1.1, 2.5, 3.3, 1.7, 2.01]
+VC_FOOT = "원문 캡처 그림에는 대목 글만 둔다 — 기록 번호·원문 주소·받은 시각·사본 sha256 은 이 표가 맡는다. 차트의 값은 사본(또는 기록)에 그 표기로 있는지만 프로그램이 봤다."
+
+
+def appendix_tables(spec: dict, claims: dict, card: dict | None, pending=None, views=None) -> list[tuple]:
+    """부록 표 (제목, 머리, 폭, 행) — 검사와 빌드가 같은 목록을 쓴다. 시각물 표: 회색 그림 자리(image)가 있거나 차트·캡처가 없으면 종전 표,
+    차트·원문 캡처가 있으면 그 검증표."""
+    out = [("부록 · 출처", SRC_HEADER, SRC_WIDTHS, source_rows(spec, claims, card or {}, pending))]
+    img_rows = visual_rows(spec, pending)
+    vc_rows = visual_check_rows(spec, claims, pending, views)
+    if img_rows or not vc_rows:
+        out.append(("부록 · 시각물 출처·검증표", VIS_HEADER, VIS_WIDTHS, img_rows))
+    if vc_rows:
+        out.append(("부록 · 시각물 출처·검증표(차트·원문 캡처)", VC_HEADER, VC_WIDTHS, vc_rows))
+    return out
 
 
 def _appx_table(header, rows, widths, top, bottom) -> Table:
-    free = frozenset({SRC_HEADER.index("링크")}) if header is SRC_HEADER else frozenset()
+    free = frozenset({SRC_HEADER.index("링크")}) if header is SRC_HEADER else frozenset({VC_HEADER.index("원문 주소 · 단위·기간")}) if header is VC_HEADER else frozenset()
     return Table(ML, top, sum(widths), widths, header, rows, size=APPX_SIZE, max_bottom=bottom, words_whole=True, free_cols=free)
 
 
@@ -633,8 +688,8 @@ def appendix_number_errors(spec: dict, claims: dict, card: dict | None) -> list[
 def appendix_problems(spec: dict, claims: dict, card: dict | None, pending=None) -> list[str]:
     """부록 표 검사 — 일반 글 칸의 숫자(appendix_number_errors) · 어절이 칸 폭을 넘으면 실패(주소만 예외) · 한 행이 한 쪽을 넘쳐도 실패."""
     out = appendix_number_errors(spec, claims, card)
-    for title, header, widths, rows in (("부록·출처", SRC_HEADER, SRC_WIDTHS, source_rows(spec, claims, card or {}, pending)),
-                                        ("부록·시각물", VIS_HEADER, VIS_WIDTHS, visual_rows(spec, pending))):
+    for title, header, widths, rows in appendix_tables(spec, claims, card, pending):
+        title = title.replace(" · ", "·")
         for t in paginate(header, rows, widths):
             for e in t.problems(title):
                 if e not in out:
@@ -669,7 +724,7 @@ def draw_pending(slide, ids: list[str]):
     _style_run(r, 14, True, deck.EMPH_RGB)
 
 
-def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int, tuple[pathlib.Path | None, str]]:
+def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int, tuple[pathlib.Path | None, str, str]]:
     """쪽 번호 → (넣을 PNG | None, 출처 줄). chart 와 capture 모두 vis_dir 에 그때 새로 그린다(capture 는 해시가 확인된 사본에서 — capture_png)."""
     from ozl.render import charts as G
     out: dict[int, tuple[pathlib.Path | None, str]] = {}
@@ -684,27 +739,28 @@ def render_visuals(spec: dict, claims: dict, vis_dir: pathlib.Path) -> dict[int,
         if v == "chart":
             vis_dir.mkdir(parents=True, exist_ok=True)
             png = G.render_chart(sl["chart"], vis_dir / f"{idx:02d}_chart.png", size_px=chart_png_size(im), slot_width_in=im.width)
-            out[idx] = (png, "")
+            out[idx] = (png, "", "chart")
         else:
             c = claims.get(im.ref) or {}
-            out[idx] = (capture_png(c, vis_dir / f"{idx:02d}_capture.png", chart_png_size(im)), capture_credit(c))
+            png, view = capture_png(c, vis_dir / f"{idx:02d}_capture.png", chart_png_size(im), sl.get("capture_focus"))
+            out[idx] = (png, capture_credit(c), view)
     return out
 
 
-def capture_png(c: dict, out: pathlib.Path, size_px: tuple[int, int]) -> pathlib.Path | None:
+def capture_png(c: dict, out: pathlib.Path, size_px: tuple[int, int], focus=None) -> tuple[pathlib.Path | None, str]:
     """원문 캡처를 빌드 때 새로 그린다 — 기록이 받아들여지고(acceptance_error 빈 문자열), 해시가 확인된 사본에서, 대조한 자리(match.target)의 그림.
     기록의 verification.image 는 쓰지 않는다(아무 PNG 로 바꿔 넣을 수 있다). 그리지 못하면 None(그림 대기 자리)."""
     from ozl.research import capture as K
     if not c or S.acceptance_error(c):
-        return None
+        return None, ""
     target = S.capture_target(c)
     src = C.copy_source(c)
     if not target or not src["ok"]:
-        return None
+        return None, ""
     cap = src["cap"]
     r = K.evidence_image(str(c.get("claim_id")), src["path"], src["kind"], src["text"], str(c.get("observed") or ""), target["offset"],
-                         S.capture_meta(cap), out, size_px=size_px)
-    return pathlib.Path(r["path"]) if r.get("path") else None
+                         S.capture_meta(cap), out, size_px=size_px, focus=focus)
+    return (pathlib.Path(r["path"]), str(r.get("view") or "")) if r.get("path") else (None, "")
 
 
 def visual_label(sl: dict, waiting: bool = False) -> str:
@@ -728,7 +784,7 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
         pl = plan_slide(sl)
         for im in pl.imgs:
             if im.kind in ("chart", "capture") and idx in visuals:
-                draw_visual(s, im, *visuals[idx])
+                draw_visual(s, im, *visuals[idx][:2])
             else:
                 draw_img(s, im)
         for b in pl.boxes:
@@ -748,8 +804,8 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
         s.notes_slide.notes_text_frame.text = nt
     n_main = len(spec["slides"])
     appx = []
-    for title, header, widths, rows in (("부록 · 출처", SRC_HEADER, SRC_WIDTHS, source_rows(spec, claims, card, pending)),
-                                        ("부록 · 시각물 출처·검증표", VIS_HEADER, VIS_WIDTHS, visual_rows(spec, pending))):
+    views = {i: v[2] for i, v in visuals.items() if v[2] and v[2] != "chart"}
+    for title, header, widths, rows in appendix_tables(spec, claims, card, pending, views):
         pages = paginate(header, rows, widths)
         for k, t in enumerate(pages, 1):
             s = deck._blank(prs)
@@ -759,6 +815,8 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
             ttl = title + (f" ({k}/{len(pages)})" if len(pages) > 1 else "")
             draw_box(s, _title_box({"title": ttl}))
             draw_table(s, t, header_rgb=deck.BODY_RGB)
+            if header is VC_HEADER:
+                _footnote(s, VC_FOOT)
             if header is VIS_HEADER:
                 _footnote(s, "역검색(Google Lens·TinEye) · 400% 확대 검수 · 지도 동해·독도·국경 표기는 사람이 확인하고 칸을 채운다. 공식 보도자료실·프레스킷·기관 CI·라이선스 스톡만 쓴다(방법론 5절).")
             s.notes_slide.notes_text_frame.text = f"[부록] {title} — 검증 기록(claims)과 사양의 그림 자리에서 자동으로 만들었다."

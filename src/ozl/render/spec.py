@@ -293,6 +293,9 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     초안 모드의 그림 대기 = 기록이 아직 받아들여지지 않을 때."""
     cid = _s(sl.get("capture")).strip()
     ids = [str(x) for x in sl.get("claim_ids") or []]
+    ferr = focus_error(sl)
+    if ferr:
+        return [ferr], None
     if not C.CLAIM_ID.match(cid):
         return [f"capture '{cid}' 는 claim_id 하나여야 한다"], None
     if cid not in ids:
@@ -300,6 +303,11 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     c = claims.get(cid)
     if c is None:
         return [], None  # claim_state_errors 가 '찾지 못했다'를 낸다
+    from ozl.research import capture as K
+    try:
+        K.focus_spans(_s(c.get("observed")), sl.get("capture_focus"))
+    except ValueError as e:
+        return [f"capture {cid}: {e} — 형광으로 칠할 구절은 대조한 대목(observed) 안에서 글자 그대로 따온다"], None
     why = acceptance_error(c)
     if why:
         return ([], cid) if draft else ([f"capture {cid} 는 {why}"], None)
@@ -311,10 +319,21 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     if not target:
         return [f"capture {cid} 의 대조한 자리를 정하지 못했다 — observed 가 사본에 한 번만 나오거나 재대조 기록이 자리를 정해야 한다"], None
     fit = K.evidence_image(cid, src["path"], src["kind"], src["text"], _s(c.get("observed")), target["offset"], capture_meta(src["cap"]),
-                           "", size_px=capture_size(sl), check_only=True)
+                           "", size_px=capture_size(sl), check_only=True, focus=sl.get("capture_focus"))
     if fit.get("reason"):
         return [f"capture {cid} 의 원문 캡처를 그릴 수 없다 — {fit['reason']}"], None
     return [], None
+
+
+def focus_error(sl: dict) -> str:
+    """capture_focus 의 모양과 자리. 구절(문자열) 또는 구절 목록이고, 각 구절이 대조한 대목(observed) 안에 글자 그대로(공백만 정리) 있어야 한다.
+    대목 안의 자리는 그림을 그릴 때(capture.focus_spans) 같은 규칙으로 다시 본다."""
+    f = sl.get("capture_focus")
+    if f is None:
+        return ""
+    if not (isinstance(f, str) or (isinstance(f, list) and f and all(isinstance(x, str) for x in f))) or not all(x.strip() for x in ([f] if isinstance(f, str) else f)):
+        return "capture_focus 는 비지 않은 구절(문자열) 또는 구절 목록이어야 한다"
+    return ""
 
 
 def capture_meta(cap: dict) -> dict:
@@ -356,6 +375,8 @@ def visual_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[
     if len(have) > 1:
         errs.append(f"그림 자리는 하나다 — {' · '.join(have)} 가운데 하나만 쓴다")
     kind = sl.get("kind")
+    if sl.get("capture_focus") is not None and "capture" not in have:
+        errs.append("capture_focus 는 capture 를 쓴 쪽에서만 쓴다")
     for k in ("chart", "capture"):
         if k in have and kind not in VISUAL_KINDS:
             errs.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
@@ -504,8 +525,45 @@ def measure(text: str, size: float, bold: bool = False) -> float:
     return sum(size if ord(ch) > 0x2E80 else size * 0.55 for ch in text) * (1.04 if bold else 1.0)
 
 
+# 수량 덩어리(줄 사이에서 가르지 않는 낱말 묶음) — 판독(numbers.py)과 별개인 단순 규칙이다. 줄 배치에만 쓰고 숫자 검사에는 쓰지 않는다.
+#   '약' + 숫자로 시작하는 낱말 · 숫자(+크기 단위 십·백·천·만·억·조)만인 낱말 + 숫자로 시작하는 낱말이나 단위 낱말 · '2022년'·'11월' + '11월'·'3분기'·'5일'
+QTY_UNITS = ("퍼센트포인트", "제곱피트", "제곱미터", "퍼센트", "포인트", "달러", "가구", "개월", "시간", "배럴", "위안", "유로", "파운드", "분기",
+             "%p", "명", "원", "개", "회", "건", "곳", "배", "톤", "%", "년", "월", "일", "엔", "대", "척", "주", "세", "살", "층", "분", "초", "장", "편",
+             "million", "billion", "trillion", "thousand", "percent", "dollars", "miles", "mile", "feet", "tonnes", "tons", "people", "kg", "km", "bp")
+_PARTICLE = (r"(?=$|[^가-힣A-Za-z]|(?:으로|로|에서|에|은|는|이|가|을|를|의|와|과|도|만|씩|까지|부터|이다|였다|이었다|이며|이고|입니다|"
+             r"정도|가량|쯤|어치|짜리|당|째|간|이나|나|보다|다|인|씩))")
+_UNIT_WORD = re.compile(r"^(?:" + "|".join(map(re.escape, QTY_UNITS)) + r")" + _PARTICLE, re.I)
+_NUM_WORD = re.compile(r"^[(\[“\"'‘]?[-+−△▲▽▼]?[$€£¥₩]?\d")
+_NUM_OPEN = re.compile(r"^[(\[“\"'‘]?[-+−△▲▽▼]?[$€£¥₩]?\d[\d,.]*[십백천만억조경]*$")
+_DATE_OPEN = re.compile(r"^\d{1,4}(?:년|월)$")
+_DATE_NEXT = re.compile(r"^\d{1,2}(?:월|일|분기)" + _PARTICLE)
+
+
+def _qty_joined(prev: str, nxt: str) -> bool:
+    if prev == "약":
+        return bool(_NUM_WORD.match(nxt))
+    if _DATE_OPEN.match(prev):
+        return bool(_DATE_NEXT.match(nxt))
+    if _NUM_OPEN.match(prev):
+        return bool(_NUM_WORD.match(nxt) or _UNIT_WORD.match(nxt))
+    return False
+
+
+def qty_groups(text: str, words: list[tuple[int, int]]) -> list[list[tuple[int, int]]]:
+    """어절들을 수량 덩어리로 묶는다(덩어리 밖 어절은 홀로 한 묶음)."""
+    groups: list[list[tuple[int, int]]] = []
+    for s, e in words:
+        if groups and _qty_joined(text[groups[-1][-1][0]:groups[-1][-1][1]], text[s:e]):
+            groups[-1].append((s, e))
+        else:
+            groups.append([(s, e)])
+    return groups
+
+
 def wrap(text: str, width_pt: float, size: float, bold_mask: list[bool] | None = None, measure_fn=measure) -> list[tuple[int, int]]:
     """어절(공백으로 나뉜 덩어리) 단위로 줄을 나눈다. 반환 = 각 줄의 [시작, 끝) 글자 위치(줄 끝 공백 제외).
+    수량 덩어리(qty_groups — '약 4억 1,000만 달러', '5만 명', '2022년 11월')는 한 줄에 둔다. 덩어리가 들어갈 자리가 없으면 덩어리 앞에서 줄을 바꾸고,
+    덩어리 하나가 줄 폭보다 길면 그때만 덩어리 안에서 어절 단위로 나눈다.
     한 어절이 줄 폭보다 길어도 자르지 않고 그 줄에 홀로 둔다(검사에서 넘침으로 잡는다)."""
     words = [(m.start(), m.end()) for m in re.finditer(r"\S+", text)]
     if not words:
@@ -523,14 +581,28 @@ def wrap(text: str, width_pt: float, size: float, bold_mask: list[bool] | None =
         return tot
 
     lines: list[tuple[int, int]] = []
-    a, b = words[0]
-    for s, e in words[1:]:
-        if w(a, e) <= width_pt:
-            b = e
+    cur: list[int] = []   # [a, b] 지금 줄
+
+    def put(s: int, e: int):
+        if not cur:
+            cur[:] = [s, e]
+        elif w(cur[0], e) <= width_pt:
+            cur[1] = e
         else:
-            lines.append((a, b))
-            a, b = s, e
-    lines.append((a, b))
+            lines.append((cur[0], cur[1]))
+            cur[:] = [s, e]
+
+    for g in qty_groups(text, words):
+        gs, ge = g[0][0], g[-1][1]
+        if len(g) == 1 or w(gs, ge) <= width_pt:
+            put(gs, ge)   # 덩어리째 — 지금 줄에 안 들어가면 덩어리 앞에서 바꾼다
+            continue
+        if cur:          # 줄 폭보다 긴 덩어리: 덩어리 앞에서 줄을 바꾸고 그 안은 어절 단위
+            lines.append((cur[0], cur[1]))
+            cur.clear()
+        for s, e in g:
+            put(s, e)
+    lines.append((cur[0], cur[1]))
     return lines
 
 

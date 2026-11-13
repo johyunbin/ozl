@@ -1149,12 +1149,133 @@ def _pdf_words(pdf: pathlib.Path, page: int) -> tuple[float, float, list[tuple[f
     return float(pm.group(1)), float(pm.group(2)), words
 
 
-def _pdf_band(pdf: pathlib.Path, page: int, phrase: str, page_nth: int, page_count: int, out: pathlib.Path, dpi: int = 200) -> dict:
-    """문구가 있는 쪽을 그리고, 낱말 자리를 얻으면 그 줄 둘레를 띠로 잘라 문구에 형광 표시를 한다. 못 얻으면 쪽 전체."""
+PASSAGE_NOTE = "원문의 글을 옮겨 그린 것 · 화면 모양은 원문과 다름"   # 대목을 다시 그린 그림 맨 아래 한 줄(정직성 표기)
+SLOT_W_IN = 4.20            # 덱 왼쪽 그림 자리 폭(in · deck.IMG_W) — 그림 글자를 슬라이드 위 pt 로 정하는 기준
+PASSAGE_PT = (18, 16, 14, 13, 12, 11, 10, 9)  # 대목 글자 크기(슬라이드 위 pt) — 큰 것부터, 마지막이 최소(이보다 작으면 실패)
+PASSAGE_PT_FULL = 12        # 이 크기 이하에서만 앞뒤 문맥을 모두 뺀 배치까지 해 본다(더 큰 글자에서는 문맥을 짧게라도 남긴다)
+FALLBACK_FONTS = ("/System/Library/Fonts/AppleSDGothicNeo.ttc", "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+                  "/Library/Fonts/Arial Unicode.ttf")   # 주 글꼴에 없는 글자(・ ‧ 등)만 이 글꼴로 그린다(네모로 찍지 않는다)
+NOTE_PT = 7.5
+BAND_MIN_PT = 9.0           # PDF 띠를 그림 자리 폭에 맞췄을 때 대목 글자가 이보다 작으면 띠 대신 대목을 다시 그린다
+BAND_MAX_RATIO = 3.0        # 띠의 가로:세로가 이를 넘으면 위아래 줄을 더 담아 세로를 확보한다(최대 BAND_CTX_LINES 줄)
+BAND_CTX_LINES = (1, 2, 3)
+BAND_TARGET_PX = 1400       # 띠 그림의 가로 픽셀(자리 폭 4.2in 에서 약 330dpi)
+CTX_CHARS = 60              # 대목 앞뒤 문맥(한 문장 안팎)의 최대 글자 수
+
+
+def focus_spans(phrase: str, focus) -> list[tuple[int, int]] | None:
+    """capture_focus(구절 또는 구절 목록)가 공백을 정리한 대목 안에서 차지하는 자리들. focus 가 없으면 None(대목 전체 강조).
+    한 구절이라도 대목 안에 글자 그대로(공백만 정리) 없으면 ValueError."""
+    if focus in (None, "", []):
+        return None
+    items = [focus] if isinstance(focus, str) else list(focus)
+    norm = _WS.sub(" ", phrase or "").strip()
+    out: list[tuple[int, int]] = []
+    for f in items:
+        n = _WS.sub(" ", str(f or "")).strip()
+        if not n:
+            raise ValueError("capture_focus 에 빈 구절이 있다")
+        st, hit = 0, False
+        while True:
+            i = norm.find(n, st)
+            if i < 0:
+                break
+            out.append((i, i + len(n)))
+            hit, st = True, i + 1
+        if not hit:
+            raise ValueError(f"capture_focus '{n}' 가 대조한 대목 안에 글자 그대로 없다")
+    return sorted(set(out))
+
+
+def _pdf_lines(words) -> list[list[tuple]]:
+    """낱말을 세로 가운데로 묶은 줄(위에서 아래로)."""
+    lines: list[list[tuple]] = []
+    for w in sorted(words, key=lambda w: ((w[1] + w[3]) / 2, w[0])):
+        cy, h = (w[1] + w[3]) / 2, max(1.0, w[3] - w[1])
+        if lines:
+            last = lines[-1]
+            lcy = sum((x[1] + x[3]) / 2 for x in last) / len(last)
+            if abs(cy - lcy) < 0.5 * h:
+                last.append(w)
+                continue
+        lines.append([w])
+    return lines
+
+
+def _pdf_band_plan(pdf: pathlib.Path, page: int, phrase: str, page_nth: int, page_count: int, focus=None,
+                   slot_width_in: float = SLOT_W_IN) -> dict:
+    """띠의 자리(pt)와 강조할 낱말. {'mode': 'band'|'page'|'redraw', ...}.
+    band = 대목이 든 줄들 + 위아래 한두 줄, 가로는 그 쪽 글 영역 전체(왼쪽·오른쪽 여백 안쪽). 띠를 그림 자리 폭에 맞췄을 때
+    대목 글자가 BAND_MIN_PT 보다 작으면 redraw(대목을 다시 그린다)."""
+    wb = _pdf_words(pdf, page)
+    if not wb:
+        return {"mode": "page", "note": "쪽 전체(낱말 자리를 얻지 못했다)"}
+    pw, ph, words = wb
+    joined, spans = "", []
+    for w in words:
+        if joined:
+            joined += " "
+        spans.append((len(joined), len(joined) + len(w[4])))
+        joined += w[4]
+    needle = _WS.sub(" ", phrase).strip()
+    occ, st = [], 0
+    while True:
+        x = joined.find(needle, st)
+        if x < 0:
+            break
+        occ.append(x)
+        st = x + 1
+    # 그 쪽에 문구가 한 번만 나올 때만 띠·강조. 두 번 이상이면 -layout 글과 -bbox 낱말의 순서가 달라(다단 PDF) n번째끼리 맞춰도
+    # 다른 자리를 강조할 수 있다 — 쪽 전체를 넣고 사유를 남긴다
+    if not (page_count == 1 and len(occ) == 1 and page_nth == 0):
+        if page_count > 1:
+            note = f"쪽 전체(그 쪽에 문구가 {page_count}번 나와 대조한 자리를 그림에서 가리지 못한다 — 띠로 자르지도 강조하지도 않았다)"
+        elif occ:
+            note = f"쪽 전체(쪽의 낱말 열에서 문구가 {len(occ)}번 보여 대조한 자리와 맞추지 못했다)"
+        else:
+            note = "쪽 전체(쪽의 낱말 열에서 문구를 찾지 못했다)"
+        return {"mode": "page", "note": note, "pw": pw, "ph": ph}
+    a = occ[0]
+    b = a + len(needle)
+    hit = [w for w, (s0, s1) in zip(words, spans) if s0 < b and a < s1]
+    marks = hit
+    fs = focus_spans(needle, focus)
+    if fs:
+        sel = [w for w, (s0, s1) in zip(words, spans) if any(s0 < a + f1 and a + f0 < s1 for f0, f1 in fs)]
+        marks = sel or hit
+    lines = _pdf_lines(words)
+    hit_ids = {id(w) for w in hit}
+    idx = [i for i, ln in enumerate(lines) if any(id(w) in hit_ids for w in ln)]
+    i0, i1 = min(idx), max(idx)
+    lh = max(6.0, sorted(w[3] - w[1] for w in hit)[len(hit) // 2])    # 대목 낱말 높이의 가운데 값 ≈ 글자 크기
+    x0 = min(w[0] for w in words) - 0.4 * lh                            # 쪽 글 영역 전체 폭
+    x1 = max(w[2] for w in words) + 0.4 * lh
+    x0, x1 = max(0.0, x0), min(pw, x1)
+    bw = x1 - x0
+    eff = lh * slot_width_in * 72 / bw
+    if eff < BAND_MIN_PT:
+        return {"mode": "redraw", "note": f"PDF 띠의 글자가 그림 자리에서 {eff:.1f}pt 로 작아 대목을 옮겨 그렸다"}
+    for n in BAND_CTX_LINES:
+        j0, j1 = max(0, i0 - n), min(len(lines) - 1, i1 + n)
+        y0 = min(w[1] for w in lines[j0]) - 0.5 * lh
+        y1 = max(w[3] for w in lines[j1]) + 0.5 * lh
+        y0, y1 = max(0.0, y0), min(ph, y1)
+        if bw / (y1 - y0) <= BAND_MAX_RATIO:
+            break
+    return {"mode": "band", "pw": pw, "ph": ph, "box": (x0, y0, x1, y1), "marks": marks, "eff_pt": eff,
+            "note": "문구가 있는 줄들(쪽 글 영역 전체 폭 · 형광 표시)"}
+
+
+def _pdf_band(pdf: pathlib.Path, page: int, plan: dict, out: pathlib.Path) -> dict:
+    """plan(band|page)대로 쪽을 그려 자른다. band 는 띠 가로가 BAND_TARGET_PX 가 되는 해상도로 뽑는다."""
     from PIL import Image, ImageDraw
     exe = shutil.which("pdftoppm")
     if not exe:
         return {"path": "", "reason": "pdftoppm 없음"}
+    dpi = 200
+    if plan["mode"] == "band":
+        x0, y0, x1, y1 = plan["box"]
+        dpi = int(min(600, max(150, BAND_TARGET_PX * 72 / (x1 - x0))))
     with tempfile.TemporaryDirectory(prefix="ozl-page-") as td:
         prefix = pathlib.Path(td) / "pg"
         rc, err = _run_bounded([exe, "-f", str(page), "-l", str(page), "-r", str(dpi), "-png", "-singlefile", str(pdf), str(prefix)], 60)
@@ -1162,157 +1283,236 @@ def _pdf_band(pdf: pathlib.Path, page: int, phrase: str, page_nth: int, page_cou
         if rc != 0 or not png.is_file():
             return {"path": "", "reason": f"pdftoppm 실패({err})"}
         img = Image.open(png).convert("RGB")
-    note = "쪽 전체(낱말 자리를 얻지 못했다)"
-    wb = _pdf_words(pdf, page)
-    if wb:
-        pw, ph, words = wb
-        k = img.width / pw
-        joined, spans = "", []
-        for w in words:
-            if joined:
-                joined += " "
-            spans.append((len(joined), len(joined) + len(w[4])))
-            joined += w[4]
-        needle = _WS.sub(" ", phrase).strip()
-        occ, st = [], 0
-        while True:
-            x = joined.find(needle, st)
-            if x < 0:
-                break
-            occ.append(x)
-            st = x + 1
-        # 그 쪽에 문구가 한 번만 나올 때만 띠·강조. 두 번 이상이면 -layout 글과 -bbox 낱말의 순서가 달라(다단 PDF) n번째끼리 맞춰도
-        # 다른 자리를 강조할 수 있다 — 쪽 전체를 넣고 사유를 남긴다
-        if page_count == 1 and len(occ) == 1 and page_nth == 0:
-            a = occ[0]
-            b = a + len(needle)
-            hit = [w for w, (s0, s1) in zip(words, spans) if s0 < b and a < s1]
-            x0, y0 = min(w[0] for w in hit), min(w[1] for w in hit)
-            x1, y1 = max(w[2] for w in hit), max(w[3] for w in hit)
-            lh = max(8.0, (y1 - y0) if len(hit) == 1 else max(w[3] - w[1] for w in hit))
-            over = Image.new("RGBA", img.size, (0, 0, 0, 0))
-            d = ImageDraw.Draw(over)
-            for w in hit:
-                d.rectangle([w[0] * k - 2, w[1] * k - 2, w[2] * k + 2, w[3] * k + 2], fill=(255, 224, 102, 110), outline=(230, 150, 0, 255), width=3)
-            img = Image.alpha_composite(img.convert("RGBA"), over).convert("RGB")
-            line = [w for w in words if y0 - 2 <= (w[1] + w[3]) / 2 <= y1 + 2]   # 문구가 있는 줄 전체가 잘리지 않게
-            x0, x1 = min([x0] + [w[0] for w in line]), max([x1] + [w[2] for w in line])
-            bw = max(x1 - x0 + 4 * lh, pw * 0.55)
-            cx = (x0 + x1) / 2
-            bx0 = min(max(0.0, cx - bw / 2), max(0.0, pw - bw))
-            bh = max(y1 - y0 + 8 * lh, bw * 0.55)
-            cy = (y0 + y1) / 2
-            by0 = min(max(0.0, cy - bh / 2), max(0.0, ph - bh))
-            img = img.crop((int(bx0 * k), int(by0 * k), int(min(pw, bx0 + bw) * k), int(min(ph, by0 + bh) * k)))
-            note = "문구가 있는 줄 둘레(형광 표시)"
-        elif page_count > 1:
-            note = f"쪽 전체(그 쪽에 문구가 {page_count}번 나와 대조한 자리를 그림에서 가리지 못한다 — 띠로 자르지도 강조하지도 않았다)"
-        elif occ:
-            note = f"쪽 전체(쪽의 낱말 열에서 문구가 {len(occ)}번 보여 대조한 자리와 맞추지 못했다)"
-        else:
-            note = "쪽 전체(쪽의 낱말 열에서 문구를 찾지 못했다)"
+    if plan["mode"] == "band":
+        k = img.width / plan["pw"]
+        over = Image.new("RGBA", img.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(over)
+        for w in plan["marks"]:
+            d.rectangle([w[0] * k - 2, w[1] * k - 2, w[2] * k + 2, w[3] * k + 2], fill=(255, 224, 102, 110), outline=(230, 150, 0, 255), width=3)
+        img = Image.alpha_composite(img.convert("RGBA"), over).convert("RGB")
+        x0, y0, x1, y1 = plan["box"]
+        img = img.crop((int(x0 * k), int(y0 * k), int(x1 * k), int(y1 * k)))
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
-    return {"path": str(out), "reason": "", "view": "pdf_band" if note.startswith("문구") else "pdf_page", "page": page, "note": note}
+    return {"path": str(out), "reason": "", "view": "pdf_band" if plan["mode"] == "band" else "pdf_page", "page": page, "note": plan["note"]}
 
 
-_FONT_FRACS = (0.040, 0.036, 0.032, 0.028, 0.025, 0.022)   # 대목 글자 크기(그림 폭에 대한 비) — 큰 것부터, 마지막이 최소
-_HEAD_FRAC = 0.024
+_SENT_SPLIT = re.compile(r"(?<=[.!?。])\s+")
 
 
-def _passage_plan(lines_head: list[str], before: str, phrase: str, after: str, size_px: tuple[int, int], font_path: str):
-    """대목 그림의 배치. 문구 전체가 그림 안에 들어가는 가장 큰 글자 크기를 고르고(앞 문맥은 줄여 볼 수 있다), 그래도 안 되면 None.
-    돌려주는 것: (머리 글 줄 [(y, 글)], 머리 글꼴, 대목 글꼴, 상자 위 y, 글자 배치 [(x, y, 글자, 강조)])."""
+def _tail_words(t: str, limit: int) -> str:
+    """끝에서 limit 자 안쪽의 온전한 어절들(어절 가운데서 자르지 않는다)."""
+    t = t.strip()
+    if len(t) <= limit:
+        return t
+    cut = t[-limit:]
+    return cut.split(" ", 1)[1] if " " in cut else ""
+
+
+def _head_words(t: str, limit: int) -> str:
+    t = t.strip()
+    if len(t) <= limit:
+        return t
+    cut = t[:limit]
+    return cut.rsplit(" ", 1)[0] if " " in cut else ""
+
+
+def _ctx_before(before: str, limit: int = CTX_CHARS) -> str:
+    """대목 바로 앞의 한 문장(없으면 앞 글의 끝 조각). 길면 끝에서 limit 자."""
+    b = before.strip()
+    if not b:
+        return ""
+    parts = _SENT_SPLIT.split(b)
+    return _tail_words(parts[-1], limit)
+
+
+def _ctx_after(after: str, limit: int = CTX_CHARS) -> str:
+    a = after.strip()
+    if not a:
+        return ""
+    return _head_words(_SENT_SPLIT.split(a)[0], limit)
+
+
+class _Fonts:
+    """주 글꼴 + 없는 글자만 받는 대체 글꼴(같은 크기). f(ch) = 그 글자를 그릴 글꼴."""
+
+    def __init__(self, font_path: str, size: int):
+        from PIL import ImageFont
+        from matplotlib.ft2font import FT2Font
+        self.main = ImageFont.truetype(font_path, size)
+        self.size = size
+        self._has = FT2Font(font_path)
+        self._fb = [(ImageFont.truetype(p, size), FT2Font(p)) for p in FALLBACK_FONTS if pathlib.Path(p).is_file()]
+        self._cache: dict[str, object] = {}
+
+    def f(self, ch: str):
+        if ch not in self._cache:
+            font = self.main
+            if not ch.isspace() and self._has.get_char_index(ord(ch)) == 0:
+                font = next((pf for pf, ft in self._fb if ft.get_char_index(ord(ch)) != 0), self.main)
+            self._cache[ch] = font
+        return self._cache[ch]
+
+
+def _layout_runs(d, runs: list[tuple[str, str]], fonts: "_Fonts", x0: float, x1: float, y0: float, lh: float, y_max: float):
+    """(글, 모양) 연속을 어절 단위로 줄에 놓는다. 어절이 줄보다 길 때만 글자 단위로 끊는다.
+    돌려주는 것: [(x, y, 글자, 모양)] — y_max 를 넘는 글자는 놓지 않는다."""
+    chars = [(ch, st) for t, st in runs for ch in t]
+    tokens: list[list[tuple[str, str]]] = []
+    cur: list[tuple[str, str]] = []
+    for ch, st in chars:
+        if ch == " ":
+            if cur:
+                tokens.append(cur)
+                cur = []
+            tokens.append([(ch, st)])
+        else:
+            cur.append((ch, st))
+    if cur:
+        tokens.append(cur)
+    # 수량 덩어리('74조 4,319억원으로' · '7 miles' · '약 5만 명')는 한 덩어리로 놓는다 — 덱 글 배치(spec.qty_groups)와 같은 규칙
+    from ozl.render.spec import _qty_joined
+    merged: list[list[tuple[str, str]]] = []
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        last = "".join(c for c, _ in tok)
+        while (tok[0][0] != " " and i + 2 < len(tokens) and tokens[i + 1][0][0] == " " and tokens[i + 2][0][0] != " "
+               and _qty_joined(last, "".join(c for c, _ in tokens[i + 2]))):
+            last = "".join(c for c, _ in tokens[i + 2])
+            tok = tok + tokens[i + 1] + tokens[i + 2]
+            i += 2
+        merged.append(tok)
+        i += 1
+    tokens = merged
+    width = x1 - x0
+    sp = d.textlength(" ", font=fonts.main)
+    x, y, placed = x0, y0, []
+    for tok in tokens:
+        if tok[0][0] == " ":
+            if x > x0:
+                placed.append((x, y, " ", tok[0][1]))
+                x += sp
+            continue
+        w = sum(d.textlength(c, font=fonts.f(c)) for c, _ in tok)
+        if x > x0 and x + w > x1:
+            if placed and placed[-1][2] == " ":
+                placed.pop()
+            x, y = x0, y + lh
+        if y + lh > y_max:
+            break
+        if w <= width:
+            for c, st in tok:
+                placed.append((x, y, c, st))
+                x += d.textlength(c, font=fonts.f(c))
+            continue
+        for c, st in tok:            # 줄보다 긴 어절(긴 수·주소 등) — 글자 단위
+            cw = d.textlength(c, font=fonts.f(c))
+            if x + cw > x1 and x > x0:
+                x, y = x0, y + lh
+            if y + lh > y_max:
+                return placed
+            placed.append((x, y, c, st))
+            x += cw
+    return placed
+
+
+def _passage_plan(before: str, phrase: str, after: str, size_px: tuple[int, int], font_path: str, focus=None,
+                  slot_width_in: float = SLOT_W_IN):
+    """대목 그림의 배치. 큰 글자(슬라이드 위 12pt)부터, 각 크기에서 앞뒤 문맥(한 문장 → 짧게 → 없음)을 줄여 가며 대목 전체가 들어가는 첫 배치.
+    최소(9pt)에서도 안 들어가면 None. 돌려주는 것: (대목 글꼴, 표기 글꼴, 글자 배치 [(x, y, 글자, 모양)], 강조 자리, pt)."""
     from PIL import Image, ImageDraw, ImageFont
     W, H = size_px
     d = ImageDraw.Draw(Image.new("RGB", (8, 8), "white"))
+    px_pt = W / (slot_width_in * 72)
     pad = int(W * 0.05)
-    small = ImageFont.truetype(font_path, int(W * _HEAD_FRAC))
-    head, y = [], pad
-    for ln in lines_head:   # 머리 글은 한 줄씩, 넘치면 글자 단위로 줄을 나눈다
-        cur = ""
-        for ch in ln:
-            if d.textlength(cur + ch, font=small) > W - 2 * pad:
-                head.append((y, cur))
-                y += int(small.size * 1.4)
-                cur = ""
-            cur += ch
-        head.append((y, cur))
-        y += int(small.size * 1.4)
-    for frac in _FONT_FRACS:
-        big = ImageFont.truetype(font_path, int(W * frac))
-        lh = int(big.size * 1.55)
-        top = y + int(big.size * 0.6)
-        for bf in (before, before[-40:], ""):
-            segs = [("…" + bf, False), (phrase, True), (after + "…", False)]
-            x, yy, placed, marked = pad, top, [], 0
-            for seg, mark in segs:
-                for ch in seg:
-                    wch = d.textlength(ch, font=big)
-                    if x + wch > W - pad:
-                        x, yy = pad, yy + lh
-                    if yy + lh > H - pad:
-                        break
-                    placed.append((x, yy, ch, mark))
-                    marked += mark
-                    x += wch
-            if marked == len(phrase):
-                return head, small, big, top, placed
+    note_font = ImageFont.truetype(font_path, max(8, round(NOTE_PT * px_pt)))
+    y_max = H - pad - note_font.size * 1.8
+    spans = focus_spans(phrase, focus)
+    styles = ["mark" if spans is None or any(a <= i < b for a, b in spans) else "norm" for i in range(len(phrase))]
+    pruns: list[tuple[str, str]] = []
+    for ch, st in zip(phrase, styles):
+        if pruns and pruns[-1][1] == st:
+            pruns[-1] = (pruns[-1][0] + ch, st)
+        else:
+            pruns.append((ch, st))
+    bf, af = _ctx_before(before), _ctx_after(after)
+    options = [(bf, af), (_tail_words(bf, 28), _head_words(af, 28)), ("", _head_words(af, 28)), ("", "")]
+    for pt in PASSAGE_PT:
+        big = _Fonts(font_path, max(8, round(pt * px_pt)))
+        lh = big.size * 1.5
+        for b, a in dict.fromkeys(options if pt <= PASSAGE_PT_FULL else options[:2]):
+            runs = ([("…" + b + " ", "ctx")] if b else []) + pruns + ([(" " + a + "…", "ctx")] if a else [])
+            placed = _layout_runs(d, runs, big, pad, W - pad, pad, lh, y_max)
+            if sum(1 for x in placed if x[3] != "ctx" and x[2] != " ") == len(phrase.replace(" ", "")):   # 대목 글자가 전부 놓였다
+                return big, note_font, placed, spans, pt
     return None
 
 
-def _passage_png(lines_head: list[str], before: str, phrase: str, after: str, out: pathlib.Path, size_px: tuple[int, int], font_path: str,
-                 check_only: bool = False) -> dict:
-    """사본에서 뽑은 글의 대목을 그린 그림(원래 화면 모양 아님). 문구에 형광 표시. 글자 크기를 정해 둔 최소(_FONT_FRACS 끝)까지 줄여도
-    대조한 문구 전체가 들어가지 않으면 그리지 않고 사유를 돌려준다(강조할 수치가 그림 밖으로 잘린 채 성공하지 않게).
-    check_only 면 배치만 해 보고 파일은 쓰지 않는다."""
+def _passage_png(before: str, phrase: str, after: str, out: pathlib.Path, size_px: tuple[int, int], font_path: str,
+                 check_only: bool = False, focus=None, slot_width_in: float = SLOT_W_IN) -> dict:
+    """사본에서 뽑은 글의 대목을 그린 그림(원래 화면 모양 아님). 그림에는 대목 글과 맨 아래 한 줄 표기(PASSAGE_NOTE)만 둔다 —
+    기록 번호·주소·받은 시각·sha256 은 부록 「시각물 출처·검증표」가 맡는다. 강조: capture_focus 가 있으면 그 구절만, 없으면 대목 전체.
+    글자를 정해 둔 최소(PASSAGE_PT 끝)까지 줄여도 대목 전체가 들어가지 않으면 그리지 않고 사유를 돌려준다."""
     from PIL import Image, ImageDraw
-    plan = _passage_plan(lines_head, before, phrase, after, size_px, font_path)
+    plan = _passage_plan(before, phrase, after, size_px, font_path, focus, slot_width_in)
     if plan is None:
-        return {"path": "", "reason": f"대조한 문구({len(phrase)}자)가 가장 작은 글자 크기로도 그림({size_px[0]}×{size_px[1]})에 다 들어가지 않는다 — 더 짧은 대목으로 따온다",
+        return {"path": "", "reason": f"대조한 문구({len(phrase)}자)가 가장 작은 글자 크기({PASSAGE_PT[-1]}pt)로도 그림({size_px[0]}×{size_px[1]})에 다 들어가지 않는다 — 더 짧은 대목으로 따온다",
                 "view": "text_passage"}
+    big, note_font, placed, spans, pt = plan
     if check_only:
-        return {"path": "", "reason": "", "view": "text_passage", "fits": True}
-    head, small, big, top, placed = plan
+        return {"path": "", "reason": "", "view": "text_passage", "fits": True, "pt": pt, "focus_spans": spans}
     W, H = size_px
     img = Image.new("RGB", (W, H), "white")
     d = ImageDraw.Draw(img)
     pad = int(W * 0.05)
-    for y, t in head:
-        d.text((pad, y), t, fill=(85, 85, 85), font=small)
-    d.rectangle([pad // 2, top - big.size // 2, W - pad // 2, H - pad // 2], outline=(187, 187, 187), width=2)
-    for x, y, ch, mark in placed:
-        if mark:
-            d.rectangle([x, y - 2, x + d.textlength(ch, font=big), y + big.size + 6], fill=(255, 224, 102))
-        d.text((x, y), ch, fill=(17, 17, 17), font=big)
+    for x, y, ch, st in placed:
+        if st == "mark":
+            d.rectangle([x, y - 2, x + d.textlength(ch, font=big.f(ch)), y + big.size * 1.25], fill=(255, 224, 102))
+    for x, y, ch, st in placed:
+        d.text((x, y), ch, fill=(150, 150, 150) if st == "ctx" else (17, 17, 17), font=big.f(ch))
+    d.text((pad, H - pad - note_font.size * 1.2), PASSAGE_NOTE, fill=(128, 128, 128), font=note_font)
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
-    return {"path": str(out), "reason": "", "view": "text_passage"}
+    return {"path": str(out), "reason": "", "view": "text_passage", "pt": pt, "focus_spans": spans}
 
 
 def evidence_image(claim_id: str, source_path, kind: str, text: str, phrase: str, offset: int, meta: dict, out_png,
-                   size_px: tuple[int, int] = (1200, 1177), font_path: str = "", check_only: bool = False) -> dict:
+                   size_px: tuple[int, int] = (1200, 1177), font_path: str = "", check_only: bool = False, focus=None,
+                   slot_width_in: float = SLOT_W_IN) -> dict:
     """덱의 원문 캡처 — 해시가 확인된 사본과 대조한 자리(offset: 정리한 글 기준)에서 그때 새로 그린다. 기록의 verification.image 는 쓰지 않는다.
-    pdf = 그 자리가 있는 쪽(그 쪽에 문구가 한 번만 나오고 낱말 자리를 얻으면 줄 둘레 띠와 강조, 두 번 이상이면 쪽 전체와 사유 note)
-    · 그 밖 = 그 자리의 대목(원래 화면 모양 아님 · 문구 전체가 안 들어가면 실패). 만들지 못하면 path 가 비고 reason 에 사유.
-    check_only 면 그리지 않고 그릴 수 있는지만 본다(덱 검사 — pdf 는 쪽 그림이라 늘 들어간다)."""
-    out = pathlib.Path(out_png)
+    pdf = 대목이 든 줄들의 띠(쪽 글 영역 전체 폭 · 위아래 한두 줄 · 형광 표시). 그 쪽에 문구가 두 번 이상이면 쪽 전체와 사유 note.
+          띠를 그림 자리 폭에 맞췄을 때 글자가 BAND_MIN_PT 보다 작으면 대목을 다시 그린다(view text_passage · note 에 사유).
+    · 그 밖 = 그 자리의 대목을 다시 그린 그림(원래 화면 모양 아님 · 문구 전체가 안 들어가면 실패).
+    focus = capture_focus(구절 또는 목록): 그 구절만 형광(대목 밖이면 실패). meta 는 쓰지 않는다(부록이 맡는다 · 호출 모양을 지킨다).
+    만들지 못하면 path 가 비고 reason 에 사유. check_only 면 그리지 않고 그릴 수 있는지만 본다."""
+    out = pathlib.Path(out_png) if out_png else pathlib.Path("unused.png")
     m, all_m = _match_at(text, phrase, offset)
     if m is None:
         return {"path": "", "reason": "대조한 자리를 사본 글에서 다시 찾지 못했다", "offset": offset}
+    norm_phrase = _WS.sub(" ", phrase).strip()
     try:
+        focus_spans(norm_phrase, focus)
+    except ValueError as e:
+        return {"path": "", "reason": str(e), "offset": offset}
+    try:
+        note = ""
         if kind == "pdf":
-            if check_only:
-                return {"path": "", "reason": "", "offset": offset, "fits": True}
             same = [x for x in all_m if x["page"] == m["page"]]
-            r = _pdf_band(pathlib.Path(source_path), m["page"], phrase, same.index(m), len(same), out)
-        else:
-            if not font_path:
-                from ozl.render import charts as G
-                font_path = G.pick_font()["path"]
-            head = [f"{claim_id} · 저장한 사본에서 뽑은 글의 대목(원래 화면 모양 아님)", f"주소 {meta.get('url', '')}",
-                    f"받은 시각 {meta.get('fetched_at', '')} · sha256 {str(meta.get('sha256', ''))[:16]}…"]
-            r = _passage_png(head, m["before"][-90:], _WS.sub(" ", phrase).strip(), m["after"][:90], out, size_px, font_path, check_only=check_only)
+            plan = _pdf_band_plan(pathlib.Path(source_path), m["page"], phrase, same.index(m), len(same), focus, slot_width_in)
+            if plan["mode"] != "redraw":
+                if check_only:
+                    return {"path": "", "reason": "", "offset": offset, "fits": True, "view": "pdf_band" if plan["mode"] == "band" else "pdf_page"}
+                r = _pdf_band(pathlib.Path(source_path), m["page"], plan, out)
+                r["offset"] = offset
+                return r
+            note = plan["note"]
+        if not font_path:
+            from ozl.render import charts as G
+            font_path = G.pick_font()["path"]
+        r = _passage_png(m["before"], norm_phrase, m["after"], out, size_px, font_path, check_only=check_only, focus=focus, slot_width_in=slot_width_in)
+        if note:
+            r["note"] = note
     except Exception as e:  # noqa: BLE001 — 그림을 못 만들면 사유를 남기고 넘어간다
         return {"path": "", "reason": f"{type(e).__name__}: {e}", "offset": offset}
     r["offset"] = offset
