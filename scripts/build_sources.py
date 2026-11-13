@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import collections
 import pathlib
+import sys
 
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RES = ROOT / "src" / "ozl" / "research"
+sys.path.insert(0, str(ROOT / "src"))
+from ozl.research import ledger  # noqa: E402 — 출처 대장(수집이 허용인 피드만 "읽는 피드"로 적는다)
 KIND = {"official": "기관 원문", "news": "언론·통신", "paper": "연구 보고서", "trend": "검색 급상승어", "community": "커뮤니티"}
 ORDER = {k: i for i, k in enumerate(KIND)}
 
@@ -22,7 +25,9 @@ ORDER = {k: i for i, k in enumerate(KIND)}
 def build() -> str:
     feeds = yaml.safe_load((RES / "feeds.yaml").read_text(encoding="utf-8"))["feeds"]
     events = yaml.safe_load((RES / "calendar.yaml").read_text(encoding="utf-8"))["events"]
-    on = [f for f in feeds if f.get("enabled", True)]
+    live = [f for f in feeds if f.get("enabled", True)]
+    on = [f for f in live if ledger.allowed(f["id"], "collect")]
+    blocked = [f for f in live if not ledger.allowed(f["id"], "collect")]   # 켜져 있지만 출처 대장이 막아 받지 않는 곳
     off = [f for f in feeds if not f.get("enabled", True)]
 
     L = ["# 쓰는 소스", "",
@@ -39,9 +44,16 @@ def build() -> str:
         L.append(f"| {outlet} | {KIND.get(kind, kind)} | {tier} | {', '.join(secs) or '전체'} |")
     L += ["", "검색 급상승어와 커뮤니티 피드는 무엇이 화제인지 알아보는 단서로만 씁니다. 거기서 본 내용은 인용하지 않고 위 등급의 출처에서 다시 확인합니다.", ""]
 
-    if off:
-        L += ["### 지금 꺼 둔 피드", "", "주소가 응답하지 않거나 내용이 비어 있어 꺼 둔 곳입니다. 다시 열리면 켭니다.", ""]
-        L += [f"- {f['outlet']}: {f.get('note') or '응답 없음'}" for f in off] + [""]
+    if off or blocked:
+        L += ["### 지금 받지 않는 피드", "",
+              "주소가 응답하지 않거나, 이용 조건을 확인한 결과 받지 않기로 한 곳입니다. 조건은 출처 대장(`src/ozl/research/sources_ledger.yaml`)에 적습니다.", ""]
+        seen: dict[str, str] = collections.OrderedDict()
+        for f in off:
+            seen.setdefault(f["outlet"], f.get("note") or "응답 없음")
+        for f in blocked:
+            why = "이용 조건이 수집을 막아 받지 않습니다" if ledger.verdict(f["id"], "collect") == "금지" else "이용 조건을 확인하지 못해 받지 않습니다"
+            seen.setdefault(f["outlet"], why)
+        L += [f"- {o}: {why}" for o, why in seen.items()] + [""]
 
     L += ["## 발표 일정을 확인하는 곳", "",
           "물가, 고용, 금리 결정처럼 날짜가 정해진 발표는 기관의 일정 페이지를 직접 열어 확인한 날짜만 일정표에 적습니다.", ""]
