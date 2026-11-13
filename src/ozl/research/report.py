@@ -2,9 +2,9 @@
 """일일 보고서 렌더 — 카드 YAML 에서 세 문서를 만든다.
 
 - 전체본(비공개)  private/daily/YYYY/MM/<날짜>_<회차>.md        모든 카드 · 내부 메모 포함
-- 검증 시트(비공개) private/daily/YYYY/MM/<날짜>_<회차>_검증시트.md  사람이 원문과 눈으로 대조할 표
-- 발행본(공개)    daily/YYYY/MM/<날짜>_<회차>.md                발행 승인된 카드만 전문, 나머지는 번호·분야·상태만
-공개 규칙의 정본은 docs/methodology.md §8 — 배지가 확인·추정이고 발행 승인된 카드만 싣는다.
+- 검증 시트(비공개) private/daily/YYYY/MM/<날짜>_<회차>_검증시트.md  기록마다 원문 표기·위치·링크·등급(사람 대조 '확인' / 프로그램 대조 「원문 일치」)
+- 발행본(공개)    daily/YYYY/MM/<날짜>_<회차>.md                공개 이력이 있는 회차만 — 승인된 카드는 전문, 나머지는 번호·상태만
+공개 규칙의 정본은 docs/methodology.md §8 — 공개는 사용자가 승인한 카드만, 공개 이력이 없는 회차는 발행본을 쓰지 않는다(keeps_public_page).
 """
 from __future__ import annotations
 
@@ -148,8 +148,11 @@ def _head(date: str, slot: str, title: str, front: bool = False) -> list[str]:
 
 
 def summary_counts(cards: list[dict]) -> str:
-    n = Counter(c["badge"] for c in cards)
-    return f"확인 {n['verified']} · 추정 {n['credible_estimate']} · 단독 {n['single_source']} · 루머 {n['unverified_rumor']} · 검증 대기 {n['pending']}"
+    """카드 배지 집계. verified 는 기록으로 다시 갈라 센다 — 사람이 대조한 것만 `확인`, 기계 대조가 섞이면 「원문 일치」
+    (원시 배지로 세면 「원문 일치」 카드가 `확인`으로 세어진다 — 2026-11-13 수정)."""
+    n = Counter(C.badge_ko(c) for c in cards)
+    return (f"{C.GRADE_HUMAN} {n[C.GRADE_HUMAN]} · {C.GRADE_MACHINE} {n[C.GRADE_MACHINE]} · 추정 {n['추정']} · 단독 {n['단독']} · "
+            f"루머 {n['루머']} · 검증 대기 {n['pending']}")
 
 
 def render_private(date: str, slot: str) -> str:
@@ -165,16 +168,17 @@ def render_private(date: str, slot: str) -> str:
     L += ["", "**채택 대기**", ""]
     wait = [c for c in cards if c["state"] == "제안"]
     L += [f"- `{c['card_id']}` {c['titles'][0]} — {C.badge_label(c)}" for c in wait] or ["없음"]
-    L += ["", "채택: `/ozl pick <card_id>` 또는 Notion 상태를 `채택`으로. 공개 발행: 검증 시트로 원문을 대조한 뒤 `/ozl publish <card_id>`.", ""]
+    L += ["", "통과: `/ozl pick <card_id>` 또는 Notion 상태를 `채택`으로(그 뒤 완성 절차는 시스템이 한다). 공개는 사용자가 말했을 때만 `/ozl publish <card_id>`.", ""]
     for i, c in enumerate(cards, 1):
         L += ["---", "", render_card(c, C.claims_for(c["card_id"]), i, public=False)]
     return "\n".join(L) + "\n"
 
 
 def render_sheet(date: str, slot: str) -> str:
-    """사람 육안 대조용 — 클레임마다 원문 표기·위치·링크를 한 덩어리로(표는 PDF 에서 쪽이 갈려 목록으로 쓴다)."""
+    """기록마다 원문 표기·위치·링크·등급을 한 덩어리로(표는 PDF 에서 쪽이 갈려 목록으로 쓴다). 사용자에게 대조를 요청하는 문서가 아니다 —
+    등급은 사람 대조('확인')와 프로그램 대조+독립 재대조(「원문 일치」)를 가른다."""
     L = _head(date, slot, "검증 시트(비공개)", front=True)
-    L += ["원문을 열어 **원문 표기**의 값이 **원문 위치**에 그대로 있는지 눈으로 확인한다. 확인한 클레임 번호를 알려 주면 `human_verified` 로 올린다.", ""]
+    L += ["기록마다 **원문 표기**와 **원문 위치**, 출처 링크, 등급을 적는다. 「원문 일치」는 프로그램이 받은 원문 사본에서 문구를 대조하고 다른 에이전트가 같은 자리를 독립으로 다시 찾은 것이고, `확인`은 사람이 눈으로 대조한 것이다.", ""]
     for c in C.cards_for(date, slot):
         cl = C.claims_for(c["card_id"])
         if not cl:
@@ -182,12 +186,13 @@ def render_sheet(date: str, slot: str) -> str:
         L += [f"## {c['card_id'][11:]} · {c['titles'][0]}", ""]
         for x in cl:
             src = x["source"]
-            done = f"확인함 {x.get('human_verified_at', '')[:10]} · {x.get('human_verified_by', '')}" if x.get("human_verified") else "아직"
+            done = (f"{C.GRADE_HUMAN} {x.get('human_verified_at', '')[:10]} · {x.get('human_verified_by', '')}" if x.get("human_verified")
+                    else C.grade_label(x))
             L += [f"**`{x['claim_id'][11:]}`** {x['text']}", "",
                   f"- 원문 표기: `{x['observed']}`",
                   f"- 원문 위치: {(x.get('checks') or {}).get('primary_doc_locator', '')}",
                   f"- 출처: [{src['publisher']}]({src['url']}) · {src['tier']}",
-                  f"- 사람 확인: {done}", ""]
+                  f"- 등급: {done}", ""]
     return "\n".join(L) + "\n"
 
 
@@ -204,8 +209,8 @@ def render_public(date: str, slot: str) -> str:
           f"| 검증 요약 | {summary_counts(cards)} |"]
     if st:
         L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳 · 최근 {st['hours']:g}시간 기사·발표 {st['items']}건 → 사건 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
-    L += ["", f"배지가 `확인`이나 `추정`이고 제가 공개를 승인한 카드만 전문을 싣습니다([검증 방법 8절]({SITE}/methodology/)). "
-          "나머지는 번호와 분야, 상태만 남기고, 검증이 끝나면 같은 번호 자리에 채웁니다.", ""]
+    L += ["", f"공개를 승인한 카드만 전문을 싣습니다([검증 방법 8절]({SITE}/methodology/)). "
+          "승인 전 카드는 번호와 상태만 남깁니다.", ""]
     if pub:
         for i, c in enumerate(pub, 1):
             claims = C.claims_for(c["card_id"])
@@ -218,9 +223,10 @@ def render_public(date: str, slot: str) -> str:
             L += [f"| `{c['card_id']}` | {c['publish']['withdrawn_at'][:16].replace('T', ' ')} | {c['publish'].get('reason', '')} |"]
         L += ["", f"정정·철회 기록: [corrections]({SITE}/corrections/)", ""]
     if hold:
-        L += ["---", "", "## 검증·승인 대기", "", "| 카드 | 분야 | 계기 | 민감도 | 상태 |", "|---|---|---|---|---|"]
+        # 승인 전 카드는 소재를 드러내지 않는다 — 분야·계기 칸을 두지 않는다(2026-11-13)
+        L += ["---", "", "## 승인 대기", "", "| 카드 | 상태 |", "|---|---|"]
         for c in hold:
-            L += [f"| `{c['card_id']}` | {c.get('topic', '')} | {c['why_today']['trigger_type']} | {c['sensitivity']['level']} | {C.badge_label(c)} |"]
+            L += [f"| `{c['card_id']}` | {C.badge_label(c)} |"]
         L += [""]
     return "\n".join(L) + "\n"
 
@@ -268,6 +274,17 @@ def notion_rows(date: str, slot: str) -> list[dict]:
     return rows
 
 
+def keeps_public_page(cards: list[dict]) -> bool:
+    """회차 발행본(공개 쪽)을 둘지. 공개 이력(승인 또는 철회)이 한 번이라도 있는 카드가 있으면 둔다 — 한 번 공개한 쪽은
+    조용히 사라지지 않는다(철회도 쪽에 남는다). 공개 이력이 없는 회차는 승인 전 후보만 있으므로 쓰지 않는다(2026-11-13 운영 변경:
+    승인 전 후보를 날마다 사이트에 올리지 않는다)."""
+    for c in cards:
+        ev = C.event_times(c)
+        if ev["published_at"] or ev["withdrawn_at"] or (c.get("publish") or {}).get("approved") is True:
+            return True
+    return False
+
+
 def render_all(date: str, slot: str) -> dict:
     cards = C.cards_for(date, slot)
     if not cards:
@@ -278,16 +295,24 @@ def render_all(date: str, slot: str) -> dict:
     if errs:
         raise ValueError("검증 오류 — 렌더 중단:\n" + "\n".join(f"  - {e}" for e in errs))
     from . import archive   # archive 가 이 모듈을 불러 쓰므로 여기서 늦게 부른다
-    archive.build_index(include=[(date, slot)])   # 미리 실패만 걸러낸다 — 여기서 예외가 나면 파일을 하나도 쓰지 않는다
+    keep = keeps_public_page(cards)
+    archive.build_index(include=[(date, slot)] if keep else [])   # 미리 실패만 걸러낸다 — 여기서 예외가 나면 파일을 하나도 쓰지 않는다
     P = paths(date, slot)
     for _ in range(3):
         written = ""
         for k, fn in (("private", render_private), ("sheet", render_sheet), ("public", render_public)):
             text = fn(date, slot)
+            if k == "public":
+                # 판정은 발행본을 만든 뒤에 다시 한다(그 사이 승인이 끼어들었으면 남긴다). 공개 이력이 없는 회차는 쓰지 않고, 남은 파일은 지운다
+                keep = keeps_public_page(C.cards_for(date, slot))
+                if not keep:
+                    if P[k].exists():
+                        P[k].unlink()   # 색인 저장보다 먼저 지운다 — 중간에 멈추면 사이트 검사가 크게 실패하고 다음 렌더가 바로잡는다
+                    continue
             P[k].parent.mkdir(parents=True, exist_ok=True)
             P[k].write_text(text, encoding="utf-8")
             written = text if k == "public" else written
-        index = archive.build_index(include=[(date, slot)])   # 보고서를 다 쓴 뒤 다시 계산한다 — 색인은 늘 보고서와 같거나 더 나중 상태
+        index = archive.build_index(include=[(date, slot)] if keep else [])   # 보고서를 다 쓴 뒤 다시 계산한다 — 색인은 늘 보고서와 같거나 더 나중 상태
         # 실제로 쓴 발행본의 자리표와 색인의 이 회차 발행 카드가 같아야 저장한다. 그 사이 승인·철회가 끼어들었으면 다시 쓴다
         in_report = {f"{date}-{a}" for a in _ANCHOR.findall(written)}
         in_index = {c["card_id"] for c in index["cards"] if (c["date"], c["slot"]) == (date, slot)}
@@ -297,6 +322,9 @@ def render_all(date: str, slot: str) -> dict:
         raise RuntimeError(f"{date} {slot}: 보고서를 3번 다시 써도 발행 카드가 색인과 맞지 않는다 — 색인은 저장하지 않았다")
     idx, _ = archive.save_index(index)
     out = {k: str(v) for k, v in P.items()}
+    if not keep:
+        out["public"] = None   # 발행본을 쓰지 않았다(공개 이력 없는 회차) — 부르는 쪽은 daily/ 를 폴더째 git add 한다
     out["index"] = str(idx)
-    mine = next(r for r in index["reports"] if (r["date"], r["slot"]) == (date, slot))
-    return {"paths": out, "cards": len(cards), "summary": summary_counts(cards), "published": mine["published"]}
+    mine = next((r for r in index["reports"] if (r["date"], r["slot"]) == (date, slot)), None)
+    return {"paths": out, "cards": len(cards), "summary": summary_counts(cards), "published": mine["published"] if mine else 0,
+            "public_page": keep}

@@ -310,11 +310,12 @@ def test_claim_added_after_approval_blocks_publication(desk):
 def test_public_report_hides_unapproved_card_text(desk):
     cid = "2026-11-10-am-01"
     r = report.render_all("2026-11-10", "am")
-    pub = pathlib.Path(r["paths"]["public"]).read_text(encoding="utf-8")
+    assert r["paths"]["public"] is None                                    # 승인 전 회차는 발행본을 쓰지 않는다
+    pub = report.render_public("2026-11-10", "am")
     prv = pathlib.Path(r["paths"]["private"]).read_text(encoding="utf-8")
     assert "지어낸 제목 하나" in prv and "지어낸 수치 1" in prv
-    assert "지어낸 제목 하나" not in pub and "지어낸 훅" not in pub and "지어낸 수치 1" not in pub   # 공개본에는 번호·분야·상태만
-    assert cid in pub and "검증·승인 대기" in pub
+    assert "지어낸 제목 하나" not in pub and "지어낸 훅" not in pub and "지어낸 수치 1" not in pub   # 공개본 글에는 번호·상태만
+    assert cid in pub and "승인 대기" in pub
     assert report.notion_rows("2026-11-10", "am")[0]["properties"]["Pages 링크"] is None
     C.human_verify([f"{cid}-c{i}" for i in (1, 2, 3)], "tester")
     C.approve_publish(cid, "tester")

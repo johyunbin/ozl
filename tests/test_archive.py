@@ -54,7 +54,8 @@ def test_index_follows_publishable(desk):
     assert r["paths"]["index"] == str(desk / "daily" / "index.json")
     idx = json.loads(index_text(desk))
     assert "지어낸 제목 하나" not in index_text(desk) and idx["cards"] == []          # 승인 전에는 제목이 없다
-    assert idx["reports"] == [{"date": "2026-11-10", "slot": "am", "file": "daily/2026/11/2026-11-10_am.md", "cards": 1, "published": 0}]
+    assert idx["reports"] == [] and r["paths"]["public"] is None and r["published"] == 0   # 공개 이력이 없는 회차는 발행본을 쓰지 않는다
+    assert not (desk / "daily" / "2026" / "11" / "2026-11-10_am.md").exists()
     approve()
     report.render_all("2026-11-10", "am")
     idx = json.loads(index_text(desk))
@@ -65,6 +66,8 @@ def test_index_follows_publishable(desk):
     C.withdraw(CID, "tester", "지어낸 철회 사유")
     report.render_all("2026-11-10", "am")
     assert "지어낸 제목 하나" not in index_text(desk) and CID not in index_text(desk)   # 철회하면 다시 빠진다
+    assert json.loads(index_text(desk))["reports"][0]["published"] == 0                   # 쪽은 남는다(철회 기록이 실린다)
+    assert (desk / "daily" / "2026" / "11" / "2026-11-10_am.md").exists()
 
 
 def test_index_keeps_published_card_even_if_rejected(desk):
@@ -84,6 +87,7 @@ def test_index_is_unescaped_and_deterministic(desk):
 
 
 def test_index_refuses_when_report_has_no_cards(desk):
+    approve()                                               # 발행본이 생기는 회차로 시작한다(승인 전 회차는 발행본이 없다)
     report.render_all("2026-11-10", "am")
     before = index_text(desk)
     orphan = desk / "daily" / "2026" / "11" / "2026-11-09_pm.md"
@@ -549,3 +553,45 @@ def test_render_gives_up_after_three_mismatches(desk, monkeypatch):
     with pytest.raises(RuntimeError, match="3번"):
         report.render_all("2026-11-10", "am")
     assert index_text(desk) == before
+
+
+# ── 승인 전 회차의 발행본(2026-11-13 운영 변경) ─────────────────────────────
+def test_unapproved_slot_page_is_removed_and_site_builds(desk):
+    """예전에 올라간 승인 전 회차 쪽은 다음 렌더 때 지워지고 색인에서도 빠진다 — 사이트 생성 검사도 통과한다."""
+    legacy = desk / "daily" / "2026" / "11" / "2026-11-10_am.md"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("# 지어낸 예전 발행본\n\n| `2026-11-10-am-01` | 지어낸 분야 |\n", encoding="utf-8")
+    r = report.render_all("2026-11-10", "am")
+    assert not legacy.exists() and r["public_page"] is False
+    assert json.loads(index_text(desk))["reports"] == []
+    assert pathlib.Path(r["paths"]["private"]).exists() and pathlib.Path(r["paths"]["sheet"]).exists()   # 비공개 문서는 그대로 쓴다
+    assert load_build_site().main(desk) == 0
+
+
+def test_withdrawn_only_slot_keeps_page(desk):
+    approve()
+    C.withdraw(CID, "tester", "지어낸 철회 사유")
+    r = report.render_all("2026-11-10", "am")
+    page = pathlib.Path(r["paths"]["public"])
+    assert r["public_page"] is True and page.exists() and "## 철회" in page.read_text(encoding="utf-8")
+    assert report.keeps_public_page(C.cards_for("2026-11-10", "am"))
+
+
+def test_changed_after_approval_stops_without_removing_page(desk):
+    """승인 뒤 내용이 바뀐 회차는 렌더가 검사에서 멈추고 발행본을 지우지 않는다."""
+    approve()
+    page = pathlib.Path(report.render_all("2026-11-10", "am")["paths"]["public"])
+    before = page.read_text(encoding="utf-8")
+    card = C.load_card(CID)
+    card["titles"] = ["승인 뒤에 바꾼 지어낸 제목"]
+    C.save_yaml(C.card_path(CID), card)
+    with pytest.raises(ValueError):
+        report.render_all("2026-11-10", "am")
+    assert page.exists() and page.read_text(encoding="utf-8") == before
+
+
+def test_public_page_hides_topic_of_unapproved_cards(desk):
+    pub = report.render_public("2026-11-10", "am")               # 함수는 늘 글을 돌려준다(쓸지는 render_all 이 정한다)
+    card = C.load_card(CID)
+    assert CID in pub and "승인 대기" in pub
+    assert "지어낸 제목 하나" not in pub and card.get("topic", "없는 분야") not in pub and card["why_today"]["trigger_type"] not in pub
