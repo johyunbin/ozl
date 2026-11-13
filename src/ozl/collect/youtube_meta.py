@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 
 import requests
 
+from ozl.research import ledger
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 API = "https://www.googleapis.com/youtube/v3"
 SLEEP = 0.2  # 호출 간격(초) — 부하·429 회피
@@ -44,6 +46,7 @@ class Quota:
 
 
 def get(path: str, key: str, **params) -> dict:
+    ledger.require("youtube_data_api_meta")   # 대장에서 collect 가 허용이 아니면 Blocked — 요청하지 않는다
     params["key"] = key
     for attempt in range(5):
         r = requests.get(f"{API}/{path}", params=params, timeout=30)

@@ -27,6 +27,7 @@ from PIL import Image
 
 from ozl.analyze.slide_timeline import BODY_SIM, TITLE_SIM, frame_text, is_latin, norm, sim
 from ozl.analyze.style_measure import measure
+from ozl.research import ledger
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 TMP = ROOT / "private" / "dense" / "_tmp"
@@ -51,6 +52,7 @@ def sample(vid: str) -> tuple[list[dict], dict[int, pathlib.Path], float]:
     d.mkdir(parents=True, exist_ok=True)
     video = d / "v.mp4"
     if not video.exists() and not any(d.glob("f_*.png")):
+        ledger.require("youtube_video_download")   # 대장에서 유튜브 내려받기가 허용이 아니면 Blocked — 요청하지 않는다
         r = sh(["yt-dlp", "-q", "--no-warnings", "--sleep-requests", "2", "--sleep-interval", "3", "--throttled-rate", "100K",
                 "-f", "bv*[height<=720][vcodec^=avc1][ext=mp4]/bv*[height<=720][ext=mp4]", "-o", str(video), f"https://www.youtube.com/watch?v={vid}"], timeout=5400)
         if not video.exists():

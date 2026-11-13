@@ -19,6 +19,8 @@ import subprocess
 import sys
 import time
 
+from ozl.research import ledger
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 FRAMES = ROOT / "private" / "frames"
 TMP = FRAMES / "_tmp"
@@ -33,6 +35,11 @@ def download(vid: str) -> pathlib.Path | None:
     out = TMP / f"{vid}.mp4"
     if out.exists():
         return out
+    try:
+        ledger.require("youtube_video_download")   # 대장에서 유튜브 내려받기가 허용이 아니면 요청하지 않는다
+    except ledger.Blocked as e:
+        print(f"[{vid}] {e}", file=sys.stderr)
+        return None
     # avc1(h264) 1080p 우선 — f616 '프리미엄' VP9는 편당 800MB+ 로 스로틀 시 수십 분. 스로틀(<150KB/s) 감지 시 재추출.
     r = sh(["yt-dlp", "-q", "--no-warnings", "--sleep-requests", "2", "--sleep-interval", "3",
             "--throttled-rate", "150K", "--concurrent-fragments", "3",

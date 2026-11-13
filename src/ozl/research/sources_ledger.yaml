@@ -1,0 +1,1130 @@
+# 출처와 약관 대장 — 수집 코드는 이 파일을 읽어 collect 가 허용이 아닌 출처에는 요청을 보내지 않는다.
+# 판정은 허용, 금지, 불명 셋이고 불명은 금지처럼 다룬다. 다만 맨 위 policy(운영 판단)가 연 쓰임은 불명이어도 쓴다.
+# 04:10 KST: 구글 급상승 RSS 세 줄을 원문 재확인 결과에 따라 고침(공식 내보내기 기능, robots 허용, 도움말의 재사용 허용).
+# 확인일: 2026-11-14 (03:16~03:25 KST 에 robots.txt, 약관, 안내 쪽을 직접 열어 확인. clien_park 만 2026-11-11 확인분).
+# 03:4x KST 재대조: 다른 모델의 원문 재대조에서 어긋난 줄(hn_front, korea_kr_sitemap_html, open_assembly_api, opendart_api, youtube_*, trends_kr, clien_park)을 원문을 다시 열어 고침.
+# 칸: collect 수집 / score_use 점수에 쓰기 / store 보관 / publish 공개 화면에 원값이나 제목을 싣기 / commercial 수익에 쓰기
+#     backup 비공개 원격 백업 / agent_read 이슈를 만들 때 에이전트가 기사 본문을 열어 읽기(robots 의 AI 에이전트 항목 기준).
+# 해당 없는 칸은 적지 않는다(불명과 다르다). 조건은 basis 에 적는다.
+# verified: 직접(원문을 직접 열어 봄) | 2차(2차 자료만) | 못 봄
+# 사람이 읽는 대장: private/out/출처_약관_대장_20261114.md
+checked: "2026-11-14"
+# 운영 판단 — 원문에서 허락도 금지도 찾지 못해 '불명'으로 남은 쓰임 가운데 운영자가 쓰기로 정한 것.
+# 아래 sources 의 줄은 원문에서 확인한 것만 적고, 이 묶음 때문에 고치지 않는다. 이 묶음을 지우거나 enabled 를 false 로 두면
+# 줄의 값(불명)대로 막힌다. '금지'는 여기서 풀 수 없고, 수집·공개·수익도 여기서 열 수 없다(코드가 막는다).
+policy:
+  rss_counting:
+    enabled: true
+    scope: feeds             # feeds.yaml 의 feeds 에 있는 피드에만 닿는다
+    when: {collect: 허용}     # 수집이 허용으로 확인된 피드에만
+    uses: [score_use, store, backup]
+    decided: "2026-11-14 04:10 KST. 계획 5-1절(언론사 RSS 는 쓴다)의 결정을 따랐다"
+    note: "언론사와 기관이 공식으로 내놓은 RSS 의 제목, 요약, 링크를 받아 건수를 세고 비공개로 보관한다. 공개 화면에는 매체 이름과 링크만 싣는다. 명시 허락을 확인한 것은 아니다(금지 조항도 찾지 못했다). 수익을 내기 전에는 commercial 이 금지인 매체를 따로 정리해야 한다. 사용자가 끌 수 있다."
+sources:
+  # ── 국내 언론 RSS
+  yna_economy:
+    name: 연합뉴스 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. RSS 이용 안내가 비상업 블로그와 개인 용도만 허용하고 사전 서면 허가 없는 상업 이용을 금지. robots 는 Claude-User 항목 없이 * 허용, 학습용 봇만 차단"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index"]
+    verified: 직접
+  yna_international:
+    name: 연합뉴스 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index"]
+    verified: 직접
+  yna_industry:
+    name: 연합뉴스 산업 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index"]
+    verified: 직접
+  yna_market:
+    name: 연합뉴스 증시 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "yna_economy 와 같음"
+    evidence: ["https://www.yna.co.kr/robots.txt", "https://www.yna.co.kr/rss/index"]
+    verified: 직접
+  hk_economy:
+    name: 한국경제 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. robots 는 /feed/ 를 막지 않고 AI 에이전트 항목 없음. RSS 이용 조건 문서를 찾지 못했고 사이트 이용약관 본문은 열지 않음"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed"]
+    verified: 직접
+  hk_international:
+    name: 한국경제 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed"]
+    verified: 직접
+  hk_finance:
+    name: 한국경제 증시 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed"]
+    verified: 직접
+  hk_it:
+    name: 한국경제 IT RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "hk_economy 와 같음"
+    evidence: ["https://www.hankyung.com/robots.txt", "https://www.hankyung.com/feed"]
+    verified: 직접
+  mk_economy:
+    name: 매일경제 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. llms.txt(2026-08-04 1.0판)가 실시간 검색, RAG, 사실 확인, 최소 인용을 허용하고 학습과 데이터셋 생성을 금지, 출처 표기 요구. 기사 전문 영구 저장 금지(제목과 요약 보관은 언급 없음)"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt", "https://www.mk.co.kr/rss"]
+    verified: 직접
+  mk_international:
+    name: 매일경제 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt"]
+    verified: 직접
+  mk_stock:
+    name: 매일경제 증권 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "mk_economy 와 같음"
+    evidence: ["https://www.mk.co.kr/robots.txt", "https://www.mk.co.kr/llms.txt"]
+    verified: 직접
+  sedaily_economy:
+    name: 서울경제 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. RSS 안내가 개인 비상업 사용만 허용, 상업 활용과 AI 학습 이용 금지. robots 가 Claude-User 를 명시 허용"
+    evidence: ["https://www.sedaily.com/robots.txt", "https://www.sedaily.com/rss"]
+    verified: 직접
+  mt_all:
+    name: 머니투데이 전체 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. rss.mt.co.kr 에 robots 없음, www.mt.co.kr 은 AI 봇까지 명시 허용. RSS 이용 조건 문서는 찾지 않음"
+    evidence: ["https://rss.mt.co.kr/robots.txt", "https://www.mt.co.kr/robots.txt"]
+    verified: 직접
+  chosun_economy:
+    name: 조선일보 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS(Arc 공개 피드). robots 는 피드 경로를 막지 않고 Claude 계열 항목 없음(GPTBot 만 차단). RSS 안내 쪽 /rss/ 는 404"
+    evidence: ["https://www.chosun.com/robots.txt", "https://www.chosun.com/rss/"]
+    verified: 직접
+  chosun_international:
+    name: 조선일보 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "chosun_economy 와 같음"
+    evidence: ["https://www.chosun.com/robots.txt"]
+    verified: 직접
+  donga_economy:
+    name: 동아일보 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. RSS 사용 안내가 개인 비상업 사용만 허용, 다수 이용자 대상 상업 활용 금지. robots 에 AI 에이전트 항목 없음"
+    evidence: ["https://rss.donga.com/robots.txt", "https://www.donga.com/robots.txt", "https://rss.donga.com/"]
+    verified: 직접
+  donga_international:
+    name: 동아일보 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "donga_economy 와 같음"
+    evidence: ["https://rss.donga.com/robots.txt", "https://rss.donga.com/"]
+    verified: 직접
+  khan_economy:
+    name: 경향신문 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. RSS 이용 안내가 개인 구독 목적만, 다수 공유와 영리 행위는 사전 허락 필요. robots 가 Claude-User 를 AI 검색 봇 허용 묶음에 둠"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html"]
+    verified: 직접
+  khan_world:
+    name: 경향신문 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "khan_economy 와 같음"
+    evidence: ["https://www.khan.co.kr/robots.txt", "https://www.khan.co.kr/help/help_rss.html"]
+    verified: 직접
+  sbs_economy:
+    name: SBS 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. RSS 사용 안내가 개인 비상업 사용에만 허가. robots 는 /news/* 허용, AI 에이전트 항목 없음"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do"]
+    verified: 직접
+  sbs_international:
+    name: SBS 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 허용
+    basis: "sbs_economy 와 같음"
+    evidence: ["https://news.sbs.co.kr/robots.txt", "https://news.sbs.co.kr/news/rss.do"]
+    verified: 직접
+  yonhaptv_economy:
+    name: 연합뉴스TV 경제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS. robots 에 금지 줄과 AI 에이전트 항목 없음. RSS 안내 쪽은 2026-11-13 확인 때 404 였고 이번엔 다시 열지 않음"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt"]
+    verified: 직접
+  yonhaptv_international:
+    name: 연합뉴스TV 국제 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "yonhaptv_economy 와 같음"
+    evidence: ["https://www.yonhapnewstv.co.kr/robots.txt"]
+    verified: 직접
+  # ── 해외 언론 RSS
+  bbc_business:
+    name: BBC Business RSS
+    collect: 허용
+    score_use: 금지
+    store: 금지
+    publish: 허용
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. RSS 안내가 헤드라인 표시를 'BBC News' 표기 조건으로 허용(로고 금지, 업무상 이용은 허가 필요). bbc.com robots 주석이 에이전트형 AI, RAG, 데이터셋 생성, 요약 생성을 금지"
+    evidence: ["https://feeds.bbci.co.uk/robots.txt", "https://www.bbc.com/robots.txt", "https://www.bbc.co.uk/robots.txt", "https://www.bbc.co.uk/news/10628494"]
+    verified: 직접
+  bbc_world:
+    name: BBC World RSS
+    collect: 허용
+    score_use: 금지
+    store: 금지
+    publish: 허용
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "bbc_business 와 같음"
+    evidence: ["https://feeds.bbci.co.uk/robots.txt", "https://www.bbc.com/robots.txt", "https://www.bbc.co.uk/news/10628494"]
+    verified: 직접
+  guardian_business:
+    name: Guardian Business RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. 피드 안내가 개인 비상업 목적만 허용. robots 가 Claude-User 를 포함한 Claude 계열 전면 차단, 주석이 AI 목적과 상업 목적 이용 불허"
+    evidence: ["https://www.theguardian.com/robots.txt", "https://www.theguardian.com/help/feeds"]
+    verified: 직접
+  guardian_world:
+    name: Guardian World RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "guardian_business 와 같음"
+    evidence: ["https://www.theguardian.com/robots.txt", "https://www.theguardian.com/help/feeds"]
+    verified: 직접
+  nyt_business:
+    name: NYT Business RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 허용
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. RSS 약관이 개인 이용과 비상업 블로그(정해진 형식과 출처 표기)를 허용, 상업 이용은 서면 허가. www robots 가 Claude-User 등 전면 차단, 주석이 자동 데이터 마이닝 금지"
+    evidence: ["https://rss.nytimes.com/robots.txt", "https://www.nytimes.com/robots.txt", "https://www.nytimes.com/rss"]
+    verified: 직접
+  nyt_world:
+    name: NYT World RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 허용
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "nyt_business 와 같음"
+    evidence: ["https://www.nytimes.com/robots.txt", "https://www.nytimes.com/rss"]
+    verified: 직접
+  nyt_economy:
+    name: NYT Economy RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 허용
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "nyt_business 와 같음"
+    evidence: ["https://www.nytimes.com/robots.txt", "https://www.nytimes.com/rss"]
+    verified: 직접
+  ft_home:
+    name: FT Home RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. robots 는 /rss/home 을 막지 않으나 머리 주석이 콘텐츠의 AI, ML 목적 이용을 명시 금지. RSS 이용 조건 쪽은 찾지 않음"
+    evidence: ["https://www.ft.com/robots.txt"]
+    verified: 직접
+  ft_world:
+    name: FT World RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "ft_home 과 같음"
+    evidence: ["https://www.ft.com/robots.txt"]
+    verified: 직접
+  wsj_world:
+    name: WSJ World RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "피드 호스트 robots 가 403 으로 판독 불가. wsj.com robots 가 * 전면 차단, 주석이 서면 허가 없는 자동 수집 금지"
+    evidence: ["https://feeds.content.dowjones.io/robots.txt", "https://www.wsj.com/robots.txt"]
+    verified: 직접
+  wsj_markets:
+    name: WSJ Markets RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "wsj_world 와 같음"
+    evidence: ["https://feeds.content.dowjones.io/robots.txt", "https://www.wsj.com/robots.txt"]
+    verified: 직접
+  cnbc_top:
+    name: CNBC Top News RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. * 는 피드 경로를 막지 않으나 Claude-User 등 Claude 계열을 /select/ 외 전면 차단. RSS 쪽에 이용 조건 문구 없음"
+    evidence: ["https://www.cnbc.com/robots.txt", "https://www.cnbc.com/rss-feeds/"]
+    verified: 직접
+  cnbc_economy:
+    name: CNBC Economy RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "cnbc_top 과 같음"
+    evidence: ["https://www.cnbc.com/robots.txt"]
+    verified: 직접
+  bloomberg_markets:
+    name: Bloomberg Markets RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. 피드 호스트에 robots 없음. www.bloomberg.com 이 Claude-User 를 첫 화면 외 차단. RSS 이용 조건은 찾지 않음"
+    evidence: ["https://feeds.bloomberg.com/robots.txt", "https://www.bloomberg.com/robots.txt"]
+    verified: 직접
+  bloomberg_economics:
+    name: Bloomberg Economics RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "bloomberg_markets 와 같음"
+    evidence: ["https://www.bloomberg.com/robots.txt"]
+    verified: 직접
+  bloomberg_tech:
+    name: Bloomberg Technology RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "bloomberg_markets 와 같음"
+    evidence: ["https://www.bloomberg.com/robots.txt"]
+    verified: 직접
+  nikkei_asia:
+    name: Nikkei Asia RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "공식 RSS. * 는 /rss/feed/nar 를 막지 않으나 Claude-User 등 AI 수집기를 소개, 공지 쪽 외 전면 차단. RSS 안내 쪽은 404"
+    evidence: ["https://asia.nikkei.com/robots.txt", "https://asia.nikkei.com/rss"]
+    verified: 직접
+  aljazeera:
+    name: Al Jazeera 전체 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 금지
+    basis: "약관이 개인 비상업 이용만 허용하고 봇, 스크레이퍼 등 자동 수단 접근을 금지(RSS 예외 명시 없음). robots 는 피드 경로를 * 에 열어 두지만 ?traffic_source= 주소는 막음"
+    evidence: ["https://www.aljazeera.com/robots.txt", "https://www.aljazeera.com/terms-and-conditions/"]
+    verified: 직접
+  gnews_reuters:
+    name: Google News 검색 피드(Reuters)
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "news.google.com robots 가 * 에게 /rss/ 를 막음. reuters.com 도 * 전면 차단, 사전 서면 동의 없는 자동 수집 금지. 로이터 공식 RSS 아님"
+    evidence: ["https://news.google.com/robots.txt", "https://www.reuters.com/robots.txt"]
+    verified: 직접
+  gnews_ap:
+    name: Google News 검색 피드(AP)
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 금지
+    basis: "news.google.com robots 가 * 에게 /rss/ 를 막음. apnews.com 이 Claude-User 등 전면 차단. AP 공식 RSS 아님"
+    evidence: ["https://news.google.com/robots.txt", "https://apnews.com/robots.txt"]
+    verified: 직접
+  # ── 기관 원문 피드
+  fed_press:
+    name: Federal Reserve 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 허용
+    backup: 허용
+    agent_read: 허용
+    basis: "disclaimer 의 Copyright 절: 따로 표시 없으면 공공 영역, 허가 없이 복제와 배포 가능, 연준을 출처로 표기 요청. 제3자 표시 자료는 제외. robots.txt 없음"
+    evidence: ["https://www.federalreserve.gov/robots.txt", "https://www.federalreserve.gov/disclaimer.htm", "https://www.federalreserve.gov/feeds/feeds.htm"]
+    verified: 직접
+  bea:
+    name: BEA 발표 RSS
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "apps.bea.gov robots 가 * 에게 / 를 막고 /rss/ 는 허용 목록에 없음. www.bea.gov 기사 쪽은 열림. 저작권 정책은 열지 않음"
+    evidence: ["https://apps.bea.gov/robots.txt", "https://www.bea.gov/robots.txt", "https://www.bea.gov/news/rss"]
+    verified: 직접
+  census_econ:
+    name: US Census 경제지표 XML
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 가 피드 경로를 막지 않고 AI 에이전트 항목 없음. 열어 본 open-data 쪽에서 이용 조건 문구를 찾지 못함"
+    evidence: ["https://www.census.gov/robots.txt", "https://www.census.gov/topics/research/research-transparency-public-access/open-data.html"]
+    verified: 직접
+  eia_today:
+    name: EIA Today in Energy RSS
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 가 * 에게 /rss 를 막음. /todayinenergy/ 기사 쪽은 열림. 저작권 쪽은 응답 시간 초과로 못 봄"
+    evidence: ["https://www.eia.gov/robots.txt", "https://www.eia.gov/about/copyrights_reuse.php"]
+    verified: 직접
+  ecb_press:
+    name: ECB 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 허용
+    backup: 허용
+    agent_read: 허용
+    basis: "disclaimer 의 Copyright 절: 출처(ECB) 표기 조건으로 자유 이용, 가공하면 그 사실 명시, 유료 문서에 넣으면 무료로 받을 수 있다는 고지. 예외 조항 세부는 읽지 않음"
+    evidence: ["https://www.ecb.europa.eu/robots.txt", "https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html"]
+    verified: 직접
+  eurostat:
+    name: Eurostat 신규 발표 Atom
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "ec.europa.eu robots 가 * 에게 지금 피드 주소 꼴(estatsearchportlet 질의)을 막음. 저작권 쪽은 404. 다른 공식 피드 주소를 찾아야 함"
+    evidence: ["https://ec.europa.eu/robots.txt", "https://ec.europa.eu/eurostat/about-us/policies/copyright"]
+    verified: 직접
+  bok_press:
+    name: 한국은행 보도자료 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 가 /portal/ 아래(피드 포함)를 허용, AI 에이전트 항목 없음. 저작권과 공공누리 표시는 찾지 않음"
+    evidence: ["https://www.bok.or.kr/robots.txt"]
+    verified: 직접
+  moef_press:
+    name: 재정경제부(옛 기획재정부) 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 불명
+    backup: 허용
+    agent_read: 허용
+    basis: "공식 RSS 안내가 주소 제공. 저작권정책이 저작권법 제24조의2 자유이용과 출처 표시 의무를 밝히고, 상업 이용은 게시물별 공공누리 유형에 따름. publish 는 제목, 링크와 출처 표시까지. www.moef.go.kr 은 mofe.go.kr 로 301 — 피드 주소를 mofe.go.kr 로 바꾸는 편이 낫다"
+    evidence: ["https://mofe.go.kr/mn/siteguide/rssService.do?menuNo=2060000", "https://mofe.go.kr/com/detailRssTagService.do?bbsId=MOSFBBS_000000000028", "https://mofe.go.kr/mn/siteguide/drmp.do?menuNo=2030000", "https://mofe.go.kr/robots.txt"]
+    verified: 직접
+  nber_new:
+    name: NBER 신규 워킹페이퍼 RSS
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 가 /rss/ 를 막지 않고 AI 에이전트 항목 없음. 이용 조건 문서는 찾지 않음"
+    evidence: ["https://www.nber.org/robots.txt"]
+    verified: 직접
+  # ── 검색 급상승, 조회 통계
+  trends_kr:
+    name: 구글 급상승 검색어(한국) RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다"
+    evidence: ["https://trends.google.com/robots.txt", "https://policies.google.com/terms?hl=ko", "https://support.google.com/trends/answer/4365538?hl=en", "https://support.google.com/trends/answer/3076011?hl=en"]
+    verified: 직접
+  trends_us:
+    name: 구글 급상승 검색어(미국) RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다"
+    evidence: ["https://trends.google.com/robots.txt", "https://support.google.com/trends/answer/4365538?hl=en"]
+    verified: 직접
+  google_trends_rss_kr:
+    name: 구글 급상승 검색어(한국) RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다"
+    evidence: ["https://trends.google.com/robots.txt", "https://trends.google.com/trending/rss?geo=KR", "https://policies.google.com/terms?hl=ko", "https://support.google.com/trends/answer/4365538?hl=en", "https://support.google.com/trends/answer/3076011?hl=en"]
+    verified: 직접
+  wikipedia_pageviews_ko:
+    name: 위키미디어 Pageviews API (ko.wikipedia)
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 허용
+    backup: 허용
+    basis: "API 데이터는 CC0 1.0. 조건: 모든 요청에 설명적 User-Agent 와 연락처(웹사이트 주소 가능, 없으면 예고 없이 차단될 수 있음), 한 요청이 끝난 뒤 다음 요청, 스로틀링 따르기. 2015-07-01 부터 제공"
+    evidence: ["https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/documentation/access-policy.html", "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html", "https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy", "https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_API_Usage_Guidelines", "https://www.mediawiki.org/wiki/Wikimedia_APIs/Rate_limits"]
+    verified: 직접
+  # ── 커뮤니티와 포털
+  hn_front:
+    name: Hacker News 첫 화면(hnrss)
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 금지
+    backup: 불명
+    agent_read: 불명
+    basis: "hnrss.org robots 는 전면 허용이나 HN 공식 피드가 아닌 제3자 중계다. HN 약관은 news.ycombinator.com/legal(404)이 아니라 ycombinator.com/legal 의 Terms of Use 에 있고, 'Site' 는 하위 도메인을 포함하며 HN Guidelines 를 사이트 구성요소의 지침으로 든다. Intellectual Property Rights 절이 사이트 콘텐츠에 'data mining, robots, scraping' 사용을 금지, Conditions Of Use › Commercial Use 가 허가 없는 상업 목적 이용을 금지. 제3자 중계가 이 조항을 비켜 간다는 근거 없음. news.ycombinator.com robots 에 Crawl-delay 30(2026-11-14 03:4x 재확인)"
+    evidence: ["https://www.ycombinator.com/legal/", "https://hnrss.org/robots.txt", "https://news.ycombinator.com/robots.txt", "https://hnrss.github.io/"]
+    verified: 직접
+  ppomppu_free:
+    name: 뽐뿌 자유게시판 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 금지
+    commercial: 금지
+    backup: 불명
+    agent_read: 불명
+    basis: "robots 는 /rss.php 를 막지 않음. 약관 제13조②가 사전 승낙 없는 영리 목적 이용과 제3자 제공을 금지(공개 화면 게재는 제3자 제공으로 본다). 비공개 단서로 쓰는 것은 수익화 계획 때문에 확정하지 못함"
+    evidence: ["https://m.ppomppu.co.kr/new/bbs_view.php?id=regulation&no=4", "https://www.ppomppu.co.kr/robots.txt", "https://www.ppomppu.co.kr/rss.php?id=freeboard"]
+    verified: 직접
+  ppomppu_issue:
+    name: 뽐뿌 정치자유게시판 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 금지
+    commercial: 금지
+    backup: 불명
+    agent_read: 불명
+    basis: "ppomppu_free 와 같음"
+    evidence: ["https://m.ppomppu.co.kr/new/bbs_view.php?id=regulation&no=4", "https://www.ppomppu.co.kr/robots.txt"]
+    verified: 직접
+  signal_realtime:
+    name: 시그널 실시간 검색어
+    collect: 불명
+    score_use: 금지
+    store: 불명
+    publish: 금지
+    commercial: 금지
+    backup: 불명
+    basis: "약관 제13조가 영리 목적 무단 이용을 금지하고 제17조가 서비스의 권리를 회사에 둔다. 자동 수집 조항 없음. robots 는 허용. api.signal.bz 는 공개 문서화된 API 가 아님"
+    evidence: ["https://signal.bz/policy/terms", "https://signal.bz/robots.txt", "https://api.signal.bz/robots.txt"]
+    verified: 직접
+  bobae_best:
+    name: 보배드림 베스트 게시판
+    collect: 불명
+    score_use: 금지
+    store: 금지
+    publish: 금지
+    commercial: 금지
+    backup: 금지
+    agent_read: 불명
+    basis: "약관(2021-10-01 적용) 제11조③이 서비스로 얻은 정보를 사전 승낙 없이 복제, 사용, 제공하는 것을 영리 여부와 관계없이 금지. robots 는 허용"
+    evidence: ["https://www.bobaedream.co.kr/company/service.php", "https://www.bobaedream.co.kr/robots.txt"]
+    verified: 직접
+  clien_park:
+    name: 클리앙 모두의공원
+    collect: 금지
+    score_use: 금지
+    store: 금지
+    publish: 금지
+    commercial: 금지
+    backup: 금지
+    agent_read: 금지
+    basis: "금지의 근거는 약관 제13조③(서비스로 얻은 정보를 권리자 동의 없이 수집, 복제, 배포 금지, 2026-11-11 확인)이다. robots 는 학습용 수집기(ClaudeBot, anthropic-ai 등)와 쿼리 주소만 막고, 재대조자에 따르면 주석이 사용자 요청 대행 에이전트(Claude-User 등)는 허용한다 — robots 만으로는 agent_read 금지가 나오지 않는다. 2026-11-14 03:4x 재확인 시도는 robots.txt 부터 IP 차단(403)으로 열지 못함(우회하지 않음)"
+    evidence: ["https://www.clien.net/service/cs/conditions", "https://www.clien.net/robots.txt"]
+    verified: 직접
+  daum_front_realtime_trend:
+    name: 다음 첫 화면 실시간 트렌드
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "robots 는 루트(/)만 허용하고 키워드 블록은 루트 HTML 에 있음. 이용약관 전문(policy.daum.net)은 robots 가 막아 열지 않음. 카카오 통합약관이 다음에 적용되는지 본문에 없음"
+    evidence: ["https://www.daum.net/robots.txt", "https://cs.daum.net/notice/5160", "https://policy.daum.net/robots.txt", "https://www.kakao.com/policy/terms?type=a"]
+    verified: 못 봄
+  nate_front_issue_keyword:
+    name: 네이트 첫 화면 실시간 이슈 키워드
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "robots 는 루트(/)만 허용. 서비스 약관(/policy/legal.html)은 robots 가 막아 열지 않았고 2차 사본도 찾지 못함"
+    evidence: ["https://www.nate.com/robots.txt", "https://www.nate.com/policy/legal.html", "https://helpdesk.nate.com/robots.txt"]
+    verified: 못 봄
+  issuelink_hot:
+    name: 이슈링크 오늘의 핫이슈
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 가 Claude-User 등 AI 수집기를 명시 허용. 정책 문서(개인정보처리방침에 로봇 수집, 뉴스 정책을 붙인 것)에 이용자의 수집, 복제, 상업 이용 제한 조항이 없음. 내용은 AI 수집을 막은 커뮤니티 글 제목의 모음이라 원 출처의 거부를 우회할 수 있음"
+    evidence: ["https://www.issuelink.co.kr/robots.txt", "https://www.issuelink.co.kr/basicPage/policy"]
+    verified: 직접
+  bigkinds_api:
+    name: 빅카인즈 OPEN API
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "약관 템플릿 경로(/js/)를 robots 가 막고 API 조건은 로그인 뒤에 있음. 2차 자료로 기관, 지원사업 단위 무상 제공과 본문 200자 제한만 확인. 개인 자격과 요금은 불명"
+    evidence: ["https://www.bigkinds.or.kr/robots.txt", "https://www.bigkinds.or.kr/v4/openApi/index.do", "https://swknu.kongju.ac.kr/community/noticedetail.do?seq=134"]
+    verified: 2차
+  naver_apihub_search:
+    name: NAVER API HUB 검색 API
+    collect: 허용
+    score_use: 금지
+    store: 금지
+    publish: 금지
+    commercial: 금지
+    backup: 금지
+    basis: "검색 API 특약(2026-09-20 시행) 2.1 검색결과 제공 목적만, 2.2 가공 없이 노출, 2.3 파생물 저장과 AI 입력, 수익 행위 금지, 2.4 임시 보관 최대 21일. collect 허용은 API 호출 자체만 뜻함(신청은 NCP 콘솔, 개발자센터 신규 신청은 2026-07-30 종료)"
+    evidence: ["https://www.ncloud.com/support/notice/all/2243", "https://www.ncloud.com/support/notice/all/2271", "https://developers.naver.com/products/terms/", "https://guide.ncloud-docs.com/docs/apihub-overview"]
+    verified: 직접
+  naver_apihub_datalab_search_trend:
+    name: NAVER API HUB 데이터랩 검색어 트렌드
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "전용 특약 없음. 일반조건 7.3③이 허용 범위를 넘는 저장, 가공, 배포를 금지, 7.2③ 이용 대가 수취 금지, 7.3④ 결과 화면과 광고 동시 노출 금지. 점수에 섞어 저장하는 것이 허용 범위인지 명시 없음. 한시 무료, 월 50,000건"
+    evidence: ["https://www.ncloud.com/support/notice/all/2243", "https://www.ncloud.com/support/notice/all/2271", "https://guide.ncloud-docs.com/docs/apihub-overview", "https://developers.naver.com/products/terms/"]
+    verified: 직접
+  # ── 유튜브
+  youtube_popular_kr:
+    name: YouTube Data API 인기 영상(한국)
+    collect: 금지
+    score_use: 금지
+    store: 금지
+    publish: 금지
+    commercial: 불명
+    backup: 불명
+    basis: "API 를 키로 부르는 것 자체는 원문이 막지 않는다. 그러나 이 출처의 쓰임은 여러 소유자 채널의 인기 목록을 모으는 것이고, Developer Policies III.E.2.a 가 API Data 집계 자체를 금지(같은 콘텐츠 소유자 채널만 예외, 그 소유자만 열람), III.E.2.b 가 YouTube 이용 현황 파악 목적 집계를 금지, III.E.4.h 가 파생 데이터와 지표를 금지한다. 그래서 수집과 보관을 이 쓰임으로는 금지로 본다(운영상 끈 것과 별개로 약관 판정). III.L(2026-06-01 시작)은 심사받은 분석 용도 개발자에게 파생 지표, 통계 저장을 따로 허가하는 길이나 해당 없음"
+    evidence: ["https://developers.google.com/youtube/terms/developer-policies?hl=en"]
+    verified: 직접
+  youtube_data_api_meta:
+    name: YouTube Data API 영상 메타와 통계(youtube_meta.py)
+    collect: 허용
+    score_use: 금지
+    store: 허용
+    publish: 금지
+    commercial: 불명
+    backup: 불명
+    basis: "API 키(사용자 인증 없음)로 받은 자료는 Non-Authorized: 'limited amounts' 를 30일 안쪽으로만 임시 보관, 30일 안에 삭제하거나 재조회로 갱신(III.E.4 b, d). 파생 데이터, 지표 금지(III.E.4.h). III.E.2.a 는 공개 여부와 관계없이 API Data 집계 자체를 금지(같은 콘텐츠 소유자 채널만 예외이고 그 소유자만 열람), III.E.2.b 는 YouTube 이용 현황 파악 목적 집계도 금지 — 태그, topicCategories 집계표는 내부용이라도 만들 수 없다. store 허용은 개별 영상 조회분을 30일 안에 소량 보관하는 것까지. 개별 원값을 시점 명시해 보이는 것은 불명. 백업 사본에도 30일 한도를 적용해 다룬다. III.L(2026-06-01 시작) 심사 허가 경로는 해당 없음"
+    evidence: ["https://developers.google.com/youtube/terms/developer-policies?hl=en"]
+    verified: 직접
+  youtube_video_download:
+    name: YouTube 영상, 음성 내려받기(yt-dlp)
+    collect: 금지
+    score_use: 불명
+    store: 금지
+    publish: 금지
+    commercial: 금지
+    backup: 금지
+    basis: "YouTube 서비스 약관 권한 및 제한사항 1항이 서비스의 명시적 승인이나 사전 서면 승인 없는 다운로드를 금지, 3항이 자동화 수단 접근을 금지(3항 예외는 robots.txt 를 따르는 공개 검색엔진과 사전 서면 승인뿐이고 서비스의 명시 허용 예외는 없음). 예외에 해당한다는 근거 없음. 저작권법상 공정이용 판단은 별개로 하지 않음. 보인 시행일 2022-01-05 보다 새 판이 있는지 확인 못 함"
+    evidence: ["https://www.youtube.com/static?template=terms&gl=KR&hl=ko", "https://www.youtube.com/robots.txt"]
+    verified: 직접
+  syukaworld:
+    name: 슈카월드 채널 업로드 피드(feeds.yaml channels)
+    collect: 금지
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "youtube.com robots 가 * 에게 /feeds/videos.xml 을 막음. 유튜브 약관 3항도 검색엔진 외 자동 접근을 금지"
+    evidence: ["https://www.youtube.com/robots.txt", "https://www.youtube.com/static?template=terms&gl=KR&hl=ko"]
+    verified: 직접
+  # ── 공공 원문(새로 켤 후보와 꺼진 피드)
+  koreakr_press:
+    name: 정책브리핑 보도자료 RSS
+    collect: 금지
+    score_use: 금지
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "정책브리핑 공지(2026-07-01)가 '권리 보호에 따른 제공방식 변경'으로 RSS 제공 중단. /rss/pressrelease.xml, /rss/policy.xml 404 재확인(2026-11-14). robots 는 * 허용"
+    evidence: ["https://www.korea.kr/etc/noticeView.do?newsId=132038885", "https://www.korea.kr/rss/pressrelease.xml", "https://www.korea.kr/rss/policy.xml", "https://www.korea.kr/robots.txt"]
+    verified: 직접
+  korea_kr_sitemap_html:
+    name: 정책브리핑 사이트맵과 보도자료 목록(RSS 대체 후보)
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "저작권정책: 별도 표시가 없으면 자료는 원칙적으로 문체부 저작물이고, 공공누리 제1유형이 붙은 자료만 출처를 구체적으로 밝혀 자유이용. 보도자료는 부처에서 자동 유입된 자료라 문의처가 각 부처. 직접 링크할 때 '본 저작권 정책도 함께링크' 요청. 제목과 링크 게재를 허락하는 문구는 없고 항목별 공공누리 유형을 확인하지 않아 publish 불명(2026-11-14 03:4x 재확인). RSS 중단 사유가 권리 보호라 자동 수집 허락이 없다고 보고 불명. 보도자료는 사이트맵에 없음"
+    evidence: ["https://www.korea.kr/guide/copyRight.do", "https://www.korea.kr/sitemapindex.xml", "https://www.korea.kr/briefing/pressReleaseList.do"]
+    verified: 직접
+  msit_press_rss:
+    name: 과학기술정보통신부 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 불명
+    backup: 허용
+    agent_read: 허용
+    basis: "공식 사이트 제공 RSS(200, 50건, 제목과 링크만). 저작권정책이 제24조의2 자유이용, 공공누리 유형별 상업 이용(제1유형만 가능). pubDate 가 '2026.11.13' 꼴이라 파서 주의. RSS 안내 쪽은 직접 열지 않음"
+    evidence: ["https://www.msit.go.kr/user/rss/rss.do?bbsSeqNo=94", "https://www.msit.go.kr/contents/cont.do?sCode=user&mPid=147&mId=161", "https://www.msit.go.kr/robots.txt"]
+    verified: 직접
+  mohw_press_rss:
+    name: 보건복지부 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 불명
+    backup: 허용
+    agent_read: 금지
+    basis: "robots 가 이 RSS 주소를 명시 Allow 하지만 본문 /board.es 일반은 Disallow(본문 자동 열람 금지). 저작권정책은 공공누리 유형별 이용"
+    evidence: ["https://www.mohw.go.kr/rss/board.es?mid=a10503000000&bid=0027", "https://www.mohw.go.kr/robots.txt", "https://www.mohw.go.kr/menu.es?mid=a10103010400"]
+    verified: 직접
+  mfds_press_rss:
+    name: 식품의약품안전처 보도자료 RSS
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 불명
+    backup: 허용
+    agent_read: 허용
+    basis: "공식 RSS 목록에 게시(200, 29건). 저작권정책이 제24조의2 자유이용, 공공누리 미부착은 담당자 사전 협의, 출처 명시. robots 전면 허용"
+    evidence: ["https://www.mfds.go.kr/www/rss/list.do", "https://www.mfds.go.kr/www/rss/brd.do?brdId=ntc0021", "https://www.mfds.go.kr/wpge/m_34/de010803l001.do", "https://www.mfds.go.kr/robots.txt"]
+    verified: 직접
+  mfds_admin_action_rss:
+    name: 식약처 행정처분, 회수 RSS
+    collect: 허용
+    score_use: 불명
+    store: 허용
+    publish: 허용
+    commercial: 불명
+    backup: 허용
+    agent_read: 허용
+    basis: "이용 조건은 mfds_press_rss 와 같으나 의약품 처분 피드 최신 2019-05, 의료기기 2023-06 으로 갱신이 멈췄고 회수 피드는 HTML 응답. 켜지 않는다"
+    evidence: ["https://www.mfds.go.kr/www/rss/brd.do?brdId=plc0117", "https://www.mfds.go.kr/www/rss/brd.do?brdId=plc0168", "https://www.mfds.go.kr/www/rss/brd.do?brdId=plc0139"]
+    verified: 직접
+  fsc_press:
+    name: 금융위원회 보도자료 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS 안내에 주소가 있으나 2026-11-14 요청 때 503 '점검 중'(2회). 저작권정책은 열지 않음. robots 는 * 허용"
+    evidence: ["https://www.fsc.go.kr/ut060101", "https://www.fsc.go.kr/about/fsc_bbs_rss/?fid=0111", "https://www.fsc.go.kr/robots.txt"]
+    verified: 직접
+  kostat_press:
+    name: 통계청 보도자료 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 는 피드 경로를 막지 않음. 2026-11-14 요청 때 301 로 옮겨지고 항목 0. 저작권 조건은 찾지 않음"
+    evidence: ["https://kostat.go.kr/robots.txt"]
+    verified: 직접
+  ftc_press:
+    name: 공정거래위원회 보도자료
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS 없음(누리집지도와 메인에 링크 없음, 후보 주소 404). HTML 목록 수집은 약관 미확인. 저작권정책은 열지 않음"
+    evidence: ["https://www.ftc.go.kr/www/sitemap.do?key=515", "https://www.ftc.go.kr/robots.txt"]
+    verified: 직접
+  moe_press:
+    name: 교육부 보도자료
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "공식 RSS 를 찾지 못함(후보 주소 404). 저작권정책은 열지 않음"
+    evidence: ["https://www.moe.go.kr/boardCnts/listRenew.do?boardID=294&m=020402&s=moe", "https://www.moe.go.kr/robots.txt"]
+    verified: 직접
+  customs_press:
+    name: 관세청 보도자료
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 불명
+    basis: "보도자료 RSS 없음(RSS 안내에는 팩트체크와 개방시설만, 팩트체크 피드는 0건). robots 에 * 그룹이 없고 주요 검색엔진에 게시판 본문 경로를 막음"
+    evidence: ["https://www.customs.go.kr/kcs/selectBoardRssList.do?mi=7424", "https://www.customs.go.kr/robots.txt"]
+    verified: 직접
+  kca_press:
+    name: 한국소비자원 보도자료
+    collect: 금지
+    score_use: 금지
+    store: 금지
+    publish: 불명
+    commercial: 불명
+    backup: 금지
+    agent_read: 금지
+    basis: "robots 가 * 에게 / 전체를 막음. RSS 유무는 확인하지 않음"
+    evidence: ["https://www.kca.go.kr/robots.txt"]
+    verified: 직접
+  dart_today_rss:
+    name: DART 최근공시 RSS
+    collect: 허용
+    score_use: 허용
+    store: 불명
+    publish: 허용
+    commercial: 불명
+    backup: 불명
+    agent_read: 불명
+    basis: "DART RSS 안내가 공식 제공. robots 가 /api/ 를 막지 않음. publish 허용은 제목, 링크까지(공시 본문은 제출 회사 저작물이고 report/viewer.do 는 robots Disallow). 토요일 확인 때 0건이라 영업일 재확인 필요"
+    evidence: ["https://dart.fss.or.kr/api/todayRSS.xml", "https://dart.fss.or.kr/introduction/content6.do", "https://dart.fss.or.kr/introduction/content5.do", "https://dart.fss.or.kr/robots.txt"]
+    verified: 직접
+  opendart_api:
+    name: OpenDART 오픈API
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "키 대기. 이용약관 제6조 승낙과 인증키 통지로 이용, 제10조④ 이용횟수 허용량, 제11조 원칙 무료, 제19조② 키 제3자 이용 금지 — collect 허용은 키를 받은 뒤 이 범위 안의 호출만. 받은 자료의 가공, 점수 계산을 허락하거나 막는 조항은 없고 제16조④가 약관에 없는 저작권 사항을 저작권법과 공공데이터법에 맡긴다(2026-11-14 03:4x 재확인). 공공데이터법 원문은 법령정보센터 작업 중이라 보지 못해 score_use 는 불명. 공시 본문은 제출 회사 저작물"
+    evidence: ["https://opendart.fss.or.kr/intro/terms.do"]
+    verified: 직접
+  assembly_petitions:
+    name: 국회 국민동의청원 공개 목록
+    collect: 금지
+    score_use: 금지
+    store: 금지
+    publish: 불명
+    commercial: 불명
+    backup: 금지
+    agent_read: 금지
+    basis: "robots 가 * 에게 첫 화면 외 전 경로를 막음. 목록 쪽은 열지 않음"
+    evidence: ["https://petitions.assembly.go.kr/robots.txt"]
+    verified: 직접
+  open_assembly_api:
+    name: 열린국회정보 Open API
+    collect: 허용
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    basis: "키 대기(키 없이 부르면 5건 샘플만). 이용약관 제7조 '열린국회정보' 출처 표시 의무, 저장, 공개, 재배포를 따로 허락하는 조항 없음, 제4조는 영업활동 결과에 대한 면책만 둔다(상업 이용 금지 아님). 저작권정책: 정보공개항목 메타정보의 공공누리 제1유형만 출처 표시 후 자유이용, 2~4유형은 상업 이용 금지, 변경 금지 등 조건, 미부착은 사전 협의(2026-11-14 03:4x 재확인). 쓸 데이터셋의 유형을 아직 확인하지 않아 score_use, store, publish, backup 은 불명 — 데이터셋별로 메타정보를 보고 다시 판정"
+    evidence: ["https://open.assembly.go.kr/portal/policy/openUserAgreementPage.do", "https://open.assembly.go.kr/portal/policy/copyRightPage.do", "https://open.assembly.go.kr/robots.txt"]
+    verified: 직접
+  likms_bill:
+    name: 국회 의안정보시스템
+    collect: 금지
+    score_use: 금지
+    store: 금지
+    publish: 불명
+    commercial: 불명
+    backup: 금지
+    agent_read: 금지
+    basis: "robots 가 * 에게 / 전체를 막음(네이버 Yeti 만 일부 허용). 의안 정보는 open_assembly_api 로 받는다"
+    evidence: ["https://likms.assembly.go.kr/robots.txt"]
+    verified: 직접
+  datagokr_15136860:
+    name: 공공데이터포털 15136860 한국정책방송원 게시글 조회
+    collect: 허용
+    score_use: 허용
+    store: 허용
+    publish: 허용
+    commercial: 허용
+    backup: 허용
+    basis: "키 대기(회원가입과 활용신청, 자동승인). 상세 쪽 이용 조건: 무료, 이용허락범위 '제한 없음'. 정책브리핑 보도자료가 아니라 KTV 게시판 데이터다. 응답 내용은 받아 보지 못함"
+    evidence: ["https://www.data.go.kr/data/15136860/openapi.do", "https://www.data.go.kr/robots.txt"]
+    verified: 직접
+  # ── 꺼져 있는 해외 기관 피드
+  bls_latest:
+    name: BLS 최신 발표 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 불명
+    basis: "robots.txt 요청이 403 으로 거부됨"
+    evidence: ["https://www.bls.gov/robots.txt"]
+    verified: 못 봄
+  imf_news:
+    name: IMF 뉴스 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 불명
+    basis: "robots.txt 요청이 403 으로 거부됨"
+    evidence: ["https://www.imf.org/robots.txt"]
+    verified: 못 봄
+  oecd_news:
+    name: OECD 뉴스 RSS
+    collect: 불명
+    score_use: 불명
+    store: 불명
+    publish: 불명
+    commercial: 불명
+    backup: 불명
+    agent_read: 허용
+    basis: "robots 는 피드 경로를 막지 않으나 2026-11-14 피드 요청이 403. 이용 조건은 찾지 않음"
+    evidence: ["https://www.oecd.org/robots.txt"]
+    verified: 직접

@@ -32,8 +32,9 @@ feeds:
   - {id: yonhaptv_economy, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/economy/feed/", tier: T3, lang: ko, kind: news, section: 경제}
   - {id: yonhaptv_international, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/international/feed/", tier: T3, lang: ko, kind: news, section: 국제}
   # ── 해외 언론 (T3)
-  - {id: bbc_business, outlet: BBC, url: "https://feeds.bbci.co.uk/news/business/rss.xml", tier: T3, lang: en, kind: news, section: 경제}
-  - {id: bbc_world, outlet: BBC, url: "https://feeds.bbci.co.uk/news/world/rss.xml", tier: T3, lang: en, kind: news, section: 국제}
+  # BBC 두 피드는 껐다(2026-11-14). 출처 대장에서 보관과 점수 이용이 금지로 확인됐다(bbc.com robots 의 안내). 받아도 보관할 수 없다.
+  - {id: bbc_business, enabled: false, outlet: BBC, url: "https://feeds.bbci.co.uk/news/business/rss.xml", tier: T3, lang: en, kind: news, section: 경제}
+  - {id: bbc_world, enabled: false, outlet: BBC, url: "https://feeds.bbci.co.uk/news/world/rss.xml", tier: T3, lang: en, kind: news, section: 국제}
   - {id: guardian_business, outlet: Guardian, url: "https://www.theguardian.com/business/rss", tier: T3, lang: en, kind: news, section: 경제}
   - {id: guardian_world, outlet: Guardian, url: "https://www.theguardian.com/world/rss", tier: T3, lang: en, kind: news, section: 국제}
   - {id: nyt_business, outlet: NYT, url: "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", tier: T3, lang: en, kind: news, section: 경제}

@@ -23,7 +23,7 @@ from typing import Callable
 
 import requests
 
-from ..research import collect
+from ..research import collect, ledger
 
 KST = collect.KST
 
@@ -187,6 +187,10 @@ def fetch_source(src: dict, now: datetime, get: Callable = requests.get) -> tupl
           "enabled": src.get("enabled", True), "kind": "community"}
     if not st["enabled"]:
         st["error"] = "꺼짐(약관)"
+        return [], st
+    if not ledger.allowed(src["id"], "collect"):   # 스위치(enabled)와 출처 대장 둘 다 통과해야 요청한다
+        st["enabled"] = False
+        st["error"] = ledger.off_reason(src["id"], "collect")
         return [], st
     try:
         r = get(src["url"], headers={"User-Agent": collect.UA["User-Agent"], "Accept": "*/*"}, timeout=collect.TIMEOUT)

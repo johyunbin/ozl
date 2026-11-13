@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from ..pulse import signals as psig
 from ..pulse import community as pcommunity
 from ..pulse import store
-from ..research import collect, sensitive
+from ..research import collect, ledger, sensitive
 
 BRIEFS = store.ROOT / "private" / "briefs"
 NEWS_KINDS = ("news", "official")
@@ -216,8 +216,9 @@ def run(slot: str, date: str | None = None, hours: float = 24.0, top: int = 30, 
     now = now or datetime.now(timezone.utc)
     date = date or now.astimezone(collect.KST).strftime("%Y-%m-%d")
     con = store.connect(db)
-    off = pcommunity.off_feeds()   # 꺼 둔 소스에서 전에 받아 둔 항목은 쓰지 않는다
-    items = [i for i in store.window_items(con, now, hours) if i.get("feed") not in off]
+    # 꺼 둔 소스, 그리고 출처 대장의 score_use 가 '허용'이 아닌 출처(대장에 없으면 불명)에서 전에 받아 둔 항목은 쓰지 않는다
+    usable = ledger.scorable(pcommunity.off_feeds())
+    items = [i for i in store.window_items(con, now, hours) if usable(i)]
     cands = build(items, top)
     out_dir = (out_root or BRIEFS) / date / slot
     out_dir.mkdir(parents=True, exist_ok=True)

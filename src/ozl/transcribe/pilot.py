@@ -18,6 +18,8 @@ import subprocess
 import sys
 import time
 
+from ozl.research import ledger
+
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 EXPORT = ROOT / "private" / "transcripts" / "trading_export"
 PILOT = ROOT / "private" / "pilot"
@@ -56,6 +58,10 @@ def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 def transcribe(vid: str, d: pathlib.Path) -> dict:
     audio = d / "audio.m4a"
     if not audio.exists():
+        try:
+            ledger.require("youtube_video_download")   # 대장에서 유튜브 내려받기가 허용이 아니면 요청하지 않는다
+        except ledger.Blocked as e:
+            return {"error": str(e)}
         r = run(["yt-dlp", "-q", "--no-warnings", "--sleep-requests", "2", "-f", "bestaudio[ext=m4a]/bestaudio",
                  "-o", str(d / "audio.%(ext)s"), f"https://www.youtube.com/watch?v={vid}"])
         if r.returncode != 0:

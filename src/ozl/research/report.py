@@ -46,9 +46,14 @@ def _stats(date: str, slot: str) -> dict | None:
         return None
     d = json.loads(p.read_text(encoding="utf-8"))
     red = sum(1 for c in d["clusters"] if c["sensitivity"]["level"] == "RED")
-    ok = sum(1 for f in d["feeds"] if not f["error"])
-    return {"feeds_ok": ok, "feeds": len(d["feeds"]), "items": d["n_items_window"], "clusters": d["n_clusters"], "red": red,
+    on = [f for f in d["feeds"] if f.get("enabled") is not False]   # 출처 대장으로 끈 피드는 요청하지 않았다 — 응답 수의 분모·분자 어디에도 넣지 않는다
+    ok = sum(1 for f in on if not f["error"])
+    return {"feeds_ok": ok, "feeds": len(on), "feeds_off": len(d["feeds"]) - len(on), "items": d["n_items_window"], "clusters": d["n_clusters"], "red": red,
             "hours": d["window_hours"], "generated_at": d["generated_at"]}
+
+
+def _off_note(st: dict) -> str:
+    return f"(출처 대장으로 끈 {st['feeds_off']}곳 제외)" if st.get("feeds_off") else ""
 
 
 def _claim_mark(c: dict) -> str:
@@ -164,7 +169,7 @@ def render_private(date: str, slot: str) -> str:
           f"| 검증 요약 | {summary_counts(cards)} |",
           f"| 공개 발행 | 승인 {sum(C.publishable(c, C.claims_for(c['card_id'])) for c in cards)}장 |"]
     if st:
-        L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳 · 최근 {st['hours']:g}시간 {st['items']}건 → 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
+        L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳{_off_note(st)} · 최근 {st['hours']:g}시간 {st['items']}건 → 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
     L += ["", "**채택 대기**", ""]
     wait = [c for c in cards if c["state"] == "제안"]
     L += [f"- `{c['card_id']}` {c['titles'][0]} — {C.badge_label(c)}" for c in wait] or ["없음"]
@@ -208,7 +213,7 @@ def render_public(date: str, slot: str) -> str:
           f"| 소재 카드 | {len(cards)}장 — 발행 {len(pub)} · 검증·승인 대기 {len(hold)}" + (f" · 철회 {len(gone)}" if gone else "") + " |",
           f"| 검증 요약 | {summary_counts(cards)} |"]
     if st:
-        L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳 · 최근 {st['hours']:g}시간 기사·발표 {st['items']}건 → 사건 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
+        L += [f"| 수집 | 피드 {st['feeds_ok']}/{st['feeds']}곳{_off_note(st)} · 최근 {st['hours']:g}시간 기사·발표 {st['items']}건 → 사건 묶음 {st['clusters']}개 → 민감 기준 제외 {st['red']}개 → 카드 {len(cards)}장 |"]
     L += ["", f"공개를 승인한 카드만 전문을 싣습니다([검증 방법 8절]({SITE}/methodology/)). "
           "승인 전 카드는 번호와 상태만 남깁니다.", ""]
     if pub:

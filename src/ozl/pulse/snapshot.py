@@ -17,7 +17,7 @@ import pathlib
 import re
 from datetime import datetime, timedelta, timezone
 
-from ..research import collect, coverage, sensitive
+from ..research import collect, coverage, ledger, sensitive
 from . import community as community_mod
 from . import rank, signals, store
 
@@ -35,6 +35,9 @@ def fetch_all(now: datetime) -> tuple[list[dict], list[dict]]:
             items += got
             statuses.append(st)
     return items, statuses
+
+
+scorable = ledger.scorable   # 항목 → 점수와 화면에 써도 되나(꺼 둔 소스 아님 + 대장 score_use 허용)
 
 
 def link_overlap(c: dict, seed: set[str]) -> int:
@@ -166,10 +169,12 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube, communi
     run_id = cur.lastrowid
 
     # 급상승어는 이번 수집분이 기준(지난 시각 급상승어는 지금 뜨는 것이 아니다). --no-fetch 면 최근 2시간 저장분.
-    off = community_mod.off_feeds()   # 꺼 둔 소스에서 전에 받아 둔 항목은 점수와 화면에 쓰지 않는다
-    trends_now = [i for i in fetched if i["kind"] == "trend"] if fetch else \
-        [i for i in store.window_items(con, now, 2) if i["kind"] == "trend" and i.get("feed") not in off]
-    window = [i for i in store.window_items(con, now, WINDOW_H) if i.get("feed") not in off]
+    # 꺼 둔 소스, 그리고 출처 대장의 score_use 가 '허용'이 아닌 출처(대장에 없으면 불명)에서 받은 항목은
+    # 점수와 화면에 쓰지 않는다 — 이번에 받은 것이든 전에 받아 둔 것이든.
+    usable = scorable(community_mod.off_feeds())
+    trends_now = [i for i in fetched if i["kind"] == "trend" and usable(i)] if fetch else \
+        [i for i in store.window_items(con, now, 2) if i["kind"] == "trend" and usable(i)]
+    window = [i for i in store.window_items(con, now, WINDOW_H) if usable(i)]
     scored = score_clusters(window, trends_now, yt, signals.load_calendar(), now)
 
     topic_ids = match_topics([s["c"] for s in scored], store.active_topics(con, now))

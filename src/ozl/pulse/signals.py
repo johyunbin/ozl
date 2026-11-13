@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 import requests
 import yaml
 
-from ..research import collect
+from ..research import collect, ledger
 
 NEWS_KINDS = ("news", "official")
 YT_URL = "https://www.googleapis.com/youtube/v3/videos"
@@ -145,6 +145,9 @@ def fetch_youtube(now: datetime) -> tuple[list[dict], dict]:
     if not YOUTUBE_SIGNAL_ENABLED:   # 키가 있어도 요청하지 않는다
         return [], {"id": "youtube_popular_kr", "outlet": "YouTube 인기(KR)", "http": None, "entries": 0,
                     "error": YOUTUBE_OFF_REASON, "enabled": False}
+    if not ledger.allowed("youtube_popular_kr", "collect"):   # 스위치와 대장 둘 다 통과해야 요청한다
+        return [], {"id": "youtube_popular_kr", "outlet": "YouTube 인기(KR)", "http": None, "entries": 0,
+                    "error": ledger.off_reason("youtube_popular_kr", "collect"), "enabled": False}
     key = youtube_key()
     st = {"id": "youtube_popular_kr", "outlet": "YouTube 인기(KR)", "http": None, "entries": 0, "error": None, "enabled": bool(key)}
     if not key:

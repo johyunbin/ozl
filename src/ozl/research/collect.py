@@ -22,7 +22,7 @@ import feedparser
 import requests
 import yaml
 
-from . import coverage, sensitive
+from . import coverage, ledger, sensitive
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 HERE = pathlib.Path(__file__).resolve().parent
@@ -51,8 +51,11 @@ def entry_time(e) -> datetime | None:
 
 
 def fetch_feed(feed: dict, now: datetime) -> tuple[list[dict], dict]:
-    """피드 하나 → (항목들, 상태). 예외는 삼키되 상태에 남긴다."""
+    """피드 하나 → (항목들, 상태). 예외는 삼키되 상태에 남긴다.
+    출처 대장(ledger)의 collect 칸이 '허용'이 아니면(대장에 없으면 불명) 요청하지 않고 꺼짐으로 적는다 — 실패로 세지 않는다."""
     status = {"id": feed["id"], "outlet": feed["outlet"], "http": None, "entries": 0, "error": None}
+    if not ledger.allowed(feed["id"], "collect"):
+        return [], {**status, "error": ledger.off_reason(feed["id"], "collect"), "enabled": False}
     try:
         r = requests.get(feed["url"], headers=UA, timeout=TIMEOUT)
         status["http"] = r.status_code
@@ -154,6 +157,9 @@ def fetch_uploads(cfg: dict, now: datetime) -> tuple[list[dict], list[dict]]:
     vids, stats = [], []
     for ch in cfg.get("channels", []):
         st = {"id": f"channel_{ch['id']}", "outlet": ch["name"], "http": None, "entries": 0, "error": None}
+        if not ledger.allowed(ch["id"], "collect"):   # 대장의 id 는 채널 id 그대로(syukaworld)
+            stats.append({**st, "error": ledger.off_reason(ch["id"], "collect"), "enabled": False})
+            continue
         try:
             r = requests.get(ch["url"], headers=UA, timeout=TIMEOUT)
             st["http"] = r.status_code
@@ -189,9 +195,13 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
         (DESK / "latest_uploads.json").write_text(json.dumps({"fetched_at": now.isoformat(), "videos": uploads}, ensure_ascii=False, indent=1), encoding="utf-8")
 
     since = now - timedelta(hours=hours)
-    seen, fresh = set(), []
+    usable = ledger.scorable()   # 대장의 score_use 가 '허용'이 아닌 출처에서 받은 항목은 점수와 요약본에 쓰지 않는다
+    seen, fresh, unscored = set(), [], 0
     for it in items:
         if datetime.fromisoformat(it["published"]) < since:
+            continue
+        if not usable(it):
+            unscored += 1
             continue
         key = (re.sub(r"\W+", "", it["title"].lower()), it["outlet"])   # 같은 매체의 같은 제목만 중복 — 다른 매체가 같은 제목을 달았으면 둘 다 남긴다
         if key in seen:
@@ -231,7 +241,7 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
     out_dir = DESK / f"{date}_{slot}"
     out_dir.mkdir(parents=True, exist_ok=True)
     data = {"generated_at": now.astimezone(KST).isoformat(), "date": date, "slot": slot, "window_hours": hours,
-            "feeds": statuses, "n_items_raw": len(items), "n_items_window": len(fresh), "n_clusters": len(clusters),
+            "feeds": statuses, "n_items_raw": len(items), "n_items_window": len(fresh), "n_items_unscored": unscored, "n_clusters": len(clusters),
             "coverage_error": cov_error, "calendar": calendar_window(date), "calendar_gap": calendar_gap(date),
             "trends": [{"title": t["title"], "outlet": t["outlet"]} for t in trends],
             "uploads": uploads[:15], "clusters": clusters}
@@ -245,11 +255,17 @@ def collect(slot: str, date: str | None = None, hours: float = 24.0, now: dateti
 def digest(d: dict, top: int = 70) -> str:
     """모델·사람이 읽는 요약본. 제외한 것(RED)도 건수와 사유를 남긴다."""
     L = [f"# 소재 후보 요약 — {d['date']} {d['slot']} (생성 {d['generated_at'][:16]})", ""]
-    ok = [f for f in d["feeds"] if not f["error"]]
-    bad = [f for f in d["feeds"] if f["error"]]
-    L += [f"- 피드 {len(ok)}/{len(d['feeds'])}곳 응답 · 원시 항목 {d['n_items_raw']}건 → 최근 {d['window_hours']:g}시간 {d['n_items_window']}건 → 묶음 {d['n_clusters']}개"]
+    off = [f for f in d["feeds"] if f.get("enabled") is False]   # 대장이 막아 요청하지 않은 것 — 실패로 세지 않는다
+    on = [f for f in d["feeds"] if f.get("enabled") is not False]
+    ok = [f for f in on if not f["error"]]
+    bad = [f for f in on if f["error"]]
+    L += [f"- 피드 {len(ok)}/{len(on)}곳 응답 · 원시 항목 {d['n_items_raw']}건 → 최근 {d['window_hours']:g}시간 {d['n_items_window']}건 → 묶음 {d['n_clusters']}개"]
     if bad:
         L += ["- **받지 못한 피드**: " + ", ".join(f"{f['outlet']}({f['error']})" for f in bad)]
+    if d.get("n_items_unscored"):
+        L += [f"- 출처 대장에서 점수 사용(score_use)이 허용이 아닌 출처의 항목 {d['n_items_unscored']}건은 점수와 이 요약에서 뺐다"]
+    if off:
+        L += [f"- 출처 대장으로 끈 피드 {len(off)}곳: " + ", ".join(f"{f['outlet']}({f['error']})" for f in off)]
     if d.get("coverage_error"):
         L += [f"- **커버리지 대조 실패**: {d['coverage_error']} — 아래 '기존 영상' 칸이 비어 있어도 '다룬 적 없음'이 아니다"]
     L += ["", "## 발표 일정 (어제 ~ 7일 뒤)", ""]
@@ -307,6 +323,7 @@ def main(argv: list[str]) -> int:
     t0 = time.time()
     out = collect(a.slot, a.date, a.hours)
     d = json.loads(out.with_suffix(".json").read_text(encoding="utf-8"))
-    bad = [f["outlet"] for f in d["feeds"] if f["error"]]
-    print(f"{out} — 피드 {len(d['feeds']) - len(bad)}/{len(d['feeds'])} · 묶음 {d['n_clusters']}개 · {time.time() - t0:.0f}초" + (f" · 실패: {', '.join(bad)}" if bad else ""))
+    on = [f for f in d["feeds"] if f.get("enabled") is not False]
+    bad = [f["outlet"] for f in on if f["error"]]
+    print(f"{out} — 피드 {len(on) - len(bad)}/{len(on)}(대장으로 끈 {len(d['feeds']) - len(on)}곳 제외) · 묶음 {d['n_clusters']}개 · {time.time() - t0:.0f}초" + (f" · 실패: {', '.join(bad)}" if bad else ""))
     return 0
