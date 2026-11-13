@@ -69,10 +69,12 @@ def test_progress_start_mark_done_and_no_double_build(desk, tmp_path):
     P.start(CARD, "세션-가", at=t0)
     with pytest.raises(ValueError, match="진행 중"):
         P.start(CARD, "세션-나", at=t0 + timedelta(hours=1))       # 만료 전에는 다른 세션이 시작하지 못한다
-    P.mark(CARD, "명제", "명제 둘", at=t0 + timedelta(minutes=5))
+    P.mark(CARD, "명제", "명제 둘", at=t0 + timedelta(minutes=5), by="세션-가")
     final = tmp_path / "final"
     final.mkdir()
-    st = P.done(CARD, str(final), at=t0 + timedelta(hours=2))
+    with pytest.raises(ValueError, match="아직 지나지 않은 단계"):
+        P.done(CARD, str(final), at=t0 + timedelta(hours=1), by="세션-가")      # 명제 하나만 지나고 완성으로 적지 않는다
+    st = P.done(CARD, str(final), at=t0 + timedelta(hours=2), by="세션-가", force=True)
     assert st["status"] == P.DONE and st["final"] == str(final) and [s["step"] for s in st["steps"]] == ["명제", "산출"]
     with pytest.raises(ValueError, match="완성본"):
         P.start(CARD, "세션-나", at=t0 + timedelta(hours=3))       # 같은 카드를 두 번 만들지 않는다
@@ -83,7 +85,7 @@ def test_progress_lease_expires_and_digest_change_is_reported(desk):
     C.save_yaml(C.card_path(CARD), _card())
     t0 = datetime(2099, 1, 2, 9, 0, tzinfo=P.KST)
     P.start(CARD, "세션-가", at=t0)
-    P.mark(CARD, "기록", at=t0 + timedelta(minutes=1))
+    P.mark(CARD, "기록", at=t0 + timedelta(minutes=1), by="세션-가")
     card = _card()
     card["titles"] = ["바뀐 지어낸 제목"]
     C.save_yaml(C.card_path(CARD), card)
@@ -159,3 +161,58 @@ def test_progress_concurrent_start_only_one_wins(desk):
     assert sorted(r[0] for r in results) == ["ok", "refused", "refused", "refused"]
     assert P.load(CARD)["by"] == next(n for r, n in results if r == "ok")
     assert not list((C.DESK / "builds" / CARD).glob("*.tmp"))
+
+
+# ── 2026-11-13 점검: 살아 있는 남의 임대 · 만료 뒤 표시 · 단계 다 지나야 완성 ───────────────────────────
+def test_progress_live_lease_of_other_session_is_not_taken(desk):
+    C.save_yaml(C.card_path(CARD), _card())
+    t0 = datetime(2099, 1, 2, 9, 0, tzinfo=P.KST)
+    P.start(CARD, "세션-가", at=t0)
+    with pytest.raises(ValueError, match="다른 이름"):
+        P.resume(CARD, "세션-나", at=t0 + timedelta(hours=1))               # 살아 있는 임대를 가져가지 않는다
+    with pytest.raises(ValueError, match="다른 이름"):
+        P.mark(CARD, "명제", at=t0 + timedelta(hours=1), by="세션-나")
+    P.mark(CARD, "명제", at=t0 + timedelta(hours=1), by="세션-가")           # 임대를 가진 쪽은 된다
+    st, _ = P.resume(CARD, "세션-가", at=t0 + timedelta(hours=2))
+    assert st["by"] == "세션-가"
+    assert P.resume(CARD, "세션-나", at=t0 + timedelta(hours=3), force=True)[0]["by"] == "세션-나"
+
+
+def test_progress_mark_after_expiry_needs_resume(desk):
+    C.save_yaml(C.card_path(CARD), _card())
+    t0 = datetime(2099, 1, 2, 9, 0, tzinfo=P.KST)
+    P.start(CARD, "세션-가", at=t0)
+    late = t0 + timedelta(hours=P.LEASE_HOURS + 1)
+    with pytest.raises(ValueError, match="만료"):
+        P.mark(CARD, "명제", at=late)                                         # 죽은 줄 알았던 세션이 이어서 적지 못한다
+    P.resume(CARD, "세션-나", at=late)
+    assert P.mark(CARD, "명제", at=late + timedelta(minutes=1), by="세션-나")["by"] == "세션-나"
+
+
+
+def test_progress_anonymous_call_cannot_touch_owned_live_lease(desk, tmp_path):
+    C.save_yaml(C.card_path(CARD), _card())
+    t0 = datetime(2099, 1, 2, 9, 0, tzinfo=P.KST)
+    P.start(CARD, "세션-가", at=t0)
+    late = t0 + timedelta(hours=P.LEASE_HOURS + 1)
+    P.resume(CARD, "세션-나", at=late)                                           # 세션-가가 죽은 줄 알고 세션-나가 이어 받음
+    with pytest.raises(ValueError, match="이름\\(--by\\)을 밝혀야"):
+        P.mark(CARD, "명제", at=late + timedelta(minutes=1))                    # 옛 세션이 이름 없이 돌아와도 고치지 못한다
+    with pytest.raises(ValueError, match="밝혀야"):
+        P.resume(CARD, at=late + timedelta(minutes=2))
+    assert P.mark(CARD, "명제", at=late + timedelta(minutes=3), by="세션-나")["by"] == "세션-나"
+
+
+
+def test_progress_abandon_and_forced_mark_respect_lease(desk):
+    C.save_yaml(C.card_path(CARD), _card())
+    t0 = datetime(2099, 1, 2, 9, 0, tzinfo=P.KST)
+    P.start(CARD, "세션-가", at=t0)
+    with pytest.raises(ValueError, match="밝혀야"):
+        P.abandon(CARD, "지어낸 사유", at=t0 + timedelta(minutes=1))           # 이름 없이 남의 살아 있는 작업을 접지 못한다
+    with pytest.raises(ValueError, match="다른 이름"):
+        P.abandon(CARD, at=t0 + timedelta(minutes=1), by="세션-나")
+    late = t0 + timedelta(hours=P.LEASE_HOURS + 1)
+    with pytest.raises(ValueError, match="만료"):
+        P.mark(CARD, "명제", at=late, by="세션-가", force=True)               # --force 로도 만료를 건너뛰지 않는다
+    assert P.abandon(CARD, "지어낸 사유", at=t0 + timedelta(minutes=2), by="세션-가")["status"] == P.ABANDONED

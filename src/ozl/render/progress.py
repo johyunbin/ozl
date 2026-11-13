@@ -2,10 +2,10 @@
 
     python -m ozl.render progress <card_id>                                   # 상태 보기
     python -m ozl.render progress <card_id> --start [--by 이름] [--force]    # 시작
-    python -m ozl.render progress <card_id> --resume [--by 이름]             # 끊긴 진행을 이어 받기
-    python -m ozl.render progress <card_id> --mark <단계> [--note 글] [--spec 사양.yaml]
-    python -m ozl.render progress <card_id> --done --final <완성본 폴더> [--note 글]
-    python -m ozl.render progress <card_id> --abandon [--note 사유]
+    python -m ozl.render progress <card_id> --resume [--by 이름] [--force]   # 끊긴 진행을 이어 받기
+    python -m ozl.render progress <card_id> --mark <단계> [--by 이름] [--note 글] [--spec 사양.yaml]
+    python -m ozl.render progress <card_id> --done --final <완성본 폴더> [--by 이름] [--note 글] [--force]
+    python -m ozl.render progress <card_id> --abandon [--by 이름] [--note 사유] [--force]
 
 자리 = private/desk/builds/<card_id>/state.yaml(비공개 백업 대상). 단계마다 카드·기록 지문(cards.content_digest)과,
 사양을 주면 그 sha256 을 남긴다 — 이어 할 때 마지막 단계 뒤에 카드나 기록이 바뀌었으면 알린다.
@@ -13,6 +13,9 @@
 - 같은 카드를 두 번 만들지 않는다: 진행 중(만료 전)이면 --start 를 거부하고 --resume 을 안내한다. 완성본이 이미 있으면
   --start 를 거부한다(--force 로만 다시 시작).
 - '진행 중'은 세션이 죽으면 남는다 → 마지막 기록 뒤 LEASE_HOURS 가 지나면 만료로 보고 --start 를 받는다.
+- 임대가 살아 있는 동안 다른 이름(--by)으로는 이어 받기·단계 표시·완성을 받지 않는다(--force 로만). 만료된 기록에
+  단계를 적으려면 먼저 --resume 한다 — 죽은 줄 알았던 세션과 새 세션이 같은 카드를 함께 고치지 않게(2026-11-13 점검).
+- --done 은 산출 앞의 단계(명제 … 재확인)를 이번 회차에 모두 지났을 때만 받는다(--force 로만 예외).
 - 덱 빌드(`python -m ozl.render build`)는 한 편에 여러 번 부르므로 막지 않는다 — 진행 기록은 절차 단위의 상태다.
 """
 from __future__ import annotations
@@ -132,25 +135,45 @@ def start(card_id: str, by: str = "", force: bool = False, at: datetime | None =
         return st
 
 
-def resume(card_id: str, by: str = "", at: datetime | None = None) -> tuple[dict, str]:
-    """진행 중 기록을 이어 받는다(만료돼도 받는다). 돌려주는 글 = 마지막 단계와, 그 뒤에 카드·기록이 바뀌었는지."""
+def _holder_error(st: dict, by: str, at: datetime) -> str:
+    """임대가 살아 있고 주인 이름이 있는데, 호출이 이름을 밝히지 않았거나 다른 이름이면 그 까닭(2026-11-13 Codex 지적:
+    이름을 빼면 남의 임대를 고칠 수 있었다). 주인 이름이 없는 기록(이름 없이 시작한 것)은 막지 않는다."""
+    if not (lease_alive(st, at) and st.get("by")):
+        return ""
+    if not by:
+        return f"{st['by']} 가 진행 중이다({st['lease_until']} 까지) — 이름(--by)을 밝혀야 한다"
+    if by != st["by"]:
+        return f"{st['by']} 가 진행 중이다({st['lease_until']} 까지) — 다른 이름({by})으로는 받지 않는다(--force 로만)"
+    return ""
+
+
+def resume(card_id: str, by: str = "", at: datetime | None = None, force: bool = False) -> tuple[dict, str]:
+    """진행 중 기록을 이어 받는다(만료돼도 받는다 · 살아 있는 남의 임대는 거부). 돌려주는 글 = 마지막 단계와, 그 뒤에 카드·기록이 바뀌었는지."""
     at = at or now()
     with _locked(card_id):
         st = load(card_id)
         if st.get("status") != IN_PROGRESS:
             raise ValueError(f"{card_id} 는 진행 중이 아니다(상태: {st.get('status') or '기록 없음'}) — --start")
+        why = _holder_error(st, by, at)
+        if why and not force:
+            raise ValueError(f"{card_id}: {why}")
         st["by"] = by or st.get("by", "")
         _renew(st, at)
         save(card_id, st)
     return st, summary(st, card_id)
 
 
-def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime) -> dict:
+def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime, by: str = "", force: bool = False) -> dict:
     if step not in STEPS:
         raise ValueError(f"단계 이름은 {', '.join(STEPS)} 가운데 하나다: {step!r}")
     st = load(card_id)
     if st.get("status") != IN_PROGRESS:
         raise ValueError(f"{card_id} 는 진행 중이 아니다 — --start 먼저")
+    if not lease_alive(st, at):   # --force 로도 넘기지 않는다(만료된 기록은 이어 받기가 먼저)
+        raise ValueError(f"{card_id} 의 임대가 만료됐다({st.get('lease_until', '')}) — --resume 으로 이어 받은 뒤 적는다")
+    why = _holder_error(st, by, at)
+    if why and not force:
+        raise ValueError(f"{card_id}: {why}")
     rec = {"step": step, "at": _iso(at), "note": note, "digest": digest(card_id)}
     if spec:
         sp = pathlib.Path(spec)
@@ -163,29 +186,38 @@ def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: dat
     return st
 
 
-def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None) -> dict:
+def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None, by: str = "",
+         force: bool = False) -> dict:
     with _locked(card_id):
-        st = _mark_unlocked(card_id, step, note, spec, at or now())
+        st = _mark_unlocked(card_id, step, note, spec, at or now(), by, force)
         save(card_id, st)
         return st
 
 
-def done(card_id: str, final: str, note: str = "", at: datetime | None = None) -> dict:
+def done(card_id: str, final: str, note: str = "", at: datetime | None = None, by: str = "", force: bool = False) -> dict:
     if not pathlib.Path(final).is_dir():
         raise ValueError(f"완성본 폴더가 없다: {final}")
     with _locked(card_id):   # 단계 기록과 상태 바꿈을 한 번에 저장한다
-        st = _mark_unlocked(card_id, "산출", note or "완성본", None, at or now())
+        if not force:
+            passed = {s["step"] for s in run_steps(load(card_id))}
+            missing = [s for s in STEPS[:-1] if s not in passed]
+            if missing:
+                raise ValueError(f"{card_id}: 아직 지나지 않은 단계가 있다({' → '.join(missing)}) — 완성으로 적지 않는다(--force 로만)")
+        st = _mark_unlocked(card_id, "산출", note or "완성본", None, at or now(), by, force)
         st.update({"status": DONE, "final": str(final), "lease_until": ""})
         save(card_id, st)
         return st
 
 
-def abandon(card_id: str, note: str = "", at: datetime | None = None) -> dict:
+def abandon(card_id: str, note: str = "", at: datetime | None = None, by: str = "", force: bool = False) -> dict:
     at = at or now()
     with _locked(card_id):
         st = load(card_id)
         if not st:
             raise ValueError(f"{card_id} 의 진행 기록이 없다")
+        why = _holder_error(st, by, at)   # 살아 있는 남의 임대를 이름 없이·다른 이름으로 접지 못한다
+        if why and not force:
+            raise ValueError(f"{card_id}: {why}")
         st.setdefault("steps", []).append({"step": "접음", "at": _iso(at), "note": note, "digest": digest(card_id)})
         st.update({"status": ABANDONED, "lease_until": "", "updated_at": _iso(at)})
         save(card_id, st)
@@ -231,17 +263,17 @@ def main(argv: list[str]) -> int:
         if a.start:
             st = start(a.card_id, a.by, a.force)
         elif a.resume:
-            st, text = resume(a.card_id, a.by)
+            st, text = resume(a.card_id, a.by, force=a.force)
             print(text)
             return 0
         elif a.mark:
-            st = mark(a.card_id, a.mark, a.note, a.spec)
+            st = mark(a.card_id, a.mark, a.note, a.spec, by=a.by, force=a.force)
         elif a.done:
             if not a.final:
                 raise ValueError("--done 에는 --final <완성본 폴더> 가 있어야 한다")
-            st = done(a.card_id, a.final, a.note)
+            st = done(a.card_id, a.final, a.note, by=a.by, force=a.force)
         elif a.abandon:
-            st = abandon(a.card_id, a.note)
+            st = abandon(a.card_id, a.note, by=a.by, force=a.force)
         else:
             st = load(a.card_id)
     except ValueError as e:
