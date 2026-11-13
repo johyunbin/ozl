@@ -6,7 +6,7 @@
 
 | 도구 | 하는 일 |
 |---|---|
-| Claude Code 예약 작업 | 아침, 저녁, 토요일 회차를 돌립니다. 절차서는 저장소의 `skills/ozl/SKILL.md` 입니다 |
+| Claude Code | 후보 발굴과 완성 절차를 돌립니다. 예약 실행은 2026년 11월 13일부터 멈춰 두었습니다. 절차서는 저장소의 `skills/ozl/SKILL.md` 입니다 |
 | feedparser, requests | 피드를 읽습니다 |
 | PyYAML | 카드와 검증 기록을 YAML 파일로 읽고 씁니다 |
 | MkDocs Material, GitHub Pages | 이 사이트를 만들고 올립니다 |

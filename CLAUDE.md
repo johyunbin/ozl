@@ -49,7 +49,7 @@
 - Whisper: `nice -n 19`·1프로세스·메모리 상한. yt-dlp: sleep 간격·프레임용 영상은 추출 후 삭제.
 
 ## 일일 데스크 (Phase 3 정본 · 2026-11-10)
-- 절차의 정본 = `skills/ozl/SKILL.md`(`/ozl am|pm|weekly|pick|build|status` · `verify`·`publish` 는 사용자가 원할 때만). 결정적 단계는 `python -m ozl.research …`(수집·커버리지 대조·ID 발급·검사·렌더·Notion 속성·원문 확보 `capture`·기계 대조 `machine-verify`)와 `python -m ozl.render …`(덱 검사·빌드·검토 묶음 `bundle`·진행 기록 `progress`)가 한다.
+- 절차의 정본 = `skills/ozl/SKILL.md`(`/ozl am|pick|build|status` · `verify`·`publish` 는 사용자가 원할 때만 · `pm`·`weekly` 는 옛 회차 렌더용 — 발굴은 하루 한 번 아침). 결정적 단계는 `python -m ozl.research …`(수집·커버리지 대조·ID 발급·검사·렌더·Notion 속성·원문 확보 `capture`·기계 대조 `machine-verify`)와 `python -m ozl.render …`(덱 검사·빌드·검토 묶음 `bundle`·진행 기록 `progress`)가 한다.
 - **사용자의 일은 후보의 통과/폐기(`pick` 또는 Notion 상태)와 공개 승인뿐이다.** 통과 뒤의 검증과 완성은 시스템이 하고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다(검증 시트는 할 일 목록이 아니라 기록이다).
 - 카드·클레임의 정본 = `private/desk/cards/<card_id>.yaml` · `private/desk/claims/<날짜>/…`(비공개). 보고서는 두 벌 — **전체본** `private/daily/…`(모든 카드 · PDF 쌍)과 **발행본** `daily/…`(공개 · 공개 이력(승인·철회)이 있는 회차에만 쓴다 — `report.keeps_public_page`. 승인된 카드만 전문, 승인 전 카드는 번호·상태만).
 - **공개 여부를 묻는 코드는 `cards.publishable()` 하나만 쓴다**: 승인이 참이고, 지금 클레임으로 다시 계산한 배지가 verified('확인'·「원문 일치」)·추정이며, 승인 때의 내용 지문이 지금과 같고, 「원문 일치」 기록은 저장한 사본으로 증거를 다시 검사해 맞을 때만 참. 승인 뒤에 카드나 클레임을 고치면 승인은 무효가 된다(다시 승인하거나 `withdraw`).
