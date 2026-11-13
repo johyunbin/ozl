@@ -1,0 +1,72 @@
+evidence_id: i20990101-02-e2
+issue_id: i20990101-02
+kind: 공식 원문
+source:
+  url: https://nuri-electronics.example/ir/disclosure-0102.html
+  publisher: 누리전자
+  title: 제품 회수에 따른 비용 공시
+  tier: T1
+  accessed: 2099-01-02 09:10
+observed: 회사는 회수 대상 제품의 교환 비용을 30억 원으로 추산했다.
+checks:
+  unit_ok: true
+  base_period: 2099-01
+  real_vs_nominal: n/a
+  seasonally_adjusted: n/a
+  methodology_match: n/a
+  revision_status: preliminary
+  primary_doc_locator: 본문 첫 문단
+  recalculated: n/a
+  translation_checked: n/a
+verification:
+  method: machine
+  capture:
+    ok: true
+    reason: ''
+    url: https://nuri-electronics.example/ir/disclosure-0102.html
+    final_url: https://nuri-electronics.example/ir/disclosure-0102.html
+    fetched_at: '2099-01-02T09:10:00+09:00'
+    status: 200
+    content_type: text/html; charset=utf-8
+    charset: utf-8
+    bytes: 500
+    sha256: 4d919c36d2789e309206c6ff60d968d43ea290162334c7d1152d1e01f261ded5
+    kind: html
+    path: tests/fixtures/issues/i20990101-02/captures/i20990101-02-e2/source.html
+    text_path: tests/fixtures/issues/i20990101-02/captures/i20990101-02-e2/text.txt
+  match:
+    found: true
+    count: 1
+    offsets:
+    - 44
+    context: …제품 회수에 따른 비용 공시 누리전자는 회수 대상 제품을 무상으로 바꿔 준다. 【회사는 회수 대상 제품의 교환 비용을 30억 원으로 추산했다.】 이 문서는 시험용으로 지어낸 가상의 자료이며 실제 기관이나 회사와 관계가 없다. 문장과 수치는 모두 지어낸 것이다.…
+    target:
+      offset: 44
+      end: 78
+      raw_offset: 49
+      page: 1
+      nth: 0
+  author:
+    by: agent-a
+    located: ''
+  recheck:
+    by: agent-b
+    located: 회사는 회수 대상 제품의 교환 비용을 30억 원으로 추산했다.
+    checks:
+      unit: 원
+      as_of: 2099년 1월
+      status: 잠정
+    at: '2099-01-02T10:00:00+09:00'
+  verified_at: '2099-01-02T10:00:00+09:00'
+doc:
+  speaker: 누리전자
+  speaker_role: 당사자
+  doc_kind: 공시
+  doc_stage: 작성자 자신의 발표
+  authority: false
+  transcribed: false
+  admission:
+    kind: 인정
+    scope: 회수 대상 제품의 교환 비용 추산
+    against_interest: true
+revision: 2

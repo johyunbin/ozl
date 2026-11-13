@@ -1,0 +1,197 @@
+# 지어낸 예시 — 가상의 '한빛시' 버스 요금 인상. 기관 발표와 수치 주장이 중심이고 네 판정(확인, 사실과 다름, 일부 맞음, 확인 못 함)이 다 나온다.
+issue_id: i20990101-01
+slug: hanbit-bus-fare-400
+aliases: []
+revision: 1
+split_from: null
+merged_into: null
+category: 국내 경제·정책
+keywords: [한빛시, 버스 요금, 요금 인상]
+example: true
+reason: 한빛시 시내버스 요금이 1월부터 오르는데, 시가 든 근거와 떠도는 적자 수치가 서로 다르다.
+publish: {state: 게시 가능, why: ''}
+sensitive: []
+election: null
+syuka_deck: 미정
+event_check: {confirmed: true, evidence: i20990101-01-e1, at: '2099-01-01 09:20'}
+titles:
+  candidates:
+    - {text: '버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치', angle: 판정}
+    - {text: '인상분을 어디에 쓸지, 조례에는 아직 없다', angle: 남은 질문}
+    - {text: '요금 인상, 다음 결정은 2월 시의회 손에', angle: 절차}
+  chosen: '버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치'
+  target_kind: 기관과 정책
+  basis_claims: [c2]
+rev_line: ''
+what_new: 시가 1월 2일 요금 400원 인상안을 발표했다.
+why_matters: 하루 버스 이용자 전체의 요금이 바뀐다.
+so_far:
+  - 시는 인상 근거로 운송 적자와 연료비를 들었다.
+  - 운송 적자 수치는 3년 전 결산의 값이었다.
+  - 떠도는 '적자 200억 원'은 시 결산과 다르다.
+so_far_refs: [c1, c2]
+numbers:
+  titles.candidates.0:
+    - {value: 400원, kind: 공식, evidence: i20990101-01-e1}
+    - {value: 2건, kind: 계산, inputs: {근거수: {kind: 셈, of: [운송 적자, 연료비 상승], evidence: i20990101-01-e1}}, formula: 근거수, unit: 건,
+       rounding: 그대로}
+    - {value: 1건, kind: 계산, inputs: {옛수치근거수: {kind: 셈, of: [운송 적자 수치는 2095년 결산 기준], evidence: i20990101-01-e1}},
+       formula: 옛수치근거수, unit: 건, rounding: 그대로}
+    - {value: 3년, kind: 계산, inputs: {결산연도: {value: 2098년, kind: 공식, evidence: i20990101-01-e2},
+       근거연도: {value: 2095년, kind: 공식, evidence: i20990101-01-e1}}, formula: 결산연도 - 근거연도, unit: 년, rounding: 그대로}
+  what_new:
+    - {value: 400원, kind: 공식, evidence: i20990101-01-e1}
+  so_far.1:
+    - {value: 3년, kind: 계산, inputs: {결산연도: {value: 2098년, kind: 공식, evidence: i20990101-01-e2},
+       근거연도: {value: 2095년, kind: 공식, evidence: i20990101-01-e1}}, formula: 결산연도 - 근거연도, unit: 년, rounding: 그대로}
+  so_far.2:
+    - {value: 200억 원, kind: 주장, refutes: c1}
+facts:
+  - id: f1
+    text: 한빛시는 1월 2일 시내버스 요금을 400원 올리는 안을 발표했다.
+    type: 사실
+    kind: 발표와 조치
+    evidence: [i20990101-01-e1]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 400원, kind: 공식, evidence: i20990101-01-e1}
+claims:
+  - id: c1
+    gist: 한빛시 버스 운송 적자가 한 해 200억 원이다.
+    kind: 수치
+    subject: 한빛시 시내버스 운송 적자
+    period: 2098년
+    scope: 시내버스 전체
+    unit: 원
+    spread: {where: 여러 매체 기사와 검색어, first_seen: '2099-01-01', links: []}
+    verdict: 사실과 다름
+    searched: 시 결산서 2098년, 시 보도자료, 시의회 회의록
+    not_found: ''
+    counter_searched: true
+    evidence:
+      - id: i20990101-01-e2
+        stance: 반대
+        basis: 가
+        subject: 한빛시 시내버스 운송 적자
+        period: 2098년
+        scope: 시내버스 전체
+        unit: 원
+        passage_role: 작성자의 판단
+    party_position: {text: 시는 적자 규모를 결산 기준으로 설명했다., evidence: i20990101-01-e1, checked_at: '2099-01-01 10:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 200억 원, kind: 주장}
+    verdict_history: []
+  - id: c2
+    gist: 시가 든 인상 근거의 적자 수치는 올해 수치다.
+    kind: 사실
+    subject: 인상 근거의 적자 수치
+    period: 2098년
+    scope: 시 보도자료
+    spread: {where: 시 보도자료 설명, first_seen: '2099-01-02', links: []}
+    verdict: 사실과 다름
+    searched: 시 보도자료 원문, 2095년 결산서
+    counter_searched: true
+    evidence:
+      - {id: i20990101-01-e1, stance: 반대, basis: 다, subject: 인상 근거의 적자 수치, period: 2098년, scope: 시 보도자료,
+         passage_role: 사실 기재, refers_to_original: true}
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: c3
+    gist: 요금을 올려서 승객이 줄 것이다.
+    kind: 인과
+    subject: 시내버스 승객 수
+    period: 2099년
+    scope: 시내버스 전체
+    spread: {where: 기사 논평, first_seen: '2099-01-02', links: []}
+    verdict: 확인 못 함
+    unverified_reasons: [핵심 근거를 구하지 못함]
+    would_decide: 인상 뒤 승객 수와 원인을 따진 시나 연구기관의 조사 보고서
+    searched: 시 교통 통계, 시의회 회의록
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: c4
+    gist: 시가 발표한 기본요금 인상 폭은 400원이다.
+    kind: 수치
+    subject: 한빛시 시내버스 기본요금 인상 폭
+    period: 2099년
+    scope: 시내버스 기본요금
+    unit: 원
+    spread: {where: 시 발표를 옮긴 기사, first_seen: '2099-01-02', links: []}
+    verdict: 확인
+    searched: 시 보도자료 원문
+    counter_searched: true
+    evidence:
+      - {id: i20990101-01-e1, stance: 지지, basis: 다, subject: 한빛시 시내버스 기본요금 인상 폭, period: 2099년,
+         scope: 시내버스 기본요금, unit: 원, passage_role: 사실 기재, refers_to_original: true}
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 400원, kind: 주장}
+  - id: c5
+    gist: 시는 연료비와 운송 적자를 근거로 들었고, 연료비는 30% 올랐다.
+    kind: 사실
+    subject: 인상 근거와 연료비
+    period: 2098년
+    scope: 한빛시 전체
+    spread: {where: 검색어와 기사 댓글 요약, first_seen: '2099-01-02', links: []}
+    verdict: 일부 맞음
+    searched: 시 보도자료 원문, 한빛통계원 연료 가격 통계
+    counter_searched: true
+    parts:
+      - id: p1
+        gist: 시는 연료비와 운송 적자를 인상 근거로 들었다.
+        core: true
+        verdict: 확인
+        subject: 한빛시가 든 인상 근거
+        period: 2099년
+        scope: 시 보도자료
+        evidence:
+          - {id: i20990101-01-e1, stance: 지지, basis: 다, subject: 한빛시가 든 인상 근거, period: 2099년, scope: 시 보도자료,
+             passage_role: 사실 기재, refers_to_original: true}
+      - id: p2
+        gist: 연료비는 30% 올랐다.
+        core: false
+        verdict: 사실과 다름
+        kind: 수치
+        subject: 한빛시 경유 평균 가격
+        period: 2098년
+        scope: 한빛시 전체
+        unit: '%'
+        evidence:
+          - {id: i20990101-01-e3, stance: 반대, basis: 가, subject: 한빛시 경유 평균 가격, period: 2098년, scope: 한빛시 전체,
+             unit: '%', passage_role: 작성자의 판단}
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 30%, kind: 주장}
+flow:
+  - {id: w1, event_date: '2099-01-02', report_date: '2099-01-02', what: 시가 인상안을 발표했다., kind: 계기,
+     evidence: [i20990101-01-e1], target_kind: 기관과 정책, publish: 게시 가능, numbers: []}
+stances:
+  - {id: s1, who: 한빛시, kind: 발표, summary: 운송 적자와 연료비를 인상 근거로 들었다., evidence: i20990101-01-e1,
+     at: '2099-01-02', target_kind: 기관과 정책, publish: 게시 가능, numbers: []}
+open_questions:
+  - {id: q1, text: 인상분을 어디에 쓰는지 조례에 정해질지, target_kind: 기관과 정책, publish: 게시 가능}
+spillover: {issues: [], similar_cases: []}
+figures: []
+reviews: []
+corrections: []
+production: {researched_by: [Claude Opus], drafted_by: Claude Opus, chosen_by: 사람}
+topic_state: 새로 뜸
+trend: {score: 41, bars7: [0, 0, 0, 0, 0, 0.2, 0.6], asof: '2099-01-02 07:40', formula_version: 1}
+work_state: 작성 중
+history: [{at: '2099-01-01 09:00', event: 만듦}]

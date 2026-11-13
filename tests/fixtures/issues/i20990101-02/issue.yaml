@@ -1,0 +1,205 @@
+# 지어낸 예시 — 가상의 회사 '누리전자' 보조 배터리 회수. 개인이 얽힌 공개 제외 주장(c5)과 보류한 주장(c6)이 있어
+# 화면에는 "이 밖에 다루지 않은 주장 2건"이 생긴다. 2심 판결(확정 아님), 회사 공시 수치, 보도 근거를 담는다.
+issue_id: i20990101-02
+slug: nuri-battery-recall
+aliases: []
+revision: 1
+split_from: null
+merged_into: null
+category: 국내 경제·정책
+keywords: [누리전자, 보조 배터리, 제품 회수]
+example: true
+reason: 회수 명령이 나온 뒤 회수 규모와 화재 원인을 두고 서로 다른 주장이 퍼졌다.
+publish: {state: 게시 가능, why: ''}
+sensitive: []
+election: null
+syuka_deck: 불가
+event_check: {confirmed: true, evidence: i20990101-02-e1, at: '2099-01-02 09:30'}
+titles:
+  candidates:
+    - {text: '보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전', angle: 판정}
+    - {text: '회수 비용은 회사 추산 30억 원', angle: 규모}
+    - {text: '배터리 회수, 남은 절차는 대법원 판단', angle: 절차}
+  chosen: '보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전'
+  target_kind: 기관과 정책
+  basis_claims: []
+rev_line: ''
+what_new: 제품안전원이 1월 1일 보조 배터리 회수 명령을 내렸다.
+why_matters: 같은 배터리를 쓰는 집이 많고 회수 방법을 알아야 한다.
+so_far:
+  - 회수 대상은 국내 판매분 1만 2천 개다.
+  - 회사는 교환 비용을 30억 원으로 추산했다.
+  - 화재 원인을 다룬 판결은 아직 확정되지 않았다.
+so_far_refs: [c1, c2, c3]
+numbers:
+  titles.candidates.0:
+    - {value: 1만 2천 개, kind: 공식, evidence: i20990101-02-e1}
+  titles.candidates.1:
+    - {value: 30억 원, kind: 공식, evidence: i20990101-02-e2}
+  so_far.0:
+    - {value: 1만 2천 개, kind: 공식, evidence: i20990101-02-e1}
+  so_far.1:
+    - {value: 30억 원, kind: 공식, evidence: i20990101-02-e2}
+facts:
+  - id: f1
+    text: 제품안전원은 1월 1일 누리전자 휴대용 보조 배터리 1만 2천 개에 회수 명령을 내렸다.
+    type: 사실
+    kind: 발표와 조치
+    evidence: [i20990101-02-e1]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 1만 2천 개, kind: 공식, evidence: i20990101-02-e1}
+  - id: f2
+    text: 누리전자는 회수 대상 제품을 무상으로 바꿔 준다고 공시했다.
+    type: 사실
+    kind: 발표와 조치
+    evidence: [i20990101-02-e2]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+claims:
+  - id: c1
+    gist: 회수 대상은 1만 2천 개이고, 모두 수출용이다.
+    kind: 수치
+    subject: 누리전자 보조 배터리 회수 대상
+    period: 2099년 1월 1일
+    scope: 회수 명령 전체
+    unit: 개
+    spread: {where: 여러 매체 기사와 검색어, first_seen: '2099-01-01', links: []}
+    verdict: 일부 맞음
+    searched: 제품안전원 회수 명령 공고
+    counter_searched: true
+    parts:
+      - id: p1
+        gist: 회수 대상은 1만 2천 개다.
+        core: true
+        verdict: 확인
+        evidence:
+          - {id: i20990101-02-e1, stance: 지지, basis: 가, subject: 누리전자 보조 배터리 회수 대상, period: 2099년 1월 1일,
+             scope: 회수 명령 전체, unit: 개, passage_role: 작성자의 판단}
+      - id: p2
+        gist: 회수 대상은 모두 수출용이다.
+        core: false
+        verdict: 사실과 다름
+        kind: 사실
+        subject: 회수 대상의 판매처
+        evidence:
+          - {id: i20990101-02-e1, stance: 반대, basis: 가, subject: 회수 대상의 판매처, period: 2099년 1월 1일,
+             scope: 회수 명령 전체, passage_role: 작성자의 판단}
+    party_position: {text: 회사는 회수 대상 제품을 무상으로 바꿔 준다고 밝혔다., evidence: i20990101-02-e2, checked_at: '2099-01-02 10:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 1만 2천 개, kind: 주장}
+  - id: c2
+    gist: 회사가 추산한 교환 비용은 30억 원이다.
+    kind: 수치
+    subject: 누리전자 회수 제품 교환 비용
+    period: 2099년 1월
+    scope: 회수 대상 제품의 교환 비용 추산
+    unit: 원
+    spread: {where: 회사 공시를 옮긴 기사, first_seen: '2099-01-02', links: []}
+    verdict: 확인
+    searched: 누리전자 공시, 제품안전원 공고
+    counter_searched: true
+    basis_label: 회사 공시 기준
+    evidence:
+      - {id: i20990101-02-e2, stance: 지지, basis: 나, subject: 누리전자 회수 제품 교환 비용, period: 2099년 1월,
+         scope: 회수 대상 제품의 교환 비용 추산, unit: 원, passage_role: 사실 기재}
+    party_position: {text: 회사는 교환 비용을 추산치로 공시했다., evidence: i20990101-02-e2, checked_at: '2099-01-02 10:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 30억 원, kind: 주장}
+  - id: c3
+    gist: 배터리 결함이 화재를 일으켰다.
+    kind: 인과
+    subject: 보조 배터리 화재의 원인
+    period: 2098년
+    scope: 알려진 화재
+    spread: {where: 판결을 옮긴 기사, first_seen: '2098-12-20', links: []}
+    verdict: 확인 못 함
+    unverified_reasons: [절차가 끝나지 않음]
+    would_decide: 대법원의 확정 판결이나 제품안전원의 원인 조사 결과
+    searched: 한빛고등법원 판결 요지, 제품안전원 공고
+    evidence:
+      - {id: i20990101-02-e3, stance: 지지, basis: 없음, subject: 보조 배터리 화재의 원인, period: 2098년, scope: 알려진 화재,
+         passage_role: 작성자의 판단, addresses_cause: true}
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: c4
+    gist: 누리전자가 결함을 알고도 한 달 넘게 숨겼다.
+    kind: 사실
+    subject: 누리전자의 결함 인지 시점
+    period: 2098년
+    scope: 누리전자 내부
+    spread: {where: 가나일보 보도와 그것을 옮긴 기사, first_seen: '2099-01-02', links: [{outlet: 가나일보, url: 'https://ganadaily.example/news/0001'}]}
+    verdict: 확인 못 함
+    unverified_reasons: [핵심 근거를 구하지 못함]
+    would_decide: 회사 내부 문서를 확인한 수사기관이나 법원의 문서
+    searched: 누리전자 공시, 제품안전원 공고, 가나일보 보도
+    evidence:
+      - {id: i20990101-02-e4, stance: 지지, basis: 없음, subject: 누리전자의 결함 인지 시점, period: 2098년, scope: 누리전자 내부,
+         passage_role: 당사자 주장을 옮긴 것}
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: true
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: c5
+    gist: 처음 불이 난 집의 주민이 회사 직원의 가족이다.
+    kind: 사실
+    subject: 첫 화재 집의 주민
+    period: 2098년
+    scope: 해당 없음
+    spread: {where: 검색어, first_seen: '2099-01-02', links: []}
+    verdict: 확인 못 함
+    unverified_reasons: [확인할 방법이 없음]
+    would_decide: 본인이 스스로 공개한 사실
+    searched: 공개된 자료 없음
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 일반인
+    publish: 공개 제외
+    numbers: []
+  - id: c6
+    gist: 회수 비용은 보험으로 모두 메운다.
+    kind: 사실
+    subject: 회수 비용의 재원
+    period: 2099년
+    scope: 회수 대상 제품 전체
+    spread: {where: 기사 해설, first_seen: '2099-01-02', links: []}
+    verdict: 확인 못 함
+    unverified_reasons: [핵심 근거를 구하지 못함]
+    would_decide: 회사의 보험 계약 공시
+    searched: 누리전자 공시
+    party_position: {none: true, checked_at: '2099-01-02 11:00'}
+    allegation: false
+    target_kind: 기관과 정책
+    publish: 보류
+    numbers: []
+flow:
+  - {id: w1, event_date: '2098-12-20', report_date: '2098-12-20', what: 고등법원이 결함을 화재 원인으로 판단했다(확정 전)., kind: 결정,
+     evidence: [i20990101-02-e3], target_kind: 기관과 정책, publish: 게시 가능, numbers: []}
+  - {id: w2, event_date: '2099-01-01', report_date: '2099-01-01', what: 제품안전원이 회수 명령을 내렸다., kind: 계기,
+     evidence: [i20990101-02-e1], target_kind: 기관과 정책, publish: 게시 가능, numbers: []}
+stances:
+  - {id: s1, who: 누리전자, kind: 인정, summary: 회수 대상 제품을 무상으로 바꿔 주겠다고 밝혔다., evidence: i20990101-02-e2,
+     at: '2099-01-02', target_kind: 기관과 정책, publish: 게시 가능, numbers: []}
+open_questions:
+  - {id: q1, text: 대법원이 화재 원인을 어떻게 판단할지, target_kind: 기관과 정책, publish: 게시 가능}
+spillover: {issues: [], similar_cases: []}
+figures: []
+reviews: []
+corrections: []
+production: {researched_by: [Claude Opus], drafted_by: Claude Opus, chosen_by: 사람}
+topic_state: 커지는 중
+trend: {score: 57, bars7: [0, 0, 0, 0, 0.1, 0.5, 0.9], asof: '2099-01-02 07:40', formula_version: 1}
+work_state: 작성 중
+history: [{at: '2099-01-02 08:30', event: 만듦}]

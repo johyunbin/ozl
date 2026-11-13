@@ -1,0 +1,24 @@
+evidence_id: i20990101-02-e4
+issue_id: i20990101-02
+kind: 보도
+source:
+  url: https://ganadaily.example/news/0001
+  publisher: 가나일보
+  title: 누리전자 배터리 결함 은폐 보도
+  tier: T3
+  accessed: 2099-01-02 08:00
+report:
+  outlet: 가나일보
+  title: 누리전자, 배터리 결함 알고도 알리지 않았다는 증언
+  read_at: 2099-01-02 08:00
+  basis_kinds:
+  - 익명 관계자
+  first_report: true
+doc:
+  speaker: 가나일보
+  speaker_role: 보도 매체
+  doc_kind: 기사
+  doc_stage: 한쪽 주장을 옮긴 것
+  authority: false
+  transcribed: true
+revision: 1
