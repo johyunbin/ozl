@@ -55,7 +55,7 @@ def _claim_mark(c: dict) -> str:
     if c.get("status") == "verified":
         return C.grade_label(c)   # 사람 대조만 '확인', 기계 대조는 「원문 일치」
     if c.get("status") == "pending":
-        return "원문 대조함 · 사람 확인 대기" if (c.get("verifiers") or {}).get("claude") else "검증 전"
+        return "검증 전"   # 「원문 일치」는 machine-verify 를 통과해야 붙는다(모델이 대조했다고 적은 것만으로는 아니다)
     return C.BADGE_KO.get(c.get("status"), "?")
 
 

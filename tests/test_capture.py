@@ -237,7 +237,9 @@ def test_running_sheet_does_not_call_machine_match_human(desk):
 def test_human_verified_label_and_old_strict_behaviour_unchanged():
     old = {**base_claim(), "status": "verified", "human_verified": True, "human_verified_at": "x", "human_verified_by": "y"}
     assert C.grade_label(old) == "확인"
-    assert S.accepted({"human_verified": True, "status": "single_source"})     # 종전처럼 human_verified 참이면 받는다
+    assert S.accepted({"human_verified": True, "status": "verified"})          # 사람이 대조해 verified 가 된 기록은 받는다
+    why = S.acceptance_error({"human_verified": True, "status": "single_source"})
+    assert why and "verified 아님" in why                                       # 사람이 대조했어도 단독·추정이면 숫자 근거로 받지 않는다(2026-11-13)
     no_bundle = {**base_claim(), "status": "verified"}
     assert any("human_verified 가 아님 — 사람 육안 대조 전에는 pending" in e for e in C.validate_claim(no_bundle))
     assert C.grade_label(no_bundle) == "검증 오류" and not S.accepted(no_bundle)

@@ -21,6 +21,7 @@ CID2 = "2099-01-02-am-01-c2"
 
 def claim(cid=CID, text="가상의 섬 감자 수확량은 2098년 1,234톤으로 전년보다 12% 늘었다.", observed="1,234 t · up 12%", hv=True):
     return {"claim_id": cid, "card_id": "2099-01-02-am-01", "text": text, "observed": observed, "human_verified": hv,
+            **({"status": "verified"} if hv else {}),   # 사람 대조 기록도 상태가 verified 일 때만 숫자 근거가 된다
             "source": {"url": "https://example.org/potato.pdf", "publisher": "가상 섬 통계청", "tier": "T1"},
             "checks": {"base_period": "2098", "primary_doc_locator": "표 3"}}
 

@@ -120,9 +120,12 @@ def spoken_text(sl: dict) -> list[str]:
 
 def acceptance_error(c: dict) -> str:
     """엄격 모드가 이 기록을 받지 않는 까닭. 빈 문자열이면 받는다.
-    받는 기록 = 사람이 대조했거나(종전 그대로 human_verified 가 참), 기계 대조로 「원문 일치」가 됐고 **지금 다시 검사해도** 증거가 맞는 것.
+    받는 기록 = 사람이 대조해 verified 가 됐거나('확인'), 기계 대조로 「원문 일치」가 됐고 **지금 다시 검사해도** 증거가 맞는 것.
+    사람이 대조했어도 상태가 verified 가 아니면(단독·추정 — 보도 등) 숫자 근거로 받지 않는다(2026-11-13 문서·코드 대조).
     기록 파일에 verified 라고 적혀 있다는 것만으로는 받지 않는다 — 사본 해시, 문구, 재대조 대목을 쓸 때마다 다시 본다."""
     if c.get("human_verified") is True:
+        if c.get("status") != "verified":
+            return f"사람이 대조했지만 상태가 '{C.BADGE_KO.get(c.get('status'), c.get('status'))}' 다(verified 아님) — 숫자 근거로 쓰지 않는다"
         return ""
     if C.grade_label(c) != C.GRADE_MACHINE:
         return f"사람 대조 전이다(human_verified 아님 · 「{C.GRADE_MACHINE}」도 아님)"

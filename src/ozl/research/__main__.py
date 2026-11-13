@@ -82,9 +82,11 @@ def main(argv: list[str] | None = None) -> int:
         picked = [c for c in rows if c.get("state") == "채택"]
         print(f"카드 {len(rows)}장 · 채택 대기 {len(wait)} · 채택 {len(picked)}")
         for c in rows[-30:]:
-            hv = [x.get("human_verified") for x in C.claims_for(c["card_id"])]
-            pub = C.publish_status(c, C.claims_for(c["card_id"]))
-            print(f"- {c['card_id']} [{c['state']}] {C.badge_ko(c)} · 사람 확인 {sum(bool(h) for h in hv)}/{len(hv)} · {pub} · {c['titles'][0]}")
+            cl = C.claims_for(c["card_id"])
+            grades = [C.grade_label(x) for x in cl]
+            pub = C.publish_status(c, cl)
+            print(f"- {c['card_id']} [{c['state']}] {C.badge_ko(c)} · {C.GRADE_HUMAN} {grades.count(C.GRADE_HUMAN)} · "
+                  f"{C.GRADE_MACHINE} {grades.count(C.GRADE_MACHINE)} / 기록 {len(cl)} · {pub} · {c['titles'][0]}")
         return 0
     if cmd == "ledger":
         a = ap.parse_args(rest)
@@ -96,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         ap.add_argument("card_id")
         a = ap.parse_args(rest)
         c = C.set_state(a.card_id, "채택")
-        print(f"{a.card_id} → 채택 (r{c['revision']}). 다음: 클레임 전수 검증 → private/decks/drafts/ 초안")
+        print(f"{a.card_id} → 채택 (r{c['revision']}). 다음: 완성 절차(skills/ozl/SKILL.md §5) — python -m ozl.render progress {a.card_id} --start")
         return 0
     if cmd == "human-verify":
         ap.add_argument("claim_ids", nargs="+")
