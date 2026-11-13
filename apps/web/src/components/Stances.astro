@@ -1,4 +1,5 @@
 ---
+import { safeHref } from "../lib/data";
 // 누가 뭐라고 하나(설계 4-5). 판정 색을 쓰지 않는다.
 import type { Stance } from "../lib/data";
 import { fmtDate } from "../lib/format";
@@ -15,7 +16,7 @@ const list = [...Astro.props.stances].filter((s) => s.who || s.summary).sort((a,
         <li>
           <p><strong>{s.who}</strong> {s.kind && <span class="tag">{s.kind}{(s.kind === "평가" || s.kind === "전망") && " · 의견"}</span>}</p>
           <p>{s.summary}</p>
-          <p class="xs muted num">{fmtDate(s.at)}{s.sources.map((x) => <><span class="sep" />{x.url ? <a href={x.url} rel="noopener">{x.by || x.title}</a> : (x.by || x.title)}</>)}</p>
+          <p class="xs muted num">{fmtDate(s.at)}{s.sources.map((x) => <><span class="sep" />{safeHref(x.url) ? <a href={safeHref(x.url)} rel="noopener">{x.by || x.title}</a> : (x.by || x.title)}</>)}</p>
         </li>
       ))}
     </ul>

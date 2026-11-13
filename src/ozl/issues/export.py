@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import json
 import os
 import pathlib
@@ -26,6 +28,8 @@ TAKEDOWN_WHY = "OZL 이 이 기록의 게시를 내렸다."
 MSG_CONTACT = "신고 연락처(OZL_REPORT_CONTACT)가 비어 있어 공개용으로 내보내지 않는다"
 MSG_TEST_OUT = "시험 자료는 시험 폴더에만 내보낸다"
 MSG_TEST_MIX = "발행 목록에 시험 승인이 섞여 있다 — 내보내지 않는다"
+MSG_MANIFEST_MOVED = "내보내는 동안 발행 목록이 계속 바뀌어 내보내지 않았다 — 다시 돌린다"
+REBUILD_TRIES = 3
 
 
 def _under(p: pathlib.Path, root: pathlib.Path) -> bool:
@@ -40,6 +44,10 @@ def _out_error(out: pathlib.Path) -> str:
         r = pathlib.Path(root).resolve()
         if o == r or o in r.parents:
             return f"출력 자리({out})가 자료 폴더나 저장소 자체이거나 그 위다 — 다른 폴더를 준다"
+    # 자료 폴더 안(이슈·화제 목록·복원판 폴더, 실제 자료 루트 전체)에는 쓰지 않는다 — 내보내기가 정본 옆에 섞이지 않게
+    inside = [paths.issues_dir(), paths.desk_root() / units.UNITS["day"], paths.desk_root() / units.UNITS["restored"], paths.real_root()]
+    if any(_under(out, r) for r in inside):
+        return f"출력 자리({out})가 자료 폴더(issues, daily_lists, restored, 실제 자료 루트) 안이다 — 그 밖의 폴더를 준다"
     if out.exists():
         try:
             meta = json.loads((out / "meta.json").read_text(encoding="utf-8"))
@@ -47,6 +55,9 @@ def _out_error(out: pathlib.Path) -> str:
             meta = None
         if not (isinstance(meta, dict) and meta.get("schema") == 1 and meta.get("mode") in ("preview", "public")):
             return f"출력 자리({out})가 이전 내보내기 폴더가 아니다(meta.json 없음) — 빈 자리를 준다"
+        other = [p for p in out.rglob("*") if p.is_file() and p.suffix != ".json"]
+        if other:                                   # 바꿀 때 폴더째 지우므로 내보내기가 쓰지 않는 파일이 섞여 있으면 손대지 않는다
+            return f"출력 자리({out})에 내보내기 파일이 아닌 것이 있다({other[0].relative_to(out)}) — 빈 자리를 준다"
     return ""
 
 
@@ -130,7 +141,10 @@ def _public_issues(man: dict, now, msgs: list[str]) -> tuple[dict, int]:
             fi, fe, appr = revisions.load_fixed(iid, e["rev"])
             b = mask.apply(B.issue_body(fi, fe, rev_at=appr.get("approved_at", "")), now)
             score_p = revisions.rev_dir(iid, e["rev"]) / "score.json"
-            b["trend"] = json.loads(score_p.read_text(encoding="utf-8")) if score_p.is_file() else None
+            try:                                    # score.json 은 지문 밖이다 — 모양이 맞는 칸만 새로 만들어 싣는다
+                b["trend"] = model.clean_trend(json.loads(score_p.read_text(encoding="utf-8"))) if score_p.is_file() else None
+            except (OSError, ValueError):
+                b["trend"] = None
             out.setdefault(iid, []).append((e["rev"], b, fi, appr))
     if n_test:
         msgs.append(f"시험 승인 {n_test}개 판은 공개용에 싣지 않았다")
@@ -163,7 +177,8 @@ def _days(mode: str, man: dict, latest: dict[str, dict], approved_dates: dict[st
         else:
             r = units.load_unit("restored", date) if units.unit_file("restored", date).is_file() else None
         if r:
-            restored = {"label": r.get("label"), "items": r.get("items") or []}
+            restored = {"label": r.get("label"), "items": [{k: it[k] for k in units.RESTORED_ITEM_KEYS if k in it}
+                                                           for it in r.get("items") or [] if isinstance(it, dict)]}
         ids = sorted(mentioned | {i for i, ds in approved_dates.items() if date in ds and i in latest})
         records = [{"id": latest[i]["id"], "slug": latest[i]["slug"], "title": latest[i]["title"], "rev": latest[i]["rev"],
                     "verdict_summary": B.verdict_summary(latest[i])} for i in ids]
@@ -188,10 +203,26 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
     latest: dict[str, dict] = {}
     approved_dates: dict[str, list] = {}
     index, search, feed, corrections, n_revs = [], [], [], [], 0
+    taken: dict[str, str] = {}                      # 주소 이름 → 이슈 번호(다른 이슈의 파일을 덮어쓰지 않게)
+
+    def _slug_free(iid: str, b: dict) -> bool:
+        nonlocal code
+        names = [b.get("slug")] + [a for a in b.get("aliases") or [] if isinstance(a, str)]
+        clash = sorted({taken[n] for n in names if n in taken and taken[n] != iid})
+        if clash or not isinstance(b.get("slug"), str) or not b.get("slug"):
+            code = 4
+            msgs.append(f"{iid}: 주소 이름이 다른 이슈({', '.join(clash)})와 겹쳐 싣지 않았다")
+            return False
+        for n in names:
+            taken[n] = iid
+        return True
+
     if pub:
         pubs, code = _public_issues(man, now, msgs)
         for iid, revs in pubs.items():
             work = model.load_issue(iid) if paths.issue_file(iid).is_file() else {}
+            if not _slug_free(iid, revs[-1][1]):
+                continue
             for rev, b, fi, appr in revs:
                 _dump(tmp, f"issues/{b['slug']}/r/{rev}.json", b)
                 hidden += B.hidden_texts(fi)
@@ -200,10 +231,11 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
                 approved_dates.setdefault(iid, []).append(str(appr.get("approved_at", ""))[:10])
                 n_revs += 1
             rev, b, fi, appr = revs[-1]
-            lb = dict(b, trend_now=work.get("trend") if work else b.get("trend"))
+            # 작업본의 trend·topic_state 는 지문 밖이고 다시 검사하지 않으므로 모양이 맞는 값만 싣는다
+            lb = dict(b, trend_now=model.clean_trend(work.get("trend")) if work else b.get("trend"))
             latest[iid] = lb
             _dump(tmp, f"issues/{b['slug']}.json", lb)
-            index.append(_index_row(b, work or fi))
+            index.append(_index_row(b, {"topic_state": model.clean_topic_state((work or fi).get("topic_state"))}))
     else:
         for iid in model.all_issue_ids():
             issue, evs = model.load_issue(iid), model.load_evidences(iid)
@@ -214,10 +246,12 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
                              "hidden": [f"{lst}.{it.get('id')}" for lst in model.ITEM_LISTS for it in issue.get(lst) or []
                                         if isinstance(it, dict) and not rules.item_public(issue, it)],
                              "errors": r["errors"], "warnings": r["warnings"]}
-            b["trend_now"] = issue.get("trend")
+            b["trend_now"] = model.clean_trend(issue.get("trend"))
+            if not _slug_free(iid, b):
+                continue
             latest[iid] = b
             _dump(tmp, f"issues/{b['slug']}.json", b)
-            index.append(_index_row(b, issue, {"publish_state": state}))
+            index.append(_index_row(b, {"topic_state": model.clean_topic_state(issue.get("topic_state"))}, {"publish_state": state}))
     for b in latest.values():
         search.append({"slug": b["slug"], "rev": b["rev"], "title": b["title"], "keywords": b["keywords"], "aliases": b["aliases"],
                        "so_far": b["so_far"]})
@@ -255,6 +289,35 @@ def _hidden_hits(tmp: pathlib.Path, hidden: list[tuple[str, str]]) -> list[str]:
     return out
 
 
+@contextlib.contextmanager
+def _out_lock(out: pathlib.Path):
+    """같은 출력 자리를 바꾸는 두 내보내기가 겹치지 않게 거는 잠금(출력 자리 옆의 .<이름>.lock)."""
+    p = out.parent / f".{out.name}.lock"
+    with open(p, "a+", encoding="utf-8") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+
+
+def _swap(tmp: pathlib.Path, out: pathlib.Path) -> None:
+    """tmp 를 out 자리로 바꾼다. 바꾸다 실패하면 이전 출력을 되돌려 놓는다(out 이 사라진 채 남지 않게)."""
+    if not out.exists():
+        tmp.rename(out)
+        return
+    old = out.parent / f"{out.name}.old-{os.getpid()}"
+    shutil.rmtree(old, ignore_errors=True)
+    out.rename(old)
+    try:
+        tmp.rename(out)
+    except BaseException:
+        if not out.exists():
+            old.rename(out)
+        raise
+    shutil.rmtree(old, ignore_errors=True)
+
+
 def export(mode: str, out, now=None) -> dict:
     """{code, msgs, counts}. 0 성공, 1 출력 검사 실패, 2 연락처 없음·출력 자리 거부, 4 일부 판을 싣지 못함."""
     if mode not in ("preview", "public"):
@@ -271,32 +334,34 @@ def export(mode: str, out, now=None) -> dict:
     contact = os.environ.get(CONTACT_ENV, "").strip()
     if mode == "public" and not contact:
         return {"code": 2, "msgs": [MSG_CONTACT], "counts": {}}
-    man = revisions.load_manifest()
-    if mode == "public" and paths.is_real_root() and any(e.get("approved_by") == revisions.TEST_BY for e in man["entries"]):
-        return {"code": 1, "msgs": [MSG_TEST_MIX], "counts": {}}
     stray = stray_captures()
     if stray:
         return {"code": 1, "msgs": [f"원문 사본이 captures 폴더 밖에 있다: {s}" for s in stray], "counts": {}}
     tmp = out.parent / f"{out.name}.tmp-{os.getpid()}"
-    shutil.rmtree(tmp, ignore_errors=True)
-    tmp.mkdir(parents=True)
-    msgs: list[str] = []
-    try:
-        code, hidden, counts = _build(mode, tmp, man, now, contact, msgs)
-        bad = _hidden_hits(tmp, hidden) if mode == "public" else []
-        if paths.is_real_root() and json.loads((tmp / "meta.json").read_text(encoding="utf-8"))["test"]:
-            bad.append("실제 폴더의 출력에 시험 표시가 붙었다")
-        if bad:
-            shutil.rmtree(tmp, ignore_errors=True)
-            return {"code": 1, "msgs": msgs + bad, "counts": counts}
-        if out.exists():
-            old = out.parent / f"{out.name}.old-{os.getpid()}"
-            out.rename(old)
-            tmp.rename(out)
-            shutil.rmtree(old, ignore_errors=True)
-        else:
-            tmp.rename(out)
-    except BaseException:
+    for _attempt in range(REBUILD_TRIES):
+        man = revisions.load_manifest()
+        if mode == "public" and paths.is_real_root() and any(e.get("approved_by") == revisions.TEST_BY for e in man["entries"]):
+            return {"code": 1, "msgs": [MSG_TEST_MIX], "counts": {}}
         shutil.rmtree(tmp, ignore_errors=True)
-        raise
-    return {"code": code, "msgs": msgs, "counts": counts}
+        tmp.mkdir(parents=True)
+        msgs: list[str] = []
+        try:
+            code, hidden, counts = _build(mode, tmp, man, now, contact, msgs)
+            bad = _hidden_hits(tmp, hidden) if mode == "public" else []
+            if paths.is_real_root() and json.loads((tmp / "meta.json").read_text(encoding="utf-8"))["test"]:
+                bad.append("실제 폴더의 출력에 시험 표시가 붙었다")
+            if bad:
+                shutil.rmtree(tmp, ignore_errors=True)
+                return {"code": 1, "msgs": msgs + bad, "counts": counts}
+            # 만드는 동안 승인·내림이 발행 목록을 바꿨으면 다시 만든다. 바꾸기는 승인·내림과 같은 잠금 안에서 한다
+            # (내린 판이 실린 묵은 출력이 내림 뒤에 올라가지 않게).
+            with paths.lock():
+                if revisions.load_manifest() == man:
+                    with _out_lock(out):
+                        _swap(tmp, out)
+                    return {"code": code, "msgs": msgs, "counts": counts}
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+    shutil.rmtree(tmp, ignore_errors=True)
+    return {"code": 1, "msgs": [MSG_MANIFEST_MOVED], "counts": {}}

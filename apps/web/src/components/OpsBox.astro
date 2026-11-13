@@ -1,0 +1,12 @@
+---
+// 미리보기의 운영 정보 상자(설계 1-12). 쪽마다 한 곳에 접어 둔다. 공개용 빌드는 출력하지 않는다.
+import { IS_PREVIEW } from "../lib/mode";
+interface Props { items: string[] }
+const items = Astro.props.items.filter(Boolean);
+---
+{IS_PREVIEW && items.length > 0 && (
+  <details class="ops" data-status="운영 정보" data-pagefind-ignore>
+    <summary>{`운영 정보 ${items.length}건`}</summary>
+    <ul>{items.map((t) => <li>{t}</li>)}</ul>
+  </details>
+)}

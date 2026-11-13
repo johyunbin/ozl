@@ -1,5 +1,6 @@
 ---
 // "이번 판에서 달라진 것"(설계 4-7 ~ 4-9). 최대 3줄. 빈칸을 지어 채우지 않는다.
+// 이슈 화면 아래의 "정정과 판 기록" 절 맨 앞에 둔다(무엇이 새로운가, 왜 중요한가는 머리에 있다).
 import type { Body } from "../lib/data";
 import VerdictMark from "./VerdictMark.astro";
 interface Props { b: Body }
@@ -19,7 +20,7 @@ const more = lines.length - shown.length;
 const first = b.rev === 1;
 ---
 <section class="changes" aria-labelledby="changes-h">
-  <p id="changes-h" class="changes-h">이번 판에서 달라진 것</p>
+  <h3 id="changes-h" class="changes-h">이번 판에서 달라진 것</h3>
   {shown.length ? (
     <ul>
       {shown.map((l) => (
@@ -32,13 +33,10 @@ const first = b.rev === 1;
       {more > 0 && <li><a href="#corrections">그 밖에 {more}건은 정정과 판 기록에</a></li>}
     </ul>
   ) : <p>{first ? "첫 판이다." : "이번 판에서 바꾼 문장 기록이 없다."}</p>}
-  {first && shown.length === 0 && b.what_new && <p>{b.what_new}</p>}
-  {!first && b.what_new && <p class="sub"><strong>무엇이 새로운가</strong> {b.what_new}</p>}
-  {b.why_matters && <p class="sub"><strong>왜 중요한가</strong> {b.why_matters}</p>}
 </section>
 <style>
   .changes { margin-top: var(--sp-5); }
-  .changes-h { font-size: var(--fs-sm); font-weight: 700; margin-bottom: var(--sp-1); }
+  .changes .changes-h { margin: 0 0 var(--sp-1); }
   .changes li { padding: var(--sp-1) 0; }
   .changes .bad { color: var(--v-false); }
   .changes .sub { margin-top: var(--sp-3); }

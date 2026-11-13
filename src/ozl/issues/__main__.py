@@ -23,7 +23,7 @@ import yaml
 
 from ozl.research import cards
 
-from . import digest, export, ids, links, model, revisions, units
+from . import digest, export, ids, links, model, paths, revisions, units
 from . import evidence as EV
 
 
@@ -62,15 +62,19 @@ def _check(a) -> int:
 def _new(a) -> int:
     if ids.slug_error(a.slug):
         return _err(ids.slug_error(a.slug))
-    taken = {model.load_issue(i).get("slug") for i in model.all_issue_ids()}
-    taken |= {e.get("slug") for e in revisions.load_manifest()["entries"] if e.get("unit") == "issue"}
-    if a.slug in taken:
-        return _err(f"이미 쓰는 주소 이름이다: {a.slug}")
-    try:
-        iid = ids.next_issue_ids(a.date)[0]
-    except ValueError as e:
-        return _err(str(e))
-    model.save_issue(model.skeleton(iid, a.slug, example=a.example, title=a.title or "", now=cards.now_kst()))
+    with paths.lock():                              # 쓰는 이름 확인부터 번호 받기·뼈대 저장까지 한 잠금 안에서(같은 이름 두 건 방지)
+        taken: set = set()
+        for i in model.all_issue_ids():
+            x = model.load_issue(i)
+            taken |= {x.get("slug")} | {s for s in (x.get("aliases") or []) if isinstance(x.get("aliases"), list)}
+        taken |= {e.get("slug") for e in revisions.load_manifest()["entries"] if e.get("unit") == "issue"}
+        if a.slug in taken:
+            return _err(f"이미 쓰는 주소 이름이다: {a.slug}")
+        try:
+            iid = ids.next_issue_ids_locked(a.date)[0]
+        except ValueError as e:
+            return _err(str(e))
+        model.save_issue(model.skeleton(iid, a.slug, example=a.example, title=a.title or "", now=cards.now_kst()))
     print(iid)
     return 0
 

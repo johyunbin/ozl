@@ -5,7 +5,8 @@
 (`cards.machine_verify` 가 저장된 사본을 다시 해시하고 다시 대조해서 정한다).
 
     fetch(url, dest_dir)      원문을 받아 dest_dir/source.<확장자> 에 저장. 401·403·429·로그인 벽·봇 차단 화면은 예외가 아니라 ok=False
-    extract_text(path, kind)  html(script·style 제외) · pdf(pdftotext -layout, 쪽 구분 \\f 유지) · xlsx(zipfile 로 셀 문자열) · text · json
+    extract_text(path, kind)  html(script·style 제외) · pdf(pdftotext -layout, 쪽 구분 \\f 유지) · xlsx(zipfile 로 셀 문자열)
+                              · hwpx(한글 문서: zipfile 로 Contents/section*.xml 의 문단 글, 표의 칸은 칸마다 한 줄) · text · json
     find_phrase(text, phrase) 공백류(연속 공백·줄바꿈·NBSP 등 유니코드 공백)만 한 칸으로 정리한 뒤 부분 문자열로 찾는다(자리 찾기)
     passage_bounds_error(...) 규칙 1 — 찾은 자리가 통째 대목(문장 · 줄 · 표의 칸)인가
     find_value(text, value)   규칙 2 — 차트 점 값이 공백으로 나뉜 낱말 하나와 글자 그대로 같은가
@@ -79,10 +80,11 @@ MAX_XLSX_TOTAL = 200 * 1024 * 1024
 MAX_PDF_TEXT = 50 * 1024 * 1024
 MIN_TEXT = 80            # 공백을 뺀 글자가 이보다 적으면 "프로그램 대조 불가"(그림 PDF·스크립트로만 그리는 웹 등)
 CONTEXT = 120            # 찾은 자리 앞뒤로 보여 줄 글자 수
-KINDS = ("html", "pdf", "xlsx", "text", "json")
+KINDS = ("html", "pdf", "xlsx", "hwpx", "text", "json")
 BLOCKED_STATUS = {401, 403, 429}
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-_EXT = {"html": "html", "pdf": "pdf", "xlsx": "xlsx", "text": "txt", "json": "json", "other": "bin"}
+_EXT = {"html": "html", "pdf": "pdf", "xlsx": "xlsx", "hwpx": "hwpx", "text": "txt", "json": "json", "other": "bin"}
+_HWPX_MIME = b"application/hwp+zip"   # hwpx 는 zip 의 첫 항목 mimetype 에 이 글이 압축 없이 들어 있다
 # 봇 차단·로그인 벽 화면의 표지 — 푼 글의 앞부분(_WALL_SCAN 자)에서만 찾고, 보이는 본문 글이 _WALL_BODY 자(공백 제외) 이상이면 벽으로 보지 않는다
 _WALL_MARKS = ("captcha", "cf-challenge", "challenge-platform", "just a moment...", "attention required", "access denied",
                "are you a robot", "verify you are human", "enable javascript and cookies", "please log in", "sign in to continue",
@@ -109,6 +111,8 @@ def sniff_kind(head: bytes, content_type: str, url: str = "") -> str:
     ct = (content_type or "").lower()
     if head.startswith(b"%PDF"):
         return "pdf"
+    if head.startswith(b"PK\x03\x04") and _HWPX_MIME in head[:512]:
+        return "hwpx"
     if head.startswith(b"PK\x03\x04") and ("spreadsheet" in ct or url.lower().split("?")[0].endswith(".xlsx") or b"xl/" in head[:2048]):
         return "xlsx"
     if "html" in ct or re.search(rb"<!doctype html|<html", head[:2048].lower()):
@@ -121,11 +125,11 @@ def sniff_kind(head: bytes, content_type: str, url: str = "") -> str:
 
 
 def byte_kind(head: bytes) -> str:
-    """content-type 없이 바이트만으로 가를 수 있는 종류: pdf · xlsx(zip) · html. 가를 수 없으면 빈 글(text·json 등)."""
+    """content-type 없이 바이트만으로 가를 수 있는 종류: pdf · hwpx · xlsx(그 밖의 zip) · html. 가를 수 없으면 빈 글(text·json 등)."""
     if head.startswith(b"%PDF"):
         return "pdf"
     if head.startswith(b"PK\x03\x04"):
-        return "xlsx"
+        return "hwpx" if _HWPX_MIME in head[:512] else "xlsx"
     h = head[:8192]
     for bom, enc in ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be")):
         if h.startswith(bom):
@@ -178,7 +182,7 @@ def internal_host(url: str) -> str:
 def wall_mark(data: bytes, kind: str, charset: str = "") -> str:
     """차단·로그인 벽 표지. 종류와 무관하게 푼 글(인코딩을 맞춰 푼 것)의 앞부분에서 찾는다. pdf·xlsx 는 벽 화면일 수 없어 보지 않는다.
     보이는 본문 글이 충분히 길면(공백 빼고 _WALL_BODY 자 이상) 본문 어딘가의 낱말로 막지 않는다."""
-    if kind in ("pdf", "xlsx"):
+    if kind in ("pdf", "xlsx", "hwpx"):
         return ""
     txt = _decode(data, charset)
     head = txt[:_WALL_SCAN].lower()
@@ -383,6 +387,43 @@ def _xlsx_text(path) -> str:
     return "\n".join(lines)
 
 
+def _hwpx_text(path) -> str:
+    """한글 문서(hwpx)의 글. 문단(p)마다 한 줄, 표의 칸 안 문단도 한 줄씩. 머리말과 각주의 글도 문서에 놓인 순서대로 들어간다.
+
+    옛 hwp(이진 파일)는 받지 않는다. 그림으로 넣은 글은 뽑히지 않는다."""
+    lines: list[str] = []
+
+    def walk(el, buf: list[str]) -> None:
+        tag = el.tag.rsplit("}", 1)[-1]
+        if tag == "p":
+            mine: list[str] = []
+            for ch in el:
+                walk(ch, mine)
+            line = "".join(mine).strip()
+            if line:
+                lines.append(line)
+            return
+        if tag == "t":      # 글 조각. 안에 든 탭과 줄바꿈 표시는 공백 한 칸으로
+            buf.append(el.text or "")
+            for ch in el:
+                buf.append(" " if ch.tag.rsplit("}", 1)[-1] in ("tab", "lineBreak") else "".join(ch.itertext()))
+                buf.append(ch.tail or "")
+            return
+        if tag in ("tab", "lineBreak"):
+            buf.append(" ")
+        for ch in el:
+            walk(ch, buf)
+
+    with zipfile.ZipFile(path) as z:
+        wanted = sorted((i for i in z.infolist() if re.fullmatch(r"Contents/section\d+\.xml", i.filename)),
+                        key=lambda i: int(re.search(r"(\d+)", i.filename.rsplit("/", 1)[1]).group(1)))
+        if any(i.file_size > MAX_XLSX_MEMBER for i in wanted) or sum(i.file_size for i in wanted) > MAX_XLSX_TOTAL:
+            raise _TooBig("hwpx 압축을 풀면 크기 상한을 넘는다(항목 50MB · 합 200MB)")
+        for i in wanted:
+            walk(ET.fromstring(z.read(i.filename)), [])
+    return "\n".join(lines)
+
+
 class _TooBig(Exception):
     pass
 
@@ -426,6 +467,8 @@ def extract_text(path, kind: str, charset: str = "") -> dict:
             text = _pdftotext(exe, p)
         elif kind == "xlsx":
             text = _xlsx_text(p)
+        elif kind == "hwpx":
+            text = _hwpx_text(p)
         elif kind in ("text", "json"):
             text = _decode(p.read_bytes(), charset)
         else:

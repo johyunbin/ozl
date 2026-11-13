@@ -28,4 +28,6 @@ export default defineConfig({
   build: { format: "directory" },
   integrations: [warningsSummary],
   devToolbar: { enabled: false },
+  // 작은 스크립트도 인라인으로 넣지 않고 파일로 낸다(콘텐츠 보안 정책 script-src 'self', 설계 6-1).
+  vite: { build: { assetsInlineLimit: 0 } },
 });

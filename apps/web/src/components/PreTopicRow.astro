@@ -1,18 +1,18 @@
 ---
-// 정리 전 화제 한 줄(설계 1-3 5번). 제외 표시 항목은 미리보기에서만 꼬리표를 달고 그린다.
-import type { PreItem } from "../lib/data";
-import { IS_PREVIEW } from "../lib/mode";
+// 정리 전 화제 한 줄(설계 1-3 5번). 공개에서 빠지는 항목(제외 표시)은 미리보기에서도 그리지 않는다
+// — 제목과 출처를 보이지 않고, 수와 까닭만 운영 정보 상자에 적는다(lib/ops.ts).
+import { safeHref, type PreItem } from "../lib/data";
 interface Props { p: PreItem }
 const { p } = Astro.props;
 ---
-{(!p.excluded.length || IS_PREVIEW) && (
+{!p.excluded.length && (
   <li>
-    {IS_PREVIEW && p.excluded.length > 0 && <p><span class="tag status" data-status="공개 제외">공개에서 빠지는 항목({p.excluded.join(", ")})</span></p>}
-    <p class="row-title">{p.keyword}</p>
+    <p class="pre-title">{p.keyword}</p>
     {p.desc && <p>{p.desc}</p>}
-    {p.links.length > 0 && <p class="links">{p.links.slice(0, 3).map((l, i) => <>{i > 0 && <span class="sep" />}<a href={l.url} rel="noopener">{l.outlet}</a></>)}</p>}
+    {p.links.length > 0 && <p class="links">{p.links.slice(0, 3).map((l, i) => <>{i > 0 && <span class="sep" />}{safeHref(l.url) ? <a href={safeHref(l.url)} rel="noopener">{l.outlet}</a> : l.outlet}</>)}</p>}
   </li>
 )}
 <style>
+  .pre-title { font-weight: 600; }
   .links a { display: inline-block; padding: 12px 0; }
 </style>

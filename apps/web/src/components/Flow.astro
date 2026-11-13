@@ -1,4 +1,5 @@
 ---
+import { safeHref } from "../lib/data";
 // 흐름(설계 4-4). 판정이 바뀐 날을 같은 줄에 끼워 넣는다.
 import type { Body } from "../lib/data";
 import { fmtDate } from "../lib/format";
@@ -28,7 +29,7 @@ const label = (f: Body["flow"][number]) => {
         <li class={r.ev.kind === "계기" ? "key" : ""}>
           <p class="xs muted num">{label(r.ev)}</p>
           <p class="what">{r.ev.kind === "계기" && <span class="tag">계기</span>}{r.ev.kind === "예정" && <span class="tag">예정</span>}{r.ev.what}</p>
-          {r.ev.sources.length > 0 && <p class="xs">{r.ev.sources.map((s, i) => <>{i > 0 && <span class="sep" />}{s.url ? <a href={s.url} rel="noopener">{s.by || s.title}</a> : (s.by || s.title)}</>)}</p>}
+          {r.ev.sources.length > 0 && <p class="xs">{r.ev.sources.map((s, i) => <>{i > 0 && <span class="sep" />}{safeHref(s.url) ? <a href={safeHref(s.url)} rel="noopener">{s.by || s.title}</a> : (s.by || s.title)}</>)}</p>}
         </li>
       ) : (
         <li class="vchange">

@@ -1,10 +1,13 @@
 ---
 // 이슈 화면 한 장(설계 1-4). 최신판과 고정판이 함께 쓴다.
+// 순서: (고정판 띠) → 제목 → 판과 날짜, 보기 전환 → 정정 한 줄 → 판정 집계 → 무엇이 새로운가, 왜 중요한가
+//      → 주장 목차 → 주장과 판정 → 지금까지 → 흐름 … → 출처, 이번 판에서 달라진 것, 정정과 판 기록.
+// 넓은 화면(1100px 이상)에서는 옆 단에 주장 목차와 출처를 붙여 둔다. 작업 상태 같은 운영 정보는 여기에 그리지 않는다
+// (미리보기에서는 쪽 맨 위의 "운영 정보" 상자 — 쪽 파일이 issueOps 로 만든다).
 import type { Body, Issue, Site } from "../lib/data";
-import { pickTrend, revNumbers } from "../lib/data";
-import { IS_PREVIEW } from "../lib/mode";
-import { fmtDate, fmtDateTime } from "../lib/format";
-import { issueUrl, keywordUrl, keywordSlug, revUrl, url } from "../lib/paths";
+import { pickTrend, revNumbers, safeHref } from "../lib/data";
+import { fmtDate } from "../lib/format";
+import { cardsUrl, issueUrl, keywordUrl, keywordSlug, revUrl, url } from "../lib/paths";
 import { summaryText } from "../lib/verdicts";
 import ViewToggle from "./ViewToggle.astro";
 import CorrectionNote from "./CorrectionNote.astro";
@@ -12,41 +15,46 @@ import ExampleTag from "./ExampleTag.astro";
 import RevisionMark from "./RevisionMark.astro";
 import Changes from "./Changes.astro";
 import VerdictTable from "./VerdictTable.astro";
+import VerdictSummary from "./VerdictSummary.astro";
+import VerdictMark from "./VerdictMark.astro";
+import ClaimToc from "./ClaimToc.astro";
 import Flow from "./Flow.astro";
 import Stances from "./Stances.astro";
 import Trend from "./Trend.astro";
 import SourceList from "./SourceList.astro";
 import AiNotice from "./AiNotice.astro";
 import IndexOnly from "./IndexOnly.astro";
-import StatusTag from "./StatusTag.astro";
+import { isVerdict } from "../lib/verdicts";
 
 interface Props { site: Site; issue: Issue; b: Body; fixed: boolean }
 const { site, issue, b, fixed } = Astro.props;
 const revs = revNumbers(issue);
 const latestRev = issue.latest.rev;
-const { trend, draft } = pickTrend(issue, b, fixed);
-const tops = [...b.corrections_top].sort((x, y) => (y.rev ?? 0) - (x.rev ?? 0) || y.at.localeCompare(x.at));
+const { trend } = pickTrend(issue, b, fixed);
 const corrections = [...b.corrections].sort((x, y) => (x.rev ?? 0) - (y.rev ?? 0) || x.at.localeCompare(y.at));
 const spillIssues = b.spillover.issues.map((id) => site.index.find((r) => r.id === id)).filter((r) => r && site.issues.has(r.slug));
 const showOpen = b.open_questions.length || spillIssues.length || b.spillover.similar_cases.length || b.figures.some((f) => f.caption);
 const takenDownRevs = [...issue.takenDown].filter((r) => !issue.revs.has(r));
 const allRevs = [...new Set([...revs, ...takenDownRevs])].sort((a, c) => a - c);
-const kinds: Record<string, string> = { claims: "주장", facts: "사실", flow: "흐름", stances: "입장", figures: "그림", open_questions: "남은 질문" };
-const internal = IS_PREVIEW && !fixed ? b.internal : null;
-const hiddenByKind = internal
-  ? Object.entries(internal.hidden.reduce<Record<string, number>>((acc, h) => { const k = h.split(".")[0]; acc[k] = (acc[k] || 0) + 1; return acc; }, {}))
-      .map(([k, n]) => `${kinds[k] ?? "항목"} ${n}건`)
-  : [];
-const RX = /\b(claims|facts|flow|stances|figures|open_questions)\.[a-z]\d+/g;
-const nIssues = internal ? internal.warnings.length + internal.errors.length : 0;
 const keywords = b.keywords.filter((k) => site.keywords.has(keywordSlug(k)));
 const pagefind = !fixed;
-// 고정판(지난 판)을 고정 주소로 연 독자에게: 이 판 뒤에 정정하거나 판정을 바꾼 것을 맨 위에 고정한다(계획 4-3).
-const later = fixed && b.rev !== null && b.rev < latestRev
+const nCorr = b.corrections.filter((c) => c.kind === "정정").length;
+const nVerdict = b.corrections.filter((c) => c.kind === "판정 변경").length;
+
+// 고정판(지난 판): 이 판 뒤에 정정하거나 판정을 바꾼 것(계획 4-3). 판정 변경이면 어느 주장인지 최신판의 기록에서 찾는다.
+const later = fixed && b.rev !== null && latestRev !== null && b.rev < latestRev
   ? issue.latest.corrections.filter((c) => c.rev !== null && c.rev > (b.rev ?? 0) && (c.kind === "정정" || c.kind === "판정 변경"))
       .sort((x, y) => (y.rev ?? 0) - (x.rev ?? 0) || y.at.localeCompare(x.at))
+      .map((c) => {
+        const h = c.kind === "판정 변경"
+          ? issue.latest.verdicts.groups.flatMap((g) => g.claims).find((cl) => cl.history.some((x) => x.rev === c.rev && x.from === c.before && x.to === c.after))
+          : undefined;
+        return { c, gist: h?.gist ?? "" };
+      })
   : [];
 ---
+<div class="two-col">
+<div class="main-col">
 <article data-pagefind-body={pagefind ? "" : undefined}>
   {pagefind && <IndexOnly b={b} aliases={site.aliases} />}
   {pagefind && b.category && <span data-pagefind-filter={`분야:${b.category}`}></span>}
@@ -58,48 +66,47 @@ const later = fixed && b.rev !== null && b.rev < latestRev
 
   <div class="head">
     {fixed && (
-      <p class="fixed-band small">
+      <div class="rev-band small" data-pagefind-ignore>
         {b.rev === latestRev
-          ? "이 판이 지금의 최신판이다."
-          : <>지난 판이다. 지금은 <span class="num">{latestRev}</span>판까지 나왔다. <a href={issueUrl(issue.slug)}>최신판 보기</a></>}
-      </p>
-    )}
-    {later.length > 0 && (
-      <div class="later">
-        <p class="later-h">이 판 뒤에 바로잡은 것 <span class="num">{later.length}</span>건</p>
-        {later.map((c) => <CorrectionNote c={c} compact more={`${issueUrl(issue.slug)}#corrections`} label={`${c.rev}판 ${c.kind}`} />)}
-      </div>
-    )}
-    {tops.length > 0 && <div class="tops">{tops.map((c) => <CorrectionNote c={c} compact />)}</div>}
-    <h1><ExampleTag show={b.example} />{b.title}</h1>
-    <div class="rev-row">
-      <RevisionMark rev={b.rev} at={b.rev_at} older={revs.length >= 2} />
-      <ViewToggle />
-    </div>
-    {internal && (
-      <div class="ops small" data-status={internal.publish_state} data-pagefind-ignore>
-        <StatusTag state={internal.publish_state} />
-        {internal.publish_state === "게시" && <span class="xs">게시된 판과 같은 작업본</span>}
-        {(hiddenByKind.length > 0 || nIssues > 0) && (
-          <details>
-            <summary>{[hiddenByKind.length > 0 ? `공개 기준으로 뺀 항목 ${hiddenByKind.length}종` : "", nIssues > 0 ? `검사 경고 ${nIssues}건` : ""].filter(Boolean).join(", ")}</summary>
-            {hiddenByKind.length > 0 && <p>공개 기준으로 뺀 항목: {hiddenByKind.join(", ")}</p>}
+          ? <p>이 판이 지금의 최신판이다.</p>
+          : <p>지난 판이다. 지금은 <span class="num">{latestRev}</span>판까지 나왔다. <a href={issueUrl(issue.slug)}>최신판 보기</a></p>}
+        {later.length > 0 && (
+          <>
+            <p class="band-h">이 판 뒤에 바뀐 것 <span class="num">{later.length}</span>건</p>
             <ul>
-              {internal.errors.map((e) => <li>오류: {e.replace(RX, (m) => kinds[m.split(".")[0]] ?? "항목")}</li>)}
-              {internal.warnings.map((e) => <li>{e.replace(RX, (m) => kinds[m.split(".")[0]] ?? "항목")}</li>)}
+              {later.map(({ c, gist }) => (
+                <li>
+                  <span class="num">{c.rev}판</span> {c.kind}{gist && <>: {gist}</>}{" "}
+                  {c.kind === "판정 변경" && isVerdict(c.before) && isVerdict(c.after)
+                    ? <><VerdictMark verdict={c.before} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={c.after} /></>
+                    : <>{c.after || c.why}</>}
+                </li>
+              ))}
             </ul>
-          </details>
+          </>
         )}
       </div>
     )}
-    <Changes b={b} />
+    <h1><ExampleTag show={b.example} />{b.title}</h1>
+    <div class="rev-row">
+      <RevisionMark rev={b.rev} at={b.rev_at} older={!fixed && revs.length >= 2} />
+      <ViewToggle cardsHref={fixed ? undefined : cardsUrl(issue.slug)} />
+    </div>
+    {(nCorr > 0 || nVerdict > 0) && (
+      <p class:list={["notice small", { bad: nCorr > 0 }]}>
+        {nCorr > 0 && <strong class="corr">정정 <span class="num">{nCorr}</span>건</strong>}
+        {nCorr > 0 && nVerdict > 0 && ", "}
+        {nVerdict > 0 && <>판정 변경 <span class="num">{nVerdict}</span>건</>}
+        {fixed ? " (이 판까지)" : ""}. <a href="#corrections">정정과 판 기록</a>
+      </p>
+    )}
+    <p class="summary-line"><VerdictSummary summary={b.verdicts.summary} empty="판정할 주장 없이 확인된 사실만 정리했다" /></p>
+    {b.verdicts.hidden_claims > 0 && <p class="small muted">이 밖에 다루지 않은 주장 <span class="num">{b.verdicts.hidden_claims}</span>건(<a href={url("about/#principles")}>공개 기준</a>)</p>}
+    {b.what_new && <p class="lede"><strong class="lede-h">무엇이 새로운가</strong>{b.what_new}</p>}
+    {b.why_matters && <p class="lede"><strong class="lede-h">왜 중요한가</strong>{b.why_matters}</p>}
   </div>
 
-  <section class="section" aria-labelledby="sofar-h">
-    <h2 id="sofar-h">지금까지</h2>
-    {b.so_far.length ? <ol class="sofar">{b.so_far.map((s) => <li>{s}</li>)}</ol> : <p class="empty">지금까지 정리한 줄이 없다.</p>}
-    {b.masked && <p class="small muted">{b.masked}</p>}
-  </section>
+  <ClaimToc b={b} where="narrow" />
 
   <VerdictTable b={b}>
     {b.facts.length > 0 && (
@@ -109,13 +116,19 @@ const later = fixed && b.rev !== null && b.rev < latestRev
           {b.facts.map((f) => (
             <li>
               {f.type === "해석" && <span class="tag">해석</span>}{f.text}
-              {f.sources.length > 0 && <span class="small" data-pagefind-ignore>{f.sources.map((s) => <><span class="sep" />{s.url ? <a href={s.url} rel="noopener">{s.by || s.title}</a> : (s.by || s.title)}</>)}</span>}
+              {f.sources.length > 0 && <span class="small" data-pagefind-ignore>{f.sources.map((s) => <><span class="sep" />{safeHref(s.url) ? <a href={safeHref(s.url)} rel="noopener">{s.by || s.title}</a> : (s.by || s.title)}</>)}</span>}
             </li>
           ))}
         </ul>
       </div>
     )}
   </VerdictTable>
+
+  <section class="section" aria-labelledby="sofar-h">
+    <h2 id="sofar-h">지금까지</h2>
+    {b.so_far.length ? <ol class="sofar">{b.so_far.map((s) => <li>{s}</li>)}</ol> : <p class="empty">지금까지 정리한 줄이 없다.</p>}
+    {b.masked && <p class="small muted">{b.masked}</p>}
+  </section>
 
   <Flow b={b} />
   <Stances stances={b.stances} />
@@ -130,24 +143,26 @@ const later = fixed && b.rev !== null && b.rev < latestRev
           <h3>번지는 곳</h3>
           <ul class="rows">
             {spillIssues.map((r) => <li><a href={issueUrl(r!.slug)}>{r!.title}</a></li>)}
-            {b.spillover.similar_cases.map((c) => <li>{c.url ? <a href={c.url} rel="noopener">{c.text}</a> : c.text}</li>)}
+            {b.spillover.similar_cases.map((c) => <li>{safeHref(c.url) ? <a href={safeHref(c.url)} rel="noopener">{c.text}</a> : c.text}</li>)}
           </ul>
         </>
       )}
     </section>
   )}
 
-  <Trend t={trend} draft={draft} />
+  <Trend t={trend} />
 </article>
 
 <section class="section" aria-labelledby="sources-h" data-pagefind-ignore>
   {b.sources.length > 0 && (
-    <div data-short="hide">
+    <div data-short="hide" class="only-narrow">
       <h2 id="sources-h">출처</h2>
       <SourceList sources={b.sources} />
     </div>
   )}
   {b.sources.length === 0 && <h2 id="sources-h" class="sr-only">출처</h2>}
+
+  <Changes b={b} />
 
   <h3 id="corrections">정정과 판 기록</h3>
   {corrections.length ? (
@@ -163,7 +178,7 @@ const later = fixed && b.rev !== null && b.rev < latestRev
         const label = `${r}판${rb && fmtDate(rb.rev_at) ? ` · ${fmtDate(rb.rev_at)}` : ""}`;
         if (!rb) return <li>{r}판<span class="sep" />게시를 내림</li>;
         if (fixed && r === b.rev) return <li>{label} (지금 보는 판)</li>;
-        if (!fixed && r === b.rev) return <li><a href={revUrl(issue.slug, r)}>{label}</a> (지금 보는 판)</li>;
+        if (!fixed && r === b.rev) return <li>{label} (지금 보는 판)<span class="sep" /><a href={revUrl(issue.slug, r)}>고정 주소</a></li>;
         return <li><a href={revUrl(issue.slug, r)}>{label}</a></li>;
       })}
     </ul>
@@ -179,16 +194,34 @@ const later = fixed && b.rev !== null && b.rev < latestRev
     <p class="small kw">키워드{keywords.map((k) => <><span class="sep" /><a href={keywordUrl(k)}>{k}</a></>)}</p>
   )}
 </section>
+</div>
+
+<aside class="side only-wide" aria-label="주장 목록과 출처" tabindex="0" data-pagefind-ignore>
+  <ClaimToc b={b} where="side" />
+  {b.sources.length > 0 && (
+    <div class="side-src">
+      <p class="toc-h">출처</p>
+      <SourceList sources={b.sources} short />
+    </div>
+  )}
+</aside>
+</div>
 
 <style>
   .rev-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2) var(--sp-4); }
-  .later { margin-top: var(--sp-3); display: grid; gap: var(--sp-2); }
-  .later-h { font-weight: 700; font-size: var(--fs-sm); }
-  .fixed-band { background: var(--surface); padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-3); }
-  .fixed-band a { display: inline-block; padding: 10px 0; }
-  .tops { margin-top: var(--sp-3); display: grid; gap: var(--sp-2); }
+  .rev-band { background: var(--surface); border: 1px solid var(--rule-strong); padding: var(--sp-3) var(--sp-4); margin-top: var(--sp-2); }
+  .rev-band a { display: inline-block; padding: 10px 0; }
+  .rev-band .band-h { font-weight: 700; margin-top: var(--sp-2); }
+  .rev-band li { padding: var(--sp-1) 0; }
   h1 { margin-top: var(--sp-4); }
   h1 :global(.tag) { font-size: var(--fs-xs); vertical-align: 0.35em; }
+  .notice { margin-top: var(--sp-2); padding: var(--sp-1) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule-strong); }
+  .notice.bad { border-left: 4px solid var(--v-false); }
+  .notice .corr { color: var(--v-false); }
+  .notice a { display: inline-block; padding: 10px 0; }
+  .summary-line { margin-top: var(--sp-3); }
+  .lede { margin-top: var(--sp-3); }
+  .lede-h { display: block; font-size: var(--fs-sm); }
   .sofar { list-style: decimal; padding-left: 1.4em; }
   .sofar li { padding: var(--sp-1) 0; }
   .facts li { font-size: var(--fs-md); }
@@ -196,4 +229,7 @@ const later = fixed && b.rev !== null && b.rev < latestRev
   .figure { margin-top: var(--sp-3); }
   .report { margin-top: var(--sp-4); }
   .kw { margin-top: var(--sp-4); }
+  .side { font-size: var(--fs-sm); }
+  .side-src { margin-top: var(--sp-5); }
+  .toc-h { font-size: var(--fs-sm); font-weight: 700; margin-bottom: var(--sp-1); }
 </style>

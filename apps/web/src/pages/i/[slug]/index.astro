@@ -2,7 +2,9 @@
 // 이슈 화면(최신판)과 옛 주소 안내 쪽(설계 1-4, 1-1).
 import Base from "../../../layouts/Base.astro";
 import IssueBody from "../../../components/IssueBody.astro";
-import { loadSite, type Issue } from "../../../lib/data";
+import { loadSite, pickTrend, type Issue } from "../../../lib/data";
+import OpsBox from "../../../components/OpsBox.astro";
+import { issueOps } from "../../../lib/ops";
 import { issueUrl } from "../../../lib/paths";
 
 export function getStaticPaths() {
@@ -31,7 +33,9 @@ const to = issueUrl(issue.slug);
     <p class="moved"><a href={to}>{b.title}</a></p>
   </Base>
 ) : (
-  <Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} description={b.so_far.join(" ")}>
+  <Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} description={b.so_far.join(" ")} wide>
+    <OpsBox slot="ops" items={issueOps(issue, b, false, pickTrend(issue, b, false).draft)} />
+    <Fragment slot="head">{b.rev !== null && <meta name="ozl-rev" content={String(b.rev)} />}</Fragment>
     <IssueBody site={site} issue={issue} b={b} fixed={false} />
   </Base>
 )}

@@ -1,17 +1,32 @@
 ---
-// "짧게 / 전부" 전환(설계 4-12). 스크립트가 붙을 때만 보인다.
+// 보기 방식 전환(설계 4-12). "짧게 / 전부" 단추는 스크립트가 붙을 때만 보이고, "카드" 는 링크라 늘 보인다.
+// 카드 화면(current="cards")에서는 "짧게", "전부" 가 이슈 화면으로 가는 링크다(?view= 로 고른 값을 넘긴다).
+interface Props { cardsHref?: string; issueHref?: string; current?: "issue" | "cards" }
+const { cardsHref, issueHref = "", current = "issue" } = Astro.props;
 ---
-<div class="view-toggle" role="group" aria-label="보기 분량" hidden data-view-toggle>
-  <button type="button" data-view="short" aria-pressed="false">짧게</button>
-  <button type="button" data-view="full" aria-pressed="true">전부</button>
-</div>
+{current === "cards" ? (
+  <nav class="view-toggle" aria-label="보기 방식">
+    <a href={`${issueHref}?view=short`}>짧게</a>
+    <a href={`${issueHref}?view=full`}>전부</a>
+    <span class="on" aria-current="page">카드</span>
+  </nav>
+) : (
+  <div class="view-toggle">
+    <div class="vt-group" role="group" aria-label="보기 분량" hidden data-view-toggle>
+      <button type="button" data-view="short" aria-pressed="false">짧게</button>
+      <button type="button" data-view="full" aria-pressed="true">전부</button>
+    </div>
+    {cardsHref && <a href={cardsHref}>카드</a>}
+  </div>
+)}
 <script src="../scripts/view-toggle.ts"></script>
 <style>
-  .view-toggle { display: flex; justify-content: flex-end; gap: var(--sp-2); }
-  .view-toggle[hidden] { display: none; }
-  .view-toggle button {
+  .view-toggle, .vt-group { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--sp-2); }
+  .vt-group[hidden] { display: none; }
+  .view-toggle button, .view-toggle a, .view-toggle .on {
+    display: inline-flex; align-items: center; justify-content: center;
     min-height: 44px; min-width: 64px; padding: 0 var(--sp-4); background: var(--bg); color: var(--text);
-    border: 1px solid var(--rule-strong); border-radius: 2px; font-size: var(--fs-sm); cursor: pointer;
+    border: 1px solid var(--rule-strong); border-radius: 2px; font-size: var(--fs-sm); cursor: pointer; text-decoration: none;
   }
-  .view-toggle button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+  .view-toggle button[aria-pressed="true"], .view-toggle .on { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; cursor: default; }
 </style>

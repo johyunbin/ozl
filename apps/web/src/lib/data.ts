@@ -12,10 +12,11 @@ import { keywordSlug } from "./paths";
 // ---------- 꼴 ----------
 export type Source = { kind: string; by: string; title: string; url: string; checked_at: string };
 export type History = { rev: number | null; at: string; from: string; to: string; why: string };
-export type Part = { gist: string; core: boolean; verdict: string; reasons: string[]; would_decide: string; sources: Source[] };
+/** basis: 그 판정을 받치는 확인된 사실 문장(선택 칸 — 내보내기가 아직 싣지 않으면 빈 목록). */
+export type Part = { gist: string; core: boolean; verdict: string; reasons: string[]; would_decide: string; sources: Source[]; basis: string[] };
 export type Claim = {
   id: string; gist: string; kind: string; verdict: string; evidence_label: string; searched: string; not_found: string;
-  reasons: string[]; would_decide: string; party_position: string; parts: Part[]; sources: Source[]; history: History[];
+  reasons: string[]; would_decide: string; party_position: string; parts: Part[]; sources: Source[]; history: History[]; basis: string[];
 };
 export type Group = { verdict: string; note: string; claims: Claim[] };
 export type Fact = { text: string; type: string; sources: Source[] };
@@ -61,6 +62,22 @@ export type Site = {
   corrections: Correction[]; takedowns: { id: string; rev: number | null; at: string }[]; aliases: Record<string, string[]>;
   warnings: string[];
 };
+
+/**
+ * 자료에서 온 주소를 href 에 넣어도 되는지. http://, https:// 로 시작하는 것만 돌려주고 나머지(javascript:, data:, 상대 경로 등)는 undefined.
+ * 화면은 undefined 면 링크 없이 글자로만 그린다.
+ */
+export function safeHref(u: string | undefined | null): string | undefined {
+  if (typeof u !== "string") return undefined;
+  const t = u.trim();
+  if (!/^https?:\/\/[^\s]/i.test(t)) return undefined;
+  try {
+    const x = new URL(t);
+    return x.protocol === "http:" || x.protocol === "https:" ? t : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export const EXCLUDE_FLAGS = ["개인", "사생활", "범죄 의혹", "선거 판세"];
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+){0,7}$/;
@@ -163,7 +180,7 @@ function readJson(rel: string): unknown {
 
 // ---------- 본문 ----------
 function source(o: O, w: string): Source {
-  return { kind: str(o, "kind", w), by: str(o, "by", w), title: str(o, "title", w), url: str(o, "url", w), checked_at: str(o, "checked_at", w) };
+  return { kind: str(o, "kind", w), by: str(o, "by", w), title: str(o, "title", w), url: safeHref(str(o, "url", w)) ?? "", checked_at: str(o, "checked_at", w) };
 }
 const sources = (o: O, w: string) => objs(o, "sources", w).map((s, i) => source(s, `${w}.sources[${i}]`));
 
@@ -182,10 +199,11 @@ function claim(o: O, w: string): Claim {
     parts: objs(o, "parts", w).map((p, i) => {
       const pw = `${w}.parts[${i}]`;
       return { gist: str(p, "gist", pw), core: bool(p, "core"), verdict: verdict(p, "verdict", pw), reasons: strs(p, "reasons", pw),
-        would_decide: str(p, "would_decide", pw), sources: sources(p, pw) };
+        would_decide: str(p, "would_decide", pw), sources: sources(p, pw), basis: strs(p, "basis", pw) };
     }),
     sources: sources(o, w),
     history: objs(o, "history", w).map((h, i) => history(h, `${w}.history[${i}]`)),
+    basis: strs(o, "basis", w),
   };
 }
 
@@ -242,7 +260,7 @@ function body(raw: unknown, file: string): Body | null {
     open_questions: objs(raw, "open_questions", w).map((q, i) => str(q, "text", `${w}.open_questions[${i}]`)).filter(Boolean),
     spillover: {
       issues: strs(sp, "issues", `${w}.spillover`),
-      similar_cases: objs(sp, "similar_cases", `${w}.spillover`).map((c, i) => ({ text: str(c, "text", `${w}.spillover.similar_cases[${i}]`), url: str(c, "url", `${w}.spillover.similar_cases[${i}]`) })).filter((c) => c.text),
+      similar_cases: objs(sp, "similar_cases", `${w}.spillover`).map((c, i) => ({ text: str(c, "text", `${w}.spillover.similar_cases[${i}]`), url: safeHref(str(c, "url", `${w}.spillover.similar_cases[${i}]`)) ?? "" })).filter((c) => c.text),
     },
     figures: objs(raw, "figures", w).map((g, i) => ({ kind: str(g, "kind", `${w}.figures[${i}]`), caption: str(g, "caption", `${w}.figures[${i}]`), alt: str(g, "alt", `${w}.figures[${i}]`) })),
     sources: sources(raw, w),
@@ -295,7 +313,7 @@ function day(raw: unknown, file: string, date: string): Day | null {
         const uw = `${w}.topics.upcoming[${i}]`;
         const d = str(u, "date", uw);
         if (d && !DATE_RE.test(d)) strict(`${uw}: 날짜 "${d}" 꼴이 YYYY-MM-DD 가 아니다`);
-        return { date: d, what: str(u, "what", uw), url: str(u, "url", uw) };
+        return { date: d, what: str(u, "what", uw), url: safeHref(str(u, "url", uw)) ?? "" };
       }).filter((u) => u.what).sort((a, b) => a.date.localeCompare(b.date)),
       pre: objs(t, "pre", `${w}.topics`).map((p, i) => {
         const pw = `${w}.topics.pre[${i}]`;
@@ -306,7 +324,7 @@ function day(raw: unknown, file: string, date: string): Day | null {
         }
         return {
           keyword: str(p, "keyword", pw), desc: str(p, "desc", pw), flags, excluded,
-          links: objs(p, "links", pw).map((l, j) => ({ outlet: str(l, "outlet", `${pw}.links[${j}]`), url: str(l, "url", `${pw}.links[${j}]`) })).filter((l) => l.url && l.outlet),
+          links: objs(p, "links", pw).map((l, j) => ({ outlet: str(l, "outlet", `${pw}.links[${j}]`), url: safeHref(str(l, "url", `${pw}.links[${j}]`)) ?? "" })).filter((l) => l.outlet),
         };
       }).filter((p) => p.keyword),
       empty_note: { new: str(en, "new", w), ongoing: str(en, "ongoing", w), upcoming: str(en, "upcoming", w), pre: str(en, "pre", w) },

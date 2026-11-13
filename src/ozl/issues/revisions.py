@@ -4,6 +4,7 @@
 같은 승인 요청이 두 번 와도 발행 목록에는 한 줄만 생긴다. 시험 폴더에서는 승인한 쪽을 '시험'으로만, 실제 폴더에서는 '시험'을 받지 않는다.
 승인한 쪽이 '시험'인 판은 어느 폴더에서도 공개 판정이 거짓이다(공개용 내보내기에 나가지 않는다).
 check 에 발행 목록이 있어야 하는 검사(승인 뒤 판 번호, 게시한 주소 이름, 게시 대기의 검토 조건)를 더하는 감싼 함수도 여기 둔다.
+발행 목록 읽고 쓰기와 공통 승인 규칙은 manifest, 검토는 reviews 에 있고 여기서 다시 내보낸다(revisions.add_review 처럼 부른다).
 """
 from __future__ import annotations
 
@@ -17,155 +18,20 @@ from ozl.research import cards
 from . import body as B
 from . import check, digest, model, paths, rules
 from . import evidence as EV
+from .manifest import (EMPTY, MSG_REAL_IN_TEST, MSG_REQUEST_ID, MSG_SLUG_TAKEN, MSG_TEST_IN_REAL, MSG_TEST_NOT_PUBLIC,  # noqa: F401
+                       MSG_WITHDRAWN, TEST_BY, approver_error, entries, entry, entry_error, is_withdrawn, load_manifest,
+                       prior_approval, save_manifest, slug_conflicts)
+from .reviews import (_findings, _full, _notes_ok, _same, add_review, notes_dir, review_state,  # noqa: F401
+                      snapshot_file)
 
-TEST_BY = "시험"
-EMPTY = {"schema": 1, "entries": [], "withdrawn": []}
 REASON_BODY = "다시 만든 본문이 승인 때와 다르다"
-MSG_TEST_IN_REAL = "시험 승인은 실제 발행 목록에 넣지 않는다"
-MSG_REAL_IN_TEST = "시험 폴더에서는 승인한 쪽을 '시험'으로만 적는다"
 MSG_SAME_REV = "승인된 판과 내용이 다른데 판 번호가 같다 — 판 번호를 올린다"
-MSG_TEST_NOT_PUBLIC = "시험 승인은 공개용 출력에 싣지 않는다"
 MSG_SLUG = "게시한 주소 이름은 바꾸지 않는다(옛 이름은 aliases 로)"
 MSG_REVIEW = "게시 대기인데 검토 조건(다른 모델의 문장 대조, 다른 계열의 해석 점검)을 채우지 못했다"
 
 
-# ── 발행 목록 ─────────────────────────────────────────────────────────
-def load_manifest() -> dict:
-    p = paths.manifest_file()
-    if not p.exists():
-        return json.loads(json.dumps(EMPTY))
-    d = json.loads(p.read_text(encoding="utf-8"))
-    if not (isinstance(d, dict) and d.get("schema") == 1 and isinstance(d.get("entries"), list) and isinstance(d.get("withdrawn"), list)):
-        raise ValueError(f"발행 목록의 모양이 틀렸다: {p}")
-    return d
-
-
-def save_manifest(d: dict) -> None:
-    paths.write_atomic(paths.manifest_file(), json.dumps(d, ensure_ascii=False, indent=1) + "\n")
-
-
-def entries(man: dict, unit: str, uid: str) -> list[dict]:
-    return sorted([e for e in man["entries"] if e.get("unit") == unit and e.get("id") == uid], key=lambda e: int(e.get("rev") or 0))
-
-
-def entry(man: dict, unit: str, uid: str, rev: int) -> dict | None:
-    return next((e for e in entries(man, unit, uid) if e.get("rev") == rev), None)
-
-
-def is_withdrawn(man: dict, unit: str, uid: str, rev: int | None) -> bool:
-    """판을 지정한 내림은 그 판에, 판 없는 내림(rev: null)은 내릴 때 승인돼 있던 판(upto_rev 이하)에 적용한다 — 그 뒤 판을 올려
-    다시 승인하면 되살아난다(설계 9-2). upto_rev 가 없는 옛 줄은 모든 판에 적용한다. rev=None 으로 물으면 가장 큰 판을 본다."""
-    if rev is None:
-        ents = entries(man, unit, uid)
-        rev = int(ents[-1]["rev"]) if ents else None
-    for w in man["withdrawn"]:
-        if w.get("unit") != unit or w.get("id") != uid:
-            continue
-        if w.get("rev") is not None and w.get("rev") == rev:
-            return True
-        if w.get("rev") is None and (rev is None or not isinstance(w.get("upto_rev"), int) or rev <= w["upto_rev"]):
-            return True
-    return False
-
-
-def approver_error(by: str) -> tuple[int, str]:
-    """(종료 코드, 문구) — 승인한 쪽 이름의 시험·실제 규칙(6-12)."""
-    if cards._blank(by):
-        return 2, "승인한 쪽(--by)을 적는다"
-    if paths.is_real_root() and by.strip() == TEST_BY:
-        return 2, MSG_TEST_IN_REAL
-    if not paths.is_real_root() and by.strip() != TEST_BY:
-        return 2, MSG_REAL_IN_TEST
-    return 0, ""
-
-
 def rev_dir(issue_id: str, rev: int) -> pathlib.Path:
     return paths.issue_dir(issue_id) / "revisions" / f"r{rev}"
-
-
-def snapshot_file(issue_id: str, h: str) -> pathlib.Path:
-    return paths.issue_dir(issue_id) / "snapshots" / f"{h}.yaml"
-
-
-# ── 검토 ──────────────────────────────────────────────────────────────
-def _same(a, b) -> bool:
-    return " ".join(str(a or "").split()).casefold() == " ".join(str(b or "").split()).casefold()
-
-
-def notes_dir(issue_id: str) -> pathlib.Path:
-    return paths.issue_dir(issue_id) / "reviews"
-
-
-def _notes_ok(issue_id, r: dict) -> bool:
-    """검토 줄의 검토 원문(notes_path)이 이 이슈의 reviews 폴더에 그대로 있는가(적힌 해시와 같은가)."""
-    if not isinstance(issue_id, str) or cards._blank(r.get("notes_path")) or cards._blank(r.get("notes_sha256")):
-        return False
-    d = notes_dir(issue_id).resolve()
-    f = (paths.issue_dir(issue_id) / str(r["notes_path"])).resolve()
-    return d in f.parents and f.is_file() and f.stat().st_size > 0 and K.sha256_file(f) == r["notes_sha256"]
-
-
-def _full(reviews: list, h: str, drafted_by) -> bool:
-    cmp = any(r.get("kind") == "문장 대조" and r.get("family") == "anthropic" and not _same(r.get("by_model"), drafted_by)
-              and r.get("result") == "통과" and r.get("content_hash") == h for r in reviews)
-    itp = any(r.get("kind") == "해석 점검" and r.get("family") not in (None, "anthropic") and r.get("result") == "통과"
-              and r.get("content_hash") == h for r in reviews)
-    return cmp and itp
-
-
-def review_state(issue: dict, evidences: dict) -> str:
-    """'검토 완료' | '검토 대기' — 설계 9-4. 이어받기(수정 확인)는 바뀐 칸이 모두 지적한 칸 안일 때만 받는다."""
-    reviews = [r for r in issue.get("reviews") or [] if isinstance(r, dict) and _notes_ok(issue.get("issue_id"), r)]
-    drafted = (issue.get("production") or {}).get("drafted_by") if isinstance(issue.get("production"), dict) else None
-    h = digest.content_hash(issue, evidences)
-    if _full(reviews, h, drafted):
-        return "검토 완료"
-    by_id = {r.get("id"): r for r in reviews}
-    for r in reviews:
-        after = r.get("after_hash") or r.get("content_hash")
-        if not (r.get("kind") == "수정 확인" and r.get("family") == "anthropic" and not _same(r.get("by_model"), drafted)
-                and r.get("result") == "통과" and after == h and r.get("before_hash")):
-            continue
-        hb = r["before_hash"]
-        snap = snapshot_file(issue.get("issue_id"), hb)
-        if not _full(reviews, hb, drafted) or not snap.is_file():
-            continue
-        fields = {str(f.get("field")) for a in r.get("addresses") or [] for f in (by_id.get(a) or {}).get("findings") or []
-                  if isinstance(f, dict) and f.get("field")}
-        changed = digest.changed_paths(model.load_yaml(snap), digest.snapshot_view(issue, evidences))
-        if all(any(p == f or p.startswith(f + ".") for f in fields) for p in changed):
-            return "검토 완료"
-    return "검토 대기"
-
-
-def add_review(issue_id: str, kind: str, by_model: str, family: str, result: str, findings=None, before_hash=None,
-               addresses=None, notes_path="", now=None) -> dict:
-    """검토 한 줄을 더하고 그 내용의 사본(snapshots/<내용 해시>.yaml)을 남긴다. 검토 번호 r 는 여기서 센다."""
-    issue, evs = model.load_issue(issue_id), model.load_evidences(issue_id)
-    if kind not in model.REVIEW_KINDS or family not in model.REVIEW_FAMILIES or result not in model.REVIEW_RESULTS:
-        raise ValueError("검토의 kind·family·result 가 허용 값이 아니다")
-    if cards._blank(by_model):
-        raise ValueError("검토한 모델(by_model)을 적는다")
-    d = notes_dir(issue_id).resolve()
-    f = pathlib.Path(notes_path).resolve() if not cards._blank(notes_path) else None
-    if f is None or d not in f.parents or not f.is_file() or f.stat().st_size == 0:
-        raise ValueError(f"검토 원문(--notes-path)은 {d} 안의 비어 있지 않은 파일이다 — 검토한 쪽의 원문을 먼저 저장한다")
-    notes_rel, notes_sha = str(f.relative_to(paths.issue_dir(issue_id).resolve())), K.sha256_file(f)
-    h = digest.content_hash(issue, evs)
-    nums = [int(str(r.get("id"))[1:]) for r in issue.get("reviews") or [] if isinstance(r, dict) and str(r.get("id", "")).startswith("r")
-            and str(r.get("id"))[1:].isdigit()]
-    row = {"id": f"r{max(nums, default=0) + 1}", "kind": kind, "by_model": by_model, "family": family, "at": now or cards.now_kst(),
-           "content_hash": h, "result": result, "findings": list(findings or []), "notes_path": notes_rel, "notes_sha256": notes_sha}
-    if before_hash:
-        row["before_hash"] = before_hash
-    if addresses:
-        row["addresses"] = list(addresses)
-    snap = snapshot_file(issue_id, h)
-    if not snap.exists():
-        model.save_yaml(snap, digest.snapshot_view(issue, evs))
-    issue.setdefault("reviews", []).append(row)
-    model.save_issue(issue)
-    return row
 
 
 # ── check 감싼 함수 ───────────────────────────────────────────────────
@@ -180,8 +46,8 @@ def manifest_errors(issue: dict, evidences: dict, man: dict) -> list[str]:
         out.append(f"{iid} slug: {MSG_SLUG}")
     if issue.get("work_state") == "게시 대기" and review_state(issue, evidences) == "검토 대기":
         out.append(f"{iid} reviews: {MSG_REVIEW}")
+    out += [f"{iid} {k}: {m}" for k, m in slug_conflicts(issue, man)]
     return out
-
 
 def check_with_manifest(issue: dict, evidences: dict, public: bool = False, articles=(), man: dict | None = None) -> dict:
     r = check.check_issue(issue, evidences, public=public, articles=articles)
@@ -245,15 +111,13 @@ def approve(issue_id: str, rev: int, content_hash: str, by: str, request_id=None
         h = digest.content_hash(issue, evs)
         if content_hash != h:
             return {"code": 3, "msg": "요청한 내용 해시가 지금 내용과 다르다 — 다시 보고 승인한다", "entry": None}
-        man = load_manifest()
-        old = entry(man, "issue", issue_id, rev)
-        if old:
-            if old.get("content_hash") == h:
-                return {"code": 0, "msg": f"{issue_id} {rev}판: 이미 승인됨", "entry": old}
-            return {"code": 3, "msg": f"{issue_id} {rev}판: 같은 판이 다른 내용으로 이미 승인됐다 — 판 번호를 올린다", "entry": None}
-        code, msg = approver_error(by)
+        code, msg = approver_error(by)                  # 이름 규칙은 멱등 분기보다 먼저 — 이미 승인된 판이라도 틀린 이름은 거부
         if code:
             return {"code": code, "msg": msg, "entry": None}
+        man = load_manifest()
+        pre = prior_approval(man, "issue", issue_id, rev, h, request_id, rev_dir(issue_id, rev) / "approval.json")
+        if pre is not None:
+            return pre
         why = check_with_manifest(issue, evs, public=True, man=man)["errors"]
         if issue.get("work_state") != "게시 대기":
             why.append(f"{issue_id} work_state: 작업 상태가 '게시 대기'가 아니다({issue.get('work_state')})")
@@ -305,13 +169,10 @@ def approve(issue_id: str, rev: int, content_hash: str, by: str, request_id=None
 # ── 판 공개 판정 ──────────────────────────────────────────────────────
 def revision_publishable(issue_id: str, rev: int, man: dict | None = None) -> tuple[bool, str]:
     man = load_manifest() if man is None else man
+    why = entry_error(man, "issue", issue_id, rev)
+    if why:
+        return False, why
     e = entry(man, "issue", issue_id, rev)
-    if not e:
-        return False, "발행 목록에 없다"
-    if is_withdrawn(man, "issue", issue_id, rev):
-        return False, "내렸다"
-    if e.get("approved_by") == TEST_BY:
-        return False, MSG_TEST_NOT_PUBLIC   # 시험 폴더에서도 시험 승인은 공개용에 나가지 않는다
     if not (rev_dir(issue_id, rev) / "approval.json").is_file():
         return False, "고정 사본이 없다"
     try:
@@ -327,13 +188,23 @@ def revision_publishable(issue_id: str, rev: int, man: dict | None = None) -> tu
             cs = cards.copy_source(EV.as_claim_view(ev))
             if not cs["ok"]:
                 return False, f"근거 사본이 바뀌면 무효 — {eid}: {cs['reason']}"
+    # 고정 사본이 바로 그 이슈·판·주소인지, 승인할 수 있던 상태(게시 가능, 게시 대기, 검토 완료)인지 다시 본다
+    if fi.get("issue_id") != issue_id or fi.get("revision") != rev or isinstance(fi.get("revision"), bool) \
+            or fi.get("slug") != e.get("slug"):
+        return False, "고정 사본의 이슈 번호·판 번호·주소 이름이 발행 목록과 다르다"
+    if (fi.get("publish") or {}).get("state") != "게시 가능" if isinstance(fi.get("publish"), dict) else True:
+        return False, "고정 사본의 게시 가부가 '게시 가능'이 아니다"
+    if fi.get("work_state") != "게시 대기":
+        return False, "고정 사본의 작업 상태가 '게시 대기'가 아니다"
     errs = check.check_issue(fi, fe, public=True)["errors"]
     if errs:
         return False, f"고정 사본이 검사를 통과하지 못한다 — {errs[0]}"
+    if review_state(fi, fe) != "검토 완료":
+        return False, "고정 사본의 검토 조건이 채워지지 않았다"
     if e.get("export_version") != B.EXPORT_VERSION or digest.body_hash(B.issue_body(fi, fe, rev_at=appr.get("approved_at", ""))) != e.get("body_hash"):
         return False, REASON_BODY
     keys = ("slug", "rev", "content_hash", "evidence_hash", "body_hash", "export_version", "approved_at", "approved_by", "request_id")
-    if any(appr.get(k) != e.get(k) for k in keys) or appr.get("issue_id") != issue_id:
+    if any(appr.get(k) != e.get(k) for k in keys) or appr.get("issue_id") != issue_id or appr.get("rev") != rev:
         return False, "승인 기록(approval.json)이 발행 목록과 다르다"
     return True, ""
 

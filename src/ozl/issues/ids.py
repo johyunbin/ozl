@@ -69,6 +69,12 @@ def _save_ledger(d: dict) -> None:
 
 def next_issue_ids(date: str, n: int = 1) -> list[str]:
     """그날의 이슈 번호 n개. 대장과 실제 폴더 둘 다 보고 그 최댓값 + 1 부터 준다."""
+    with paths.lock():
+        return next_issue_ids_locked(date, n)
+
+
+def next_issue_ids_locked(date: str, n: int = 1) -> list[str]:
+    """next_issue_ids 의 본체 — 부르는 쪽이 이미 paths.lock() 을 잡고 있을 때 쓴다(잠금은 겹쳐 걸지 않는다)."""
     try:
         d = datetime.strptime(date, "%Y-%m-%d")
     except (ValueError, TypeError):
@@ -76,17 +82,16 @@ def next_issue_ids(date: str, n: int = 1) -> list[str]:
     if n < 1:
         raise ValueError("개수는 1 이상이다")
     prefix = "i" + d.strftime("%Y%m%d") + "-"
-    with paths.lock():
-        led = load_ledger()
-        used = {int(i[-2:]) for i in led["issues"] if isinstance(i, str) and i.startswith(prefix) and ISSUE_ID.match(i)}
-        if paths.issues_dir().is_dir():
-            used |= {int(p.name[-2:]) for p in paths.issues_dir().glob(prefix + "*") if ISSUE_ID.match(p.name)}
-        start = max(used, default=0) + 1
-        if start + n - 1 > MAX_PER_DAY:
-            raise ValueError(f"{prefix}NN 번호가 {MAX_PER_DAY} 를 넘는다")
-        out = [f"{prefix}{k:02d}" for k in range(start, start + n)]
-        led["issues"] += out
-        _save_ledger(led)
+    led = load_ledger()
+    used = {int(i[-2:]) for i in led["issues"] if isinstance(i, str) and i.startswith(prefix) and ISSUE_ID.match(i)}
+    if paths.issues_dir().is_dir():
+        used |= {int(p.name[-2:]) for p in paths.issues_dir().glob(prefix + "*") if ISSUE_ID.match(p.name)}
+    start = max(used, default=0) + 1
+    if start + n - 1 > MAX_PER_DAY:
+        raise ValueError(f"{prefix}NN 번호가 {MAX_PER_DAY} 를 넘는다")
+    out = [f"{prefix}{k:02d}" for k in range(start, start + n)]
+    led["issues"] += out
+    _save_ledger(led)
     return out
 
 

@@ -181,11 +181,21 @@ def copy_errors(ev: dict) -> list[str]:
 
 
 # ── 원문 받기와 기계 대조 ─────────────────────────────────────────────
+def _evidence_path(issue_id, evidence_id) -> pathlib.Path:
+    """근거 파일 경로 — 번호 꼴을 먼저 보고, 풀어 낸 경로가 지금 자료 루트의 issues 폴더 안인지 본다(절대 경로 인자로 루트 밖에 쓰지 않게)."""
+    if not ids.issue_id_ok(issue_id) or not ids.evidence_id_ok(evidence_id, issue_id):
+        raise ValueError(f"이슈 번호나 근거 번호 꼴이 아니다: {issue_id} {evidence_id}")
+    p = paths.evidence_file(issue_id, evidence_id)
+    if paths.issues_dir().resolve() not in p.resolve().parents:
+        raise ValueError(f"근거 파일이 자료 루트 밖이다: {p}")
+    return p
+
+
 def capture_evidence(issue_id: str, evidence_id: str, fetcher=None, save: bool = True) -> dict:
     """원문을 받아 captures/<근거 번호>/ 에 사본과 text.txt 를 두고 verification 의 capture·match 를 채운다.
     capture.capture_claim 과 같은 순서(받기 → 글 뽑기 → text.txt → 대조)이고 그림은 만들지 않는다.
     fetcher(url, dest_dir) 는 시험에서 망 없이 응답을 넣을 때 쓴다. {ok, reason, evidence}."""
-    p = paths.evidence_file(issue_id, evidence_id)
+    p = _evidence_path(issue_id, evidence_id)
     ev = model.load_yaml(p)
     if ev.get("kind") not in OFFICIAL:
         return {"ok": False, "reason": f"{evidence_id}: 원문 사본은 공식 원문과 기관 자료만 받는다", "evidence": ev}
@@ -225,7 +235,10 @@ def capture_evidence(issue_id: str, evidence_id: str, fetcher=None, save: bool =
 
 def machine_verify_evidence(issue_id: str, evidence_id: str, save: bool = True) -> dict:
     """cards.machine_check(fresh=True) 를 통과하면 match 와 verified_at 을 적는다. 못 채우면 아무것도 저장하지 않는다. {ok, reasons, evidence}."""
-    p = paths.evidence_file(issue_id, evidence_id)
+    try:
+        p = _evidence_path(issue_id, evidence_id)
+    except ValueError as e:
+        return {"ok": False, "reasons": [str(e)], "evidence": None}
     if not p.is_file():
         return {"ok": False, "reasons": [f"{evidence_id}: 근거 기록 파일이 없다({p})"], "evidence": None}
     ev = model.load_yaml(p)

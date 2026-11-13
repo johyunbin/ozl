@@ -1,7 +1,8 @@
 ---
 // 판정표(설계 4-2). 묶음 순서: 사실과 다름 → 일부 맞음 → 확인 → 확인 못 함.
 import type { Body } from "../lib/data";
-import { sortGroups, summaryText, summaryTotal } from "../lib/verdicts";
+import { sortGroups } from "../lib/verdicts";
+import { orderedClaims } from "../lib/claims";
 import VerdictMark from "./VerdictMark.astro";
 import ClaimRow from "./ClaimRow.astro";
 import HiddenClaimsLine from "./HiddenClaimsLine.astro";
@@ -9,21 +10,19 @@ interface Props { b: Body }
 const { b } = Astro.props;
 const UNKNOWN_NOTE = "거짓이라는 뜻이 아니다";
 const groups = sortGroups(b.verdicts.groups.filter((g) => g.claims.length));
-const counted = summaryTotal(b.verdicts.summary);
-const total = counted || groups.reduce((n, g) => n + g.claims.length, 0);
+const anchors = new Map(orderedClaims(b).map((x) => [x.c, x.anchor]));
 ---
 <section class="section" aria-labelledby="verdicts-h">
   {groups.length ? (
     <>
       <h2 id="verdicts-h">주장과 판정</h2>
-      <p class="lead num">주장 {total}건: {summaryText(b.verdicts.summary)}</p>
       {b.reason && <p class="small reason">다루는 까닭: {b.reason}</p>}
       {groups.map((g) => (
         <div class="vgroup" data-verdict={g.verdict}>
           <h3><VerdictMark verdict={g.verdict} size="md" /> <span class="num">{g.claims.length}</span>건</h3>
           {g.verdict === "확인 못 함" && <p class="small muted">{g.note.includes(UNKNOWN_NOTE) ? g.note : <>{UNKNOWN_NOTE}.{g.note && <> {g.note}</>}</>}</p>}
           {g.verdict !== "확인 못 함" && g.note && <p class="small muted">{g.note}</p>}
-          <ul>{g.claims.map((c) => <ClaimRow c={c} currentRev={b.rev} />)}</ul>
+          <ul>{g.claims.map((c) => <ClaimRow c={c} currentRev={b.rev} anchor={anchors.get(c)} />)}</ul>
         </div>
       ))}
     </>

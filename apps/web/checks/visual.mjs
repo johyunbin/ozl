@@ -27,6 +27,7 @@ const PAGES = [
   ["day", "d/2099-01-02/"],
   ["keyword", "k/버스-요금/"],
   ["about", "about/"],
+  ["cards", "i/hanbit-bus-fare-400/cards/"],
 ];
 const WIDTHS = [360, 390, 768, 1280];
 const HEIGHT = 800;
@@ -401,7 +402,10 @@ try {
       const hrefs = await page.$$eval("[data-search-results] li a", (as) => as.map((a) => a.getAttribute("href")));
       const titles = await page.$$eval("[data-search-results] li a", (as) => as.map((a) => a.textContent.trim()));
       const rank = hrefs.findIndex((h) => h && h.includes(`/i/${slug}/`));
-      rows.push({ q, expect: slug, status, results: hrefs.length, rank: rank >= 0 ? rank + 1 : null, top3: titles.slice(0, 3), ok: rank >= 0 && rank < 3 });
+      // 결과는 DOM 으로만 그린다: 허용한 요소(li, p, a, span, mark) 밖의 것이 없고, 링크는 모두 기준 경로 안이다.
+      const tags = await page.$$eval("[data-search-results] *", (els) => [...new Set(els.map((e) => e.tagName.toLowerCase()))]);
+      const domOk = tags.every((t) => ["li", "p", "a", "span", "mark"].includes(t)) && hrefs.every((h) => h && h.startsWith(BASE));
+      rows.push({ q, expect: slug, status, results: hrefs.length, rank: rank >= 0 ? rank + 1 : null, top3: titles.slice(0, 3), tags, dom_ok: domOk, ok: rank >= 0 && rank < 3 && domOk });
     }
     await page.screenshot({ path: path.join(shotDir, "search_390_last.png"), fullPage: true });
     result.screenshots.push("search_390_last.png");
@@ -447,6 +451,78 @@ try {
     result.reduced_motion = { bad, ok: bad.length === 0 };
     await ctx.close();
   }
+  // ---- 10. 넘겨 보는 카드(설계 4-17): 폭 넷에서 가로 스크롤 0, 키보드로 다음/이전, 스크립트 없이 세로로 읽힘 ----
+  {
+    const CARDS = "i/hanbit-bus-fare-400/cards/";
+    const rows = [];
+    for (const w of WIDTHS) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: HEIGHT } });
+      const page = await ctx.newPage();
+      await page.goto(at(CARDS), { waitUntil: "networkidle" });
+      await page.evaluate(() => document.fonts && document.fonts.ready);
+      const o = await page.evaluate(OVERFLOW_FN);
+      const count = () => page.locator("[data-deck-count]").innerText();
+      const first = await count();
+      // 띠에 초점을 두고 오른쪽 화살표 두 번, 왼쪽 한 번.
+      await page.locator("[data-deck-view]").focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(150);
+      const afterRight = await count();
+      const visibleIdx = await page.evaluate(() => {
+        const v = document.querySelector("[data-deck-view]");
+        const vr = v.getBoundingClientRect();
+        return [...document.querySelectorAll(".deck-item")].findIndex((it) => Math.abs(it.getBoundingClientRect().left - vr.left) < 2) + 1;
+      });
+      await page.keyboard.press("ArrowLeft");
+      await page.waitForTimeout(150);
+      const afterLeft = await count();
+      // 단추: Tab 으로 "다음" 에 가서 Enter.
+      const next = page.locator("[data-deck-next]");
+      await next.focus();
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(150);
+      const afterNext = await count();
+      const prevBtn = page.locator("[data-deck-prev]");
+      await prevBtn.focus();
+      await page.keyboard.press("Enter");
+      await page.waitForTimeout(150);
+      const afterPrev = await count();
+      const total = await page.locator(".deck-item").count();
+      const live = await page.locator("[data-deck-count]").getAttribute("aria-live");
+      const o2 = await page.evaluate(OVERFLOW_FN);
+      if (w === 390) {
+        await page.screenshot({ path: path.join(shotDir, "cards_390_card3.png"), fullPage: false });
+        result.screenshots.push("cards_390_card3.png");
+      }
+      const ok = o.scrollWidth <= o.innerWidth && o2.scrollWidth <= o2.innerWidth && first === `1 / ${total}` && afterRight === `3 / ${total}` && visibleIdx === 3
+        && afterLeft === `2 / ${total}` && afterNext === `3 / ${total}` && afterPrev === `2 / ${total}` && live === "polite";
+      rows.push({ width: w, scrollWidth: o.scrollWidth, innerWidth: o.innerWidth, first, afterRight, visibleIdx, afterLeft, afterNext, afterPrev, total, live, ok });
+      await ctx.close();
+    }
+    // 스크립트 끔: 카드가 세로로 이어 놓이고, 띠 단추는 보이지 않고, 가로 스크롤이 없다.
+    const nojs = [];
+    for (const w of [360, 1280]) {
+      const ctx = await browser.newContext({ viewport: { width: w, height: HEIGHT }, javaScriptEnabled: false });
+      const page = await ctx.newPage();
+      await page.goto(at(CARDS), { waitUntil: "load" });
+      const info = await page.evaluate(() => {
+        const items = [...document.querySelectorAll(".deck-item")].map((it) => it.getBoundingClientRect());
+        const stacked = items.every((r, i) => i === 0 || (r.top >= items[i - 1].bottom - 1 && Math.abs(r.left - items[0].left) < 2));
+        const controls = document.querySelector("[data-deck-controls]");
+        return {
+          items: items.length, stacked, all_visible: items.every((r) => r.width > 0 && r.height > 0),
+          controls_hidden: !controls || getComputedStyle(controls).display === "none",
+          scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth,
+        };
+      });
+      await page.screenshot({ path: path.join(shotDir, `cards_${w}_nojs.png`), fullPage: true });
+      result.screenshots.push(`cards_${w}_nojs.png`);
+      nojs.push({ width: w, ...info, ok: info.items > 0 && info.stacked && info.all_visible && info.controls_hidden && info.scrollWidth <= info.innerWidth });
+      await ctx.close();
+    }
+    result.cards = { rows, nojs, ok: rows.every((r) => r.ok) && nojs.every((r) => r.ok) };
+  }
 } catch (e) {
   result.error = String(e && e.stack ? e.stack : e);
 } finally {
@@ -471,6 +547,11 @@ const summary = {
   search: { criterion: "≥ 9/10", value: result.search && `${result.search.pass}/10`, ok: !!result.search?.ok },
   title60: { criterion: "잘림 없음", value: result.title60 && `${result.title60.chars}자, 첫 화면 ${result.title60.home_ok}, 이슈 ${result.title60.issue_ok}`, ok: !!result.title60?.ok },
   reduced_motion: { criterion: "0s", value: result.reduced_motion?.bad.length, ok: !!result.reduced_motion?.ok },
+  cards: {
+    criterion: "폭 넷 가로 스크롤 0 · 화살표와 단추로 다음/이전 · 스크립트 없이 세로",
+    value: result.cards && `${result.cards.rows.filter((r) => r.ok).length}/${result.cards.rows.length} 폭, 스크립트 끔 ${result.cards.nojs.filter((r) => r.ok).length}/${result.cards.nojs.length}`,
+    ok: !!result.cards?.ok,
+  },
 };
 summary.contrast_light.ok = summary.contrast_light.value === 0;
 summary.contrast_dark.ok = summary.contrast_dark.value === 0;
@@ -483,5 +564,5 @@ result.shot_count = result.screenshots.length;
 fs.writeFileSync(path.join(shotDir, "result.json"), JSON.stringify(result, null, 2));
 console.log(JSON.stringify({ shot_dir: shotDir, shots: result.shot_count, error: result.error, summary }, null, 2));
 if (result.error) process.exit(2);
-const gate = ["horizontal_scroll", "contrast_light", "contrast_dark", "zoom_200", "keyboard", "slow_3g", "broken_links", "search"];
+const gate = ["horizontal_scroll", "contrast_light", "contrast_dark", "zoom_200", "keyboard", "slow_3g", "broken_links", "search", "cards"];
 process.exit(gate.every((k) => summary[k].ok) ? 0 : 1);

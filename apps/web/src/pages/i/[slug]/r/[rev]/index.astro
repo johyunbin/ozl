@@ -19,6 +19,6 @@ export function getStaticPaths() {
 const { issue, b } = Astro.props;
 const site = loadSite();
 ---
-<Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} canonical={revUrl(issue.slug, b.rev ?? 0)}>
+<Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} canonical={revUrl(issue.slug, b.rev ?? 0)} wide>
   <IssueBody site={site} issue={issue} b={b} fixed={true} />
 </Base>

@@ -17,6 +17,7 @@ KST = timezone(timedelta(hours=9))
 TEXT_KEYS = ("text", "gist", "what", "summary", "caption", "alt", "searched", "not_found", "would_decide", "party_position",
              "evidence_label")
 ITEM_LISTS = ("facts", "flow", "stances", "open_questions", "figures")
+SOURCE_TEXT_KEYS = ("title", "by", "url")
 
 
 def _parse(s) -> datetime | None:
@@ -82,6 +83,22 @@ def _src_ids(items) -> set:
     return out
 
 
+def _all_sources(out: dict) -> list[dict]:
+    """본문 안의 출처 사전 전부(최상위 sources, 항목의 sources, 판정 묶음 안 주장과 작은 주장의 sources)."""
+    found: list[dict] = []
+    for s in out.get("sources") or []:
+        if isinstance(s, dict):
+            found.append(s)
+    items = [it for lst in ITEM_LISTS for it in out.get(lst) or [] if isinstance(it, dict)]
+    items += [c for g in (out.get("verdicts") or {}).get("groups") or [] for c in g.get("claims") or [] if isinstance(c, dict)]
+    for it in items:
+        found += [s for s in it.get("sources") or [] if isinstance(s, dict)]
+        for p in it.get("parts") or []:
+            if isinstance(p, dict):
+                found += [s for s in p.get("sources") or [] if isinstance(s, dict)]
+    return found
+
+
 def apply(body: dict, now) -> dict:
     """선거 가림을 적용한 사본. 선거 이슈가 아니거나 기간이 끝났으면 그대로의 사본."""
     out = copy.deepcopy(body)
@@ -131,6 +148,17 @@ def apply(body: dict, now) -> dict:
         if isinstance(c, dict) and style.poll_words(str(c.get("text") or "")):
             hits += 1
             c.update(text=MASKED_TEXT, masked=True)
+    # 출처의 글(제목, 발행처, 주소)과 키워드는 가림 표시가 없으니 판세 낱말이 있으면 가린다 — 셋 가운데 하나에만 있어도 셋 다
+    for src in _all_sources(out):
+        if any(style.poll_words(str(src.get(k) or "")) for k in SOURCE_TEXT_KEYS):
+            hits += 1
+            src.update({k: MASKED_TEXT for k in ("title", "by") if k in src}, masked=True)
+            if "url" in src:
+                src["url"] = ""
+    kws = out.get("keywords")
+    if isinstance(kws, list) and any(style.poll_words(str(k)) for k in kws):
+        hits += 1
+        out["keywords"] = [k for k in kws if not style.poll_words(str(k))]
     if hits:
         keep = _src_ids(kept_items) | {e for v in out["numbers"].values() for e in model.number_evidence_ids(v)}
         out["sources"] = [s for s in out.get("sources") or [] if s.get("id") in keep or s.get("id") not in gone]

@@ -34,6 +34,7 @@ BASIS_REQ = {
     "다": {"refers_to_original": True, "ev_kind": {"공식 원문", "기관 자료"}},
 }
 CAUSE_DOC_KINDS = {"판결", "조사 보고서", "원인 발표"}
+ALLEGATION_DOC_KINDS = {"판결", "처분"}   # 의혹을 판정하는 수사기관·법원의 확정 문서(판결은 (가)가 확정만 받는다)
 VERDICTS = ("확인", "일부 맞음", "사실과 다름", "확인 못 함")
 UNVERIFIED_REASONS = ("핵심 근거를 구하지 못함", "근거끼리 어긋남", "절차가 끝나지 않음", "확인할 방법이 없음")
 PART_VERDICTS = ("확인", "사실과 다름", "확인 못 함")
@@ -75,6 +76,9 @@ MSG_PART_KIND_LOCK = "핵심 작은 주장과 인과 주장의 작은 주장은 
 MSG_PREMISE = "사건이 1차 원문으로 확인되지 않았으면 판정한 주장마다 사건을 전제로 하는지(premise_event: 참·거짓)를 적는다"
 MSG_NUM_NA = "수치 주장의 {}에는 '해당 없음'을 쓰지 않는다 — 기간과 단위를 맞춰 적는다"
 MSG_REF_HIDDEN = "제목과 지금까지 3줄이 기대는 주장({})은 게시되는 주장이어야 한다"
+MSG_CONFLICT_FALSE = ("확정 판단이나 원자료 대조로 받친 지지 근거가 있으면 '사실과 다름'을 붙이지 않는다 — "
+                      "근거끼리 어긋나면 '확인 못 함'(근거끼리 어긋남)")
+MSG_PARTS_ONLY = "작은 주장(parts)은 '일부 맞음' 판정에만 둔다"
 LABEL = {"subject": "대상", "period": "기간", "scope": "범위", "unit": "단위"}
 
 
@@ -152,6 +156,9 @@ def basis_ok(link: dict, ev: dict | None, claim: dict, copy_errs: dict | None = 
     adm = doc.get("admission") if isinstance(doc.get("admission"), dict) else {}
     if link.get("stance") == "반대" and adm.get("kind") == "부인":
         return False, "당사자의 부인은 반대 근거가 아니다 — " + MSG_DENIAL_ONLY
+    # 당사자가 인정한 문서는 근거 조건 글자와 무관하게 인정한 범위까지만 받친다(조건을 (다)로 바꿔 범위를 넓히지 못하게).
+    if adm.get("kind") == "인정" and norm(link.get("scope")) != norm(adm.get("scope")):
+        return False, f"당사자가 인정한 범위({adm.get('scope')})와 연결의 범위({link.get('scope')})가 다르다 — 인정한 범위까지만 근거로 센다"
     if b == "가":
         if doc.get("speaker_role") not in req["speaker_role"] or doc.get("authority") is not True:
             return False, "권한 있는 제3기관의 문서가 아니다"
@@ -205,6 +212,12 @@ def classify(claim: dict, evidences: dict, copy_errs: dict | None) -> tuple[list
 
 
 # ── 판정 ──────────────────────────────────────────────────────────────
+def allegation_basis(info: dict) -> bool:
+    """범죄·비위 의혹을 판정할 수 있는 근거인가 — (가)로 센 수사기관·법원의 확정 문서(확정 판결, 처분)만. 공식 통계나 일반 기관의
+    확정 보고서는 (가)여도 의혹의 확정 문서가 아니다."""
+    return info.get("counted") == "가" and _doc(info.get("ev")).get("doc_kind") in ALLEGATION_DOC_KINDS
+
+
 def _cause_ok(infos) -> bool:
     """원인을 직접 판단한 문서인가. 권한 있는 제3기관의 확정 판단(판결이면 확정)이거나, (나)로 센 당사자의 불리한 인정만 받는다
     — 당사자가 스스로 낸 '원인 발표'를 (다)로 올려 인과를 확인하지 못하게."""
@@ -247,12 +260,16 @@ def _judge(cl: dict, issue: dict | None, copy_errs, evidences) -> list[tuple[str
         errs.append(("searched", "찾아본 범위(searched)를 적는다"))
     if cl.get("premise_event") is True and ((issue or {}).get("event_check") or {}).get("confirmed") is not True:
         errs.append(("verdict", MSG_EVENT))
-    if cl.get("allegation") is True and not any(i["counted"] == "가" for i in infos):
+    if cl.get("allegation") is True and not any(allegation_basis(i) for i in mine):   # 판정을 받치는 쪽의 수사기관·법원 확정 문서만
         errs.append(("verdict", MSG_ALLEGATION))
     if v == "사실과 다름" and not good and kind == "발표 여부":
         good = [i for i in mine if i["ev"] and _doc(i["ev"]).get("denies_own_document") is True and i["ev"].get("kind") in OFFICIAL
                 and norm(_doc(i["ev"]).get("speaker")) == norm(cl.get("attributed_to")) and not cards._blank(cl.get("attributed_to"))
-                and not i["mismatch"] and (copy_errs or {}).get(i["ev"].get("evidence_id")) == []]
+                and not i["mismatch"] and (copy_errs or {}).get(i["ev"].get("evidence_id")) == []
+                # 문서 쪽 방어는 예외에도 그대로 — 조사 중, 옮겨 적은 문서, 당사자 주장을 옮긴 대목은 자기 문서 부인이 아니다
+                and _doc(i["ev"]).get("doc_stage") not in ("조사 중", "한쪽 주장을 옮긴 것")
+                and _doc(i["ev"]).get("transcribed") is False
+                and i["link"].get("passage_role") not in ("당사자 주장을 옮긴 것", None, "")]
     if not good:
         if v == "사실과 다름" and any((_doc(i["ev"]).get("admission") or {}).get("kind") == "부인" for i in mine if i["ev"]):
             errs.append(("verdict", MSG_DENIAL_ONLY))
@@ -264,6 +281,8 @@ def _judge(cl: dict, issue: dict | None, copy_errs, evidences) -> list[tuple[str
         return errs
     if kind == "인과" and not _cause_ok(good):
         errs.append(("verdict", MSG_CAUSE))
+    if v == "사실과 다름" and any(i["counted"] in ("가", "다") for i in infos if i["link"].get("stance") == "지지"):
+        errs.append(("verdict", MSG_CONFLICT_FALSE))
     if v == "확인":
         if any(i["counted"] in VERDICT_NEEDS["확인"]["no_counter"] for i in infos if i["link"].get("stance") == "반대"):
             errs.append(("verdict", "확정 판단이나 원자료 대조로 받친 반대 근거가 있으면 '확인'을 붙이지 않는다 — 근거끼리 어긋나면 '확인 못 함'"))
@@ -294,7 +313,10 @@ def verdict_errors(claim: dict, evidences: dict, copy_errs: dict | None = None, 
     if v not in VERDICTS:
         return [("verdict", f"verdict 값 '{v}'은 허용 값({', '.join(VERDICTS)})이 아니다")]
     if v != "일부 맞음":
-        return _judge(claim, issue, copy_errs, evidences)
+        errs = _judge(claim, issue, copy_errs, evidences)
+        if claim.get("parts"):                      # 본문은 작은 주장을 늘 싣는다 — 검사하지 않는 작은 주장을 두지 않는다
+            errs.append(("parts", MSG_PARTS_ONLY))
+        return errs
     errs: list[tuple[str, str]] = []
     errs += [(p, m) for p, m in classify(claim, evidences, copy_errs)[1]]
     parts = [p for p in claim.get("parts") or [] if isinstance(p, dict)]

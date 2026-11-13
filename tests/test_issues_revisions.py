@@ -107,20 +107,21 @@ def test_approve_requires_reviews(real):
     assert revisions.review_state(*load(I1)) == "검토 대기"
     ready(I1)
     assert approve(I1)["code"] == 0
-    # 이어받기: 지적한 칸만 고친 수정은 수정 확인 한 줄로 넘어간다
+    # 이어받기: 지적한 칸만 고친 수정은 수정 확인 한 줄로 넘어간다. 지적은 검토를 더할 때 적는다(나중에 고친 지적은 믿지 않는다).
     h0 = ready(I2)
-    edit(I2, lambda i: i["reviews"][0].update(findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}]))
+    add_review(I2, "문장 대조", "Claude Sonnet", "anthropic", "지적",
+               findings=[{"field": "claims.c3.would_decide", "note": "범위를 좁힌다"}])                 # r3
+    add_review(I2, "해석 점검", "가상 모델 G", "openai", "지적", findings=[{"field": "claims.c1", "note": "요지를 고친다"}])   # r4
     edit(I2, lambda i: claim(i, "c3").update(would_decide="대법원의 확정 판결"))
     assert revisions.review_state(*load(I2)) == "검토 대기"
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r1"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
     assert revisions.review_state(*load(I2)) == "검토 완료"
     assert approve(I2)["code"] == 0
     # 지적과 무관한 칸(다른 주장의 요지)까지 바뀌면 같은 이어받기로는 다시 검토 대기
     edit(I2, lambda i: claim(i, "c1").update(gist="회수 대상은 1만 2천 개이고, 모두 국내용이다."))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r1"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3"])
     assert revisions.review_state(*load(I2)) == "검토 대기"
-    edit(I2, lambda i: i["reviews"][1].update(findings=[{"field": "claims.c1", "note": "요지를 고친다"}]))
-    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r1", "r2"])
+    add_review(I2, "수정 확인", "Claude Sonnet", "anthropic", "통과", before_hash=h0, addresses=["r3", "r4"])
     assert revisions.review_state(*load(I2)) == "검토 완료"
 
 

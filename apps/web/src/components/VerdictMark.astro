@@ -9,8 +9,8 @@ const cls = ["verdict", size, ok ? VERDICT_CLASS[verdict] : "v-none", struck ? "
 <span class={cls}>{ok && (
   <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
     {verdict === "확인" && <circle cx="8" cy="8" r="6.5" fill="currentColor" />}
-    {verdict === "일부 맞음" && <><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M8 2a6 6 0 0 0 0 12z" fill="currentColor" /></>}
-    {verdict === "사실과 다름" && <><rect x="1.75" y="1.75" width="12.5" height="12.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="1.75" /></>}
-    {verdict === "확인 못 함" && <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.2 1.8" />}
+    {verdict === "일부 맞음" && <><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="2" /><path d="M8 1.75a6.25 6.25 0 0 0 0 12.5z" fill="currentColor" /></>}
+    {verdict === "사실과 다름" && <><rect x="2" y="2" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" /><path d="M5.25 5.25l5.5 5.5M10.75 5.25l-5.5 5.5" stroke="currentColor" stroke-width="2" /></>}
+    {verdict === "확인 못 함" && <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.2" />}
   </svg>
 )}<span class="sr-only">{struck ? "지난 판정: " : "판정: "}</span><span class="label">{ok ? verdict : "판정 없음"}</span></span>

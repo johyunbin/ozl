@@ -1,40 +1,27 @@
 ---
-// 화제 목록 한 줄(설계 1-3). withVerdicts 가 거짓이면 판정 요약을 그리지 않는다(날짜 쪽).
-// 그릴 항목은 visibleTopics 가 미리 고른다. 판정 요약과 숨긴 주장 수는 그날 목록의 값을 먼저 쓴다.
+// 화제 목록 한 줄(설계 1-3). 공개 기록이 있는 이슈만 그린다. 정리 전 빈 항목(키워드만 있는 것)과 작업 상태 꼬리표는
+// 독자 화면에 그리지 않는다(미리보기에서는 쪽 맨 위 운영 정보 상자 — lib/ops.ts).
+// 판정 요약과 숨긴 주장 수는 그날 목록의 값을 먼저 쓴다. 판 번호(rev)를 주면 판 표시를 덧붙인다(날짜 쪽).
 import type { Site, TopicItem } from "../lib/data";
 import { rowById } from "../lib/data";
 import { issueUrl } from "../lib/paths";
 import VerdictSummary from "./VerdictSummary.astro";
-import HiddenClaimsLine from "./HiddenClaimsLine.astro";
 import ExampleTag from "./ExampleTag.astro";
-import StatusTag from "./StatusTag.astro";
-interface Props { item: TopicItem; site: Site; withVerdicts?: boolean }
-const { item, site, withVerdicts = true } = Astro.props;
+interface Props { item: TopicItem; site: Site; withVerdicts?: boolean; rev?: number | null }
+const { item, site, withVerdicts = true, rev } = Astro.props;
 const row = item.type === "issue" ? rowById(site, item.issue_id) : undefined;
 const hasIssue = item.type === "issue" && row && site.issues.has(row.slug);
 const own = item.type === "issue" && item.own_counts;
 const vsum = item.type === "issue" && own ? item.verdict_summary : row?.verdict_summary;
 const hidden = item.type === "issue" && own ? item.hidden_claims : row?.hidden_claims ?? 0;
-const plainName = item.type === "keyword" ? item.keyword : item.type === "issue" ? item.keyword : "";
+const status = item.type === "issue" ? item.status_line || row?.topic_state || "" : "";
+const sub = [rev !== undefined && rev !== null ? `${rev}판` : "", status].filter(Boolean).join(" · ");
 ---
-{hasIssue && row && item.type === "issue" ? (
+{hasIssue && row && (
   <li>
     <p class="row-title"><ExampleTag show={row.example} /><a href={issueUrl(row.slug)} data-title={row.title}>{row.title}</a></p>
-    {(item.status_line || row.topic_state) && <p class="row-sub">{item.status_line || row.topic_state}</p>}
-    {withVerdicts && vsum && (
-      <p class="row-line">
-        <VerdictSummary summary={vsum} trail={hidden > 0} />
-        <HiddenClaimsLine n={hidden} where="list" />
-        {row.publish_state && <> <StatusTag state={row.publish_state} /></>}
-      </p>
-    )}
+    {sub && <p class="row-sub num">{sub}</p>}
+    {withVerdicts && vsum && <p class="row-line"><VerdictSummary summary={vsum} /></p>}
+    {withVerdicts && hidden > 0 && <p class="row-sub">이 밖에 다루지 않은 주장 <span class="num">{hidden}</span>건</p>}
   </li>
-) : plainName ? (
-  <li>
-    <p class="row-title plain">{plainName}</p>
-    <p class="row-sub">정리 전</p>
-  </li>
-) : null}
-<style>
-  .row-title.plain { font-weight: 600; }
-</style>
+)}

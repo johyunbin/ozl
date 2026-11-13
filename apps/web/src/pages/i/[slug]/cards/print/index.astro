@@ -1,0 +1,50 @@
+---
+// 카드 그림 전용 화면(설계 1-14). 한 장이 정확히 1080×1350 CSS 픽셀이고, 사이트 머리와 꼬리가 없다.
+// scripts/cards.mjs 가 이 쪽을 열어 장마다 PNG 로 찍는다. 미리보기 빌드에만 만든다(공개용에서는 주소가 없다):
+// 공개 사이트에 같은 내용의 쪽을 하나 더 두지 않고, 무료 호스팅의 파일 수도 늘리지 않으려고.
+import "../../../../../styles/tokens.css";
+import "../../../../../styles/base.css";
+import Card from "../../../../../components/Card.astro";
+import { loadSite, type Issue } from "../../../../../lib/data";
+import { IS_PUBLIC } from "../../../../../lib/mode";
+import { cardSources, cardTexts, cardVerdicts, deckFor, height } from "../../../../../lib/cards";
+import { url } from "../../../../../lib/paths";
+
+export function getStaticPaths() {
+  if (IS_PUBLIC) return [];
+  const site = loadSite();
+  return [...site.issues.values()].map((is) => ({ params: { slug: is.slug }, props: { issue: is } }));
+}
+const { issue } = Astro.props as { issue: Issue };
+const site = loadSite();
+const deck = deckFor(site, issue);
+const total = deck.cards.length;
+const cover = deck.cards[0]?.blocks.find((b) => b.t === "summary");
+const data = {
+  summary: cover && cover.t === "summary" ? cover.summary : null,
+  slug: deck.slug, title: deck.title, rev: deck.rev, date: deck.date, example: deck.example,
+  fixed: deck.fixed, fixed_path: deck.fixedPath, issue_path: deck.issuePath, total,
+  cards: deck.cards.map((c, i) => ({
+    n: i + 1, est_em: Math.round(height(c.blocks) * 100) / 100, kind: c.kind, label: c.label, cont: c.cont, claim_verdict: c.claimVerdict || null,
+    texts: cardTexts(c), verdicts: cardVerdicts(c), sources: cardSources(c),
+  })),
+};
+---
+<!doctype html>
+<html lang="ko" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=1080" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{deck.title} · 카드 그림 · OZL</title>
+    <link rel="stylesheet" href={url("fonts/pretendard.css")} />
+  </head>
+  <body class="print-body">
+    {deck.cards.map((c, i) => <div class="print-slot" data-print-card={i + 1}><Card card={c} deck={deck} n={i + 1} total={total} print /></div>)}
+    <script type="application/json" id="ozl-cards" set:html={JSON.stringify(data).replace(/</g, "\\u003c")}></script>
+  </body>
+</html>
+<style is:global>
+  .print-body { margin: 0; background: var(--bg); width: 1080px; }
+  .print-slot { width: 1080px; height: 1350px; overflow: hidden; }
+</style>

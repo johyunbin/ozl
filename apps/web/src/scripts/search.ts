@@ -22,17 +22,45 @@ async function load(): Promise<PF> {
   return mod;
 }
 
-function esc(s: string) {
-  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string);
+/**
+ * 검색 도구가 준 발췌를 DOM 으로 옮긴다. <mark>…</mark> 만 표시로 남기고 나머지는 모두 글자(text node)로 둔다.
+ * 문자열을 HTML 로 해석하지 않으므로 발췌 안의 어떤 꺾쇠도 요소가 되지 않는다. 발췌의 &amp; 같은 글자 참조는 글자로 푼다.
+ */
+function excerptNodes(s: string): Node[] {
+  const out: Node[] = [];
+  const ENT: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', "#39": "'", "#x27": "'" };
+  let inMark = false;
+  for (const p of s.split(/(<mark>|<\/mark>)/)) {
+    if (p === "<mark>") { inMark = true; continue; }
+    if (p === "</mark>") { inMark = false; continue; }
+    if (!p) continue;
+    const t = document.createTextNode(p.replace(/<[^>]*>/g, "").replace(/&(amp|lt|gt|quot|#39|#x27);/g, (_, e: string) => ENT[e]));
+    if (inMark) { const m = document.createElement("mark"); m.append(t); out.push(m); } else out.push(t);
+  }
+  return out;
 }
-/** 발췌는 <mark> 만 남기고 나머지 꺾쇠를 막는다. */
-function excerpt(s: string) {
-  return esc(s).replace(/&lt;mark&gt;/g, "<mark>").replace(/&lt;\/mark&gt;/g, "</mark>");
+
+/** 결과 주소는 이 사이트의 기준 경로 안일 때만 링크로 쓴다. 아니면 undefined(글자로만 그린다). */
+function sameSitePath(u: string, base: string): string | undefined {
+  try {
+    const x = new URL(u, location.origin);
+    if (x.origin !== location.origin || !x.pathname.startsWith(base)) return undefined;
+    return x.pathname + x.search + x.hash;
+  } catch {
+    return undefined;
+  }
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text) e.textContent = text;
+  return e;
 }
 
 async function run(q: string) {
   if (!out || !status) return;
-  out.innerHTML = "";
+  out.replaceChildren();
   const query = q.trim();
   if (!query) {
     status.textContent = "";
@@ -76,20 +104,32 @@ async function run(q: string) {
   }
   const items = await Promise.all(res.results.slice(0, 20).map((r) => r.data()));
   if (!items.length) {
-    status.innerHTML = `'${esc(query)}'에 맞는 기록이 없다. <a href="${esc(base)}k/">키워드 모음</a>에서 찾아볼 수 있다.`;
+    status.replaceChildren(`'${query}'에 맞는 기록이 없다. `);
+    const a = el("a", "", "키워드 모음");
+    a.href = `${base}k/`;
+    status.append(a, "에서 찾아볼 수 있다.");
     return;
   }
   status.textContent = used === query ? `${items.length}건` : `'${used}'(으)로 찾은 결과 ${items.length}건`;
-  out.innerHTML = items
-    .map((d) => {
-      const m = d.meta || {};
-      const ex = m.example ? `<span class="tag">예시</span>` : "";
-      const cat = m.category ? `<p class="xs muted">${esc(m.category)}</p>` : "";
-      return `<li>${cat}<p class="row-title">${ex}<a href="${esc(d.url)}">${esc(m.title || d.url)}</a></p>` +
-        `<p class="row-sub">${esc(m.rev || "")}${m.summary ? ` · ${esc(m.summary)}` : ""}</p>` +
-        `<p class="small excerpt">${excerpt(d.excerpt || "")}</p></li>`;
-    })
-    .join("");
+  out.replaceChildren(...items.map((d) => {
+    const m = d.meta || {};
+    const li = el("li");
+    if (m.category) li.append(el("p", "xs muted", m.category));
+    const t = el("p", "row-title");
+    if (m.example) t.append(el("span", "tag", "예시"));
+    const href = sameSitePath(d.url, base);
+    if (href) {
+      const a = el("a", "", m.title || d.url);
+      a.href = href;
+      t.append(a);
+    } else t.append(m.title || d.url);
+    li.append(t);
+    li.append(el("p", "row-sub", `${m.rev || ""}${m.summary ? ` · ${m.summary}` : ""}`));
+    const ex = el("p", "small excerpt");
+    ex.append(...excerptNodes(d.excerpt || ""));
+    li.append(ex);
+    return li;
+  }));
 }
 
 if (form) {

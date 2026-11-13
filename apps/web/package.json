@@ -10,11 +10,15 @@
   },
   "scripts": {
     "dev": "astro dev --host 127.0.0.1",
-    "build:preview": "node scripts/guard.mjs preview && OZL_BUILD_MODE=preview astro build && OZL_BUILD_MODE=preview node scripts/fonts.mjs && OZL_BUILD_MODE=preview node scripts/pagefind.mjs",
-    "build:public": "node scripts/guard.mjs public && OZL_BUILD_MODE=public astro build && OZL_BUILD_MODE=public node scripts/fonts.mjs && OZL_BUILD_MODE=public node scripts/pagefind.mjs",
+    "build:preview": "node scripts/guard.mjs preview && OZL_BUILD_MODE=preview astro build && OZL_BUILD_MODE=preview node scripts/fonts.mjs && OZL_BUILD_MODE=preview node scripts/pagefind.mjs && OZL_BUILD_MODE=preview node scripts/check-html.mjs",
+    "build:public": "node scripts/guard.mjs public && OZL_BUILD_MODE=public astro build && OZL_BUILD_MODE=public node scripts/fonts.mjs && OZL_BUILD_MODE=public node scripts/pagefind.mjs && OZL_BUILD_MODE=public node scripts/check-html.mjs",
     "preview:serve": "OZL_BUILD_MODE=preview astro preview --host 127.0.0.1 --port 4321",
     "check:links": "node scripts/check-links.mjs",
-    "check:shape": "node scripts/check-shape.mjs"
+    "check:shape": "node scripts/check-shape.mjs",
+    "cards": "node scripts/cards.mjs",
+    "icons": "node scripts/icons.mjs",
+    "check:offline": "node checks/offline.mjs",
+    "check:csp": "node checks/csp.mjs"
   },
   "engines": {
     "node": ">=22.23.4"

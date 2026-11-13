@@ -141,7 +141,10 @@
         "kind": "주장"
        }
       ],
-      "election_mask": false
+      "election_mask": false,
+      "basis": [
+       "한빛시 시내버스 요금 조정 안내에 기본요금을 1,250원에서 1,650원으로 올린다고 적혀 있다."
+      ]
      }
     ]
    },
@@ -177,6 +180,9 @@
           "url": "https://hanbit-city.example/press/fare-2099.html",
           "checked_at": "2099-01-02T10:00:00+09:00"
          }
+        ],
+        "basis": [
+         "시 보도자료에 연료비와 운송 적자가 인상 근거로 적혀 있다."
         ]
        },
        {
@@ -195,6 +201,9 @@
           "url": "https://hanbit-stats.example/fuel/2098.html",
           "checked_at": "2099-01-02T10:00:00+09:00"
          }
+        ],
+        "basis": [
+         "한빛통계원 표에서 2098년 연료비 상승률은 13%다."
         ]
        }
       ],
@@ -255,7 +264,11 @@
       ],
       "history": [],
       "numbers": [],
-      "election_mask": false
+      "election_mask": false,
+      "basis": [
+       "시가 든 적자 수치는 2095년 결산서의 값이다.",
+       "2098년 결산 검사 보고서의 운송 적자는 128억 원이다."
+      ]
      },
      {
       "id": "c1",
@@ -302,7 +315,10 @@
         "kind": "주장"
        }
       ],
-      "election_mask": false
+      "election_mask": false,
+      "basis": [
+       "2098년 결산 검사 보고서의 운송 적자는 128억 원이다."
+      ]
      }
     ]
    },
@@ -564,7 +580,7 @@
    "why": "결산 검사 보고서에서 운송 적자가 128억 원으로 나왔다."
   }
  ],
- "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
  "trend": null,
  "internal": {
   "publish_state": "게시",

@@ -1,11 +1,12 @@
 ---
 // 화제 추이(설계 4-6). 막대가 자라는 효과를 쓰지 않는다.
-// 막대마다 위에 값(가장 큰 날 100 기준), 아래에 날짜(월/일)를 적는다. 0인 날은 막대 없이 "없음".
+// 막대마다 위에 값(가장 큰 날 100 기준), 아래에 날(일)을 적는다. 0인 날은 막대 없이 "0".
+// 승인 전 값(작업본)을 쓴다는 표시는 미리보기의 운영 정보 상자가 맡는다.
 import type { Trend } from "../lib/data";
 import { fmtDateTime, parseTime } from "../lib/format";
 import { url } from "../lib/paths";
-interface Props { t: Trend | null; draft?: boolean }
-const { t, draft = false } = Astro.props;
+interface Props { t: Trend | null }
+const { t } = Astro.props;
 const raw = t ? [...Array(Math.max(0, 7 - t.bars7.length)).fill(0), ...t.bars7.slice(-7)] : [];
 const max = Math.max(0, ...raw);
 const vals = raw.map((v) => (max > 0 && v > 0 ? Math.max(1, Math.round((v / max) * 100)) : 0));
@@ -13,10 +14,10 @@ const p = t ? parseTime(t.asof) : null;
 const days = vals.map((_, i) => {
   if (!p) return "";
   const d = new Date(Date.UTC(p.y, p.m - 1, p.d) - (6 - i) * 86400000);
-  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+  return `${d.getUTCDate()}일`;
 });
 const H = 40;
-const label = `최근 7일 화제 크기(가장 큰 날 100 기준): ${vals.map((v, i) => `${days[i] ? `${days[i]} ` : ""}${v === 0 ? "없음" : v}`).join(", ")}`;
+const label = `최근 7일 화제 크기(가장 큰 날 100 기준): ${vals.map((v, i) => `${days[i] ? `${days[i]} ` : ""}${v}`).join(", ")}`;
 ---
 {t && (
   <section class="section" aria-labelledby="trend-h" data-short="hide">
@@ -24,18 +25,17 @@ const label = `최근 7일 화제 크기(가장 큰 날 100 기준): ${vals.map(
     <p class="score-line">
       {t.score !== null && <>화제 점수 <span class="score num">{t.score}</span></>}
       {fmtDateTime(t.asof) && <span class="xs muted num"> {fmtDateTime(t.asof)} 기준</span>}
-      {draft && <span class="xs draft"> 작업본 기준, 승인 전 값</span>}
     </p>
     <div class="bars" role="img" aria-label={label}>
       {vals.map((v, i) => (
         <div class="col" aria-hidden="true">
-          <span class="val xs num">{v === 0 ? "없음" : v}</span>
+          <span class="val xs num">{v}</span>
           <span class="track">{v > 0 && <span class={`bar${i === 6 ? " last" : ""}`} style={`height:${Math.max(2, Math.round((v / 100) * H))}px`}></span>}</span>
           {days[i] && <span class="day xs muted num">{days[i]}</span>}
         </div>
       ))}
     </div>
-    <p class="xs muted">가장 큰 날을 100으로 둔 값</p>
+    <p class="small muted">화제 점수는 모든 이슈에 같은 잣대인 0~100 점이다. 막대는 이 이슈의 최근 7일 가운데 가장 큰 날을 100으로 둔 비교 값이라 점수와 다르다.</p>
     <p class="small muted note">화제 점수는 관심의 크기이고, 사실인지나 중요한지를 뜻하지 않는다. <a href={url("about/#score")}>계산법</a></p>
   </section>
 )}

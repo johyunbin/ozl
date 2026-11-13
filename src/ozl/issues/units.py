@@ -20,7 +20,15 @@ NEW_MAX, ONGOING_MAX = 4, 6
 EXCLUDE_FLAGS = {"개인", "사생활", "범죄 의혹", "선거 판세"}
 RESTORED_LABEL = "위키백과 조회로 본 그날의 관심 문서"
 RESTORED_BANNED = re.compile(r"verdict|score|issue_id|trend|판정|점수")
-HASH_SKIP = {"score", "trend", "bars7", "verdict_summary", "hidden_claims"}
+# 지문에서 빼는 칸은 정해진 자리만: line.updated_at 과 new·ongoing 항목의 계산 칸(본문에서 다시 계산해 싣는다).
+ITEM_COMPUTED = ("verdict_summary", "hidden_claims")
+DAY_KEYS = {"date", "revision", "made_at", "line", "new", "ongoing", "upcoming", "pre", "empty_note"}
+LINE_KEYS = {"updated_at", "source_kinds_ok", "source_kinds_failed"}
+ISSUE_ITEM_KEYS = {"issue_id", "status_line", "keyword", *ITEM_COMPUTED}
+KEYWORD_ITEM_KEYS = {"keyword", "state"}
+PRE_KEYS = {"keyword", "desc", "links", "flags"}
+RESTORED_KEYS = {"date", "revision", "made_at", "label", "source_url", "items"}
+RESTORED_ITEM_KEYS = {"rank", "article", "views"}
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -37,36 +45,35 @@ def all_dates(unit: str) -> list[str]:
     return sorted(p.stem for p in d.glob("*.yaml") if DATE.match(p.stem)) if d.is_dir() else []
 
 
-def _strip(v, skip):
-    if isinstance(v, dict):
-        return {k: _strip(x, skip) for k, x in v.items() if k not in skip}
-    if isinstance(v, list):
-        return [_strip(x, skip) for x in v]
-    return v
-
-
 def unit_hash(unit: str, d: dict) -> str:
-    """화제 목록은 line.updated_at 과 점수·계산 칸을 뺀다(본문에서 계산하는 판정 요약도 승인 대상이 아니다). 복원판은 전체."""
-    if unit == "restored":
+    """화제 목록은 line.updated_at 과 new·ongoing 항목의 계산 칸(판정 요약, 숨긴 주장 수)만 뺀다. 복원판은 전체.
+    다른 깊이의 같은 이름 칸은 빼지 않는다 — 지문 밖 칸에 승인받지 않은 글을 실을 수 없게."""
+    if unit == "restored" or not isinstance(d, dict):
         return digest._canon(d)
-    x = _strip(copy.deepcopy(d), HASH_SKIP)
+    x = copy.deepcopy(d)
     if isinstance(x.get("line"), dict):
         x["line"].pop("updated_at", None)
+    for k in ("new", "ongoing"):
+        for it in x.get(k) or [] if isinstance(x.get(k), list) else []:
+            if isinstance(it, dict) and "issue_id" in it:
+                for c in ITEM_COMPUTED:
+                    it.pop(c, None)
     return digest._canon(x)
 
 
 # ── 검사 ──────────────────────────────────────────────────────────────
-def _text_errors(where: str, text: str) -> list[str]:
-    """화제 목록의 글 한 칸 — 문체, 범죄·비위 낱말, 판세 낱말, 수량(종류 검사를 받을 수 없으니 쓰지 않는다)."""
+def _text_errors(where: str, text: str, keyword: bool = False) -> list[str]:
+    """화제 목록의 글 한 칸 — 문체, 범죄·비위 낱말, 판세 낱말, 수량(종류 검사를 받을 수 없으니 쓰지 않는다).
+    키워드 칸(keyword=True)은 숫자가 이름의 일부인 표기(5G, 4대강)를 받는다 — numbers.keyword_qty."""
     from ozl.render import numbers as N
 
-    from .numbers import korean_qty
+    from .numbers import keyword_qty, korean_qty
     e = [f"{where}: {m}" for m in style.text_errors("status_line", text)]
     if style.crime_words(text):
         e.append(f"{where}: {style.MSG_CRIME}")
     if style.poll_words(text):
         e.append(f"{where}: 화제 목록에는 판세를 쓰지 않는다(가림 표시가 없다)")
-    if korean_qty(text) or any(t.kind != "cal" for t in N.claim_tokens(text)):
+    if (keyword_qty(text) if keyword else (korean_qty(text) or any(t.kind != "cal" for t in N.claim_tokens(text)))):
         e.append(f"{where}: 화제 목록 줄에는 수량을 쓰지 않는다 — 수치는 기록 본문에서 종류와 함께 적는다")
     return e
 
@@ -76,13 +83,19 @@ def _item_errors(where: str, it) -> list[str]:
         return [f"{where}: 항목은 사전이다"]
     e = []
     if "issue_id" in it:
+        if set(it) - ISSUE_ITEM_KEYS:
+            e.append(f"{where}: 이슈 항목에 둘 수 없는 칸이 있다({', '.join(sorted(map(str, set(it) - ISSUE_ITEM_KEYS)))})")
         if not re.match(r"^i\d{8}-\d{2}$", str(it.get("issue_id"))):
             e.append(f"{where}.issue_id: 이슈 번호 꼴이 아니다")
         e += _text_errors(f"{where}.status_line", str(it.get("status_line") or ""))
+        if "keyword" in it:                         # 공개 판이 없을 때 '정리 전' 항목으로 실린다
+            e += _text_errors(f"{where}.keyword", str(it.get("keyword") or ""), keyword=True)
+    elif set(it) - KEYWORD_ITEM_KEYS:
+        e.append(f"{where}: 항목은 {{issue_id, status_line}} 또는 {{keyword, state: 정리 전}} 이다(둘 수 없는 칸이 있다)")
     elif cards._blank(it.get("keyword")) or it.get("state") != "정리 전":
         e.append(f"{where}: 항목은 {{issue_id, status_line}} 또는 {{keyword, state: 정리 전}} 이다")
     else:
-        e += _text_errors(f"{where}.keyword", str(it.get("keyword")))
+        e += _text_errors(f"{where}.keyword", str(it.get("keyword")), keyword=True)
     return e
 
 
@@ -104,11 +117,30 @@ def check_unit(unit: str, d: dict, date: str | None = None) -> dict:
         bad = [k for k in json.dumps(d, ensure_ascii=False, default=str).split('"') if RESTORED_BANNED.fullmatch(k)]
         if bad:
             e.append(f"복원판에는 판정, 점수, 이슈 번호 칸을 두지 않는다({', '.join(sorted(set(bad)))})")
-        for i, it in enumerate(d.get("items") or []):
-            if not (isinstance(it, dict) and isinstance(it.get("rank"), int) and not cards._blank(it.get("article"))
-                    and isinstance(it.get("views"), int)):
-                e.append(f"items.{i}: 항목은 {{rank, article, views}} 이다")
+        if set(d) - RESTORED_KEYS:
+            e.append(f"복원판에 둘 수 없는 칸이 있다({', '.join(sorted(map(str, set(d) - RESTORED_KEYS)))})")
+        su = d.get("source_url")
+        if su is not None and (not isinstance(su, str) or not re.match(r"^https?://[^/\s]+", su) or community_url(su)):
+            e.append("source_url: http(s) 주소이고 커뮤니티 글이 아니다")
+        items = d.get("items")
+        if items is not None and not isinstance(items, list):
+            e.append("items: 목록이다")
+        for i, it in enumerate(items if isinstance(items, list) else []):
+            if not (isinstance(it, dict) and not set(it) - RESTORED_ITEM_KEYS and isinstance(it.get("rank"), int)
+                    and not isinstance(it.get("rank"), bool) and isinstance(it.get("article"), str) and not cards._blank(it.get("article"))
+                    and isinstance(it.get("views"), int) and not isinstance(it.get("views"), bool)):
+                e.append(f"items.{i}: 항목은 {{rank, article, views}} 이다(다른 칸을 두지 않는다)")
         return {"errors": e, "warnings": w}
+    if set(d) - DAY_KEYS:
+        e.append(f"화제 목록에 둘 수 없는 칸이 있다({', '.join(sorted(map(str, set(d) - DAY_KEYS)))})")
+    if d.get("line") is not None and (not isinstance(d.get("line"), dict) or set(d["line"]) - LINE_KEYS):
+        e.append("line: {updated_at, source_kinds_ok, source_kinds_failed} 이다")
+    en = d.get("empty_note")
+    if en is not None and (not isinstance(en, dict) or set(en) - {"new", "ongoing"}):
+        e.append("empty_note: {new, ongoing} 이다")
+    for k, v in (en.items() if isinstance(en, dict) else []):
+        if isinstance(v, str) and v.strip():
+            e += _text_errors(f"empty_note.{k}", v)
     for k, mx in (("new", NEW_MAX), ("ongoing", ONGOING_MAX)):
         lst = d.get(k) or []
         if not isinstance(lst, list) or len(lst) > mx:
@@ -128,12 +160,12 @@ def check_unit(unit: str, d: dict, date: str | None = None) -> dict:
         if community_url(u.get("url")):
             e.append(f"upcoming.{i}.url: {MSG_COMMUNITY}")
     for i, p in enumerate(d.get("pre") or []):
-        if not isinstance(p, dict) or cards._blank(p.get("keyword")):
+        if not isinstance(p, dict) or cards._blank(p.get("keyword")) or set(p) - PRE_KEYS:
             e.append(f"pre.{i}: 항목은 {{keyword, desc, links, flags}} 이다")
             continue
         if not set(p.get("flags") or []) & EXCLUDE_FLAGS:          # 공개용에서 빠지는 항목은 글을 내보내지 않는다
             for k in ("keyword", "desc"):
-                e += _text_errors(f"pre.{i}.{k}", str(p.get(k) or ""))
+                e += _text_errors(f"pre.{i}.{k}", str(p.get(k) or ""), keyword=k == "keyword")
         else:
             e += [f"pre.{i}.desc: {m}" for m in style.text_errors("desc", str(p.get("desc") or ""))]
         for j, ln in enumerate(p.get("links") or []):
@@ -160,15 +192,13 @@ def approve_unit(unit: str, date: str, rev: int, h: str, by: str, request_id=Non
         cur = unit_hash(unit, d)
         if h != cur:
             return {"code": 3, "msg": "요청한 내용 해시가 지금 내용과 다르다 — 다시 보고 승인한다", "entry": None}
-        man = revisions.load_manifest()
-        old = revisions.entry(man, unit, date, rev)
-        if old:
-            if old.get("content_hash") == cur:
-                return {"code": 0, "msg": f"{unit}:{date} {rev}판: 이미 승인됨", "entry": old}
-            return {"code": 3, "msg": f"{unit}:{date} {rev}판: 같은 판이 다른 내용으로 이미 승인됐다", "entry": None}
-        code, msg = revisions.approver_error(by)
+        code, msg = revisions.approver_error(by)       # 이름 규칙이 멱등 분기보다 먼저
         if code:
             return {"code": code, "msg": msg, "entry": None}
+        man = revisions.load_manifest()
+        pre = revisions.prior_approval(man, unit, date, rev, cur, request_id, rev_file(unit, date, rev).with_suffix(".approval.json"))
+        if pre is not None:
+            return pre
         errs = check_unit(unit, d, date)["errors"]
         if errs:
             return {"code": 1, "msg": "\n".join(errs), "entry": None}
@@ -187,11 +217,11 @@ def approve_unit(unit: str, date: str, rev: int, h: str, by: str, request_id=Non
 def unit_publishable(unit: str, date: str, man: dict | None = None) -> tuple[bool, str, int | None]:
     """(참거짓, 사유, 판) — 내리지 않은 가장 큰 승인 판이 고정 사본·승인 기록·검사와 맞을 때만 참."""
     man = revisions.load_manifest() if man is None else man
+    if unit not in UNITS:
+        return False, "공개할 수 있는 판이 없다", None
     for e in reversed(revisions.entries(man, unit, date)):
-        rev = e["rev"]
-        if revisions.is_withdrawn(man, unit, date, rev):
-            continue
-        if e.get("approved_by") == revisions.TEST_BY:
+        rev = e.get("rev")
+        if revisions.entry_error(man, unit, date, rev):   # 판 번호 꼴, 중복, 내림, 시험 승인, 빈 승인자·시각
             continue
         f = rev_file(unit, date, rev)
         try:
@@ -199,6 +229,8 @@ def unit_publishable(unit: str, date: str, man: dict | None = None) -> tuple[boo
             appr = json.loads(f.with_suffix(".approval.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
+        if d.get("revision") != rev or isinstance(d.get("revision"), bool) or d.get("date") != date:
+            continue                                    # 고정 사본이 그 날짜·판이 아니다(다른 판을 옮겨 놓은 것)
         if unit_hash(unit, d) != e.get("content_hash") or appr != e or check_unit(unit, d, date)["errors"]:
             continue
         return True, "", rev
@@ -211,14 +243,23 @@ def load_fixed_unit(unit: str, date: str, rev: int) -> dict:
 
 def public_day(d: dict, is_public_issue) -> dict:
     """공개용 화제 목록: 제외 표시가 붙은 미리 알림은 빼고, 공개 판이 없는 이슈 항목은 '정리 전'으로 바꾼다."""
-    out = copy.deepcopy(d)
-    out["pre"] = [p for p in out.get("pre") or [] if isinstance(p, dict) and not set(p.get("flags") or []) & EXCLUDE_FLAGS]
+    src = copy.deepcopy(d)
+    out = {k: src[k] for k in DAY_KEYS if k in src}            # 정해진 칸만 — 모르는 칸은 싣지 않는다
+    if isinstance(out.get("line"), dict):
+        out["line"] = {k: v for k, v in out["line"].items() if k in LINE_KEYS}
+    out["pre"] = [{k: p[k] for k in PRE_KEYS if k in p} for p in out.get("pre") or []
+                  if isinstance(p, dict) and not set(p.get("flags") or []) & EXCLUDE_FLAGS]
+    out["upcoming"] = [{k: u[k] for k in ("date", "what", "url") if k in u} for u in out.get("upcoming") or [] if isinstance(u, dict)]
     for k in ("new", "ongoing"):
         lst = []
         for it in out.get(k) or []:
-            if isinstance(it, dict) and "issue_id" in it and not is_public_issue(it["issue_id"]):
+            if not isinstance(it, dict):
+                continue
+            if "issue_id" in it and not is_public_issue(it["issue_id"]):
                 lst.append({"keyword": it.get("keyword") or "", "state": "정리 전"})
+            elif "issue_id" in it:
+                lst.append({"issue_id": it["issue_id"], "status_line": it.get("status_line") or ""})
             else:
-                lst.append(it)
+                lst.append({"keyword": it.get("keyword") or "", "state": it.get("state")})
         out[k] = lst
     return out

@@ -1,0 +1,29 @@
+---
+// 주장으로 바로 가는 목차(설계 1-4). 주장 요지와 판정 표시, 누르면 판정표의 그 주장으로 간다.
+// where: narrow 는 요약 밑(넓은 화면에서는 숨김), side 는 넓은 화면의 옆 단.
+import type { Body } from "../lib/data";
+import { orderedClaims } from "../lib/claims";
+import VerdictMark from "./VerdictMark.astro";
+interface Props { b: Body; where: "narrow" | "side" }
+const { b, where } = Astro.props;
+const list = orderedClaims(b);
+---
+{list.length > 0 && (
+  <nav class:list={["toc", where === "narrow" ? "only-narrow" : ""]} aria-label="주장 목록" data-pagefind-ignore>
+    <p class="toc-h">주장으로 바로 가기</p>
+    <ol>
+      {list.map(({ c, anchor }) => (
+        <li><a href={`#${anchor}`}><VerdictMark verdict={c.verdict} /><span class="toc-gist">{c.gist}</span></a></li>
+      ))}
+    </ol>
+  </nav>
+)}
+<style>
+  .toc { margin-top: var(--sp-5); }
+  .toc-h { font-size: var(--fs-sm); font-weight: 700; margin-bottom: var(--sp-1); }
+  .toc li { border-top: 1px solid var(--rule); }
+  .toc li:last-child { border-bottom: 1px solid var(--rule); }
+  .toc a { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2) 0; min-height: 44px; color: var(--text); text-decoration: none; }
+  .toc a:hover .toc-gist { text-decoration: underline; }
+  .toc-gist { font-size: var(--fs-sm); }
+</style>

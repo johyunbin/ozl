@@ -41,7 +41,8 @@ def publish_errors(issue: dict, evidences: dict | None = None) -> list[tuple[str
         where = f"figures.{g.get('id')}"
         if g.get("kind") not in model.FIGURE_KINDS:
             errs.append((f"{where}.kind", f"그림 종류 '{g.get('kind')}'은 허용 값({', '.join(model.FIGURE_KINDS)})이 아니다"))
-        elif g.get("kind") == "공식 문서 캡처" and ((evidences or {}).get(g.get("evidence")) or {}).get("kind") not in OFFICIAL:
+        elif g.get("kind") == "공식 문서 캡처" and (not isinstance(g.get("evidence"), str)
+                                                  or ((evidences or {}).get(g["evidence"]) or {}).get("kind") not in OFFICIAL):
             errs.append((f"{where}.evidence", "공식 문서 캡처는 공식 원문이나 기관 자료 근거에서만 만든다"))
         elif g.get("kind") == "검수 대장 그림" and cards._blank(g.get("register_id")):
             errs.append((f"{where}.register_id", "검수 대장 그림은 대장 번호(register_id)를 적는다"))

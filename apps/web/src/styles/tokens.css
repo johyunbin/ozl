@@ -48,15 +48,15 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --bg: #14161a;
-    --surface: #1d2026;
+    --surface: #23272e;
     --text: #e8e6e1;
-    --muted: #a9a59d;
+    --muted: #b5b1a9;
     --accent: #79c6db;
     --v-confirmed: #7fd39a;
-    --v-partial: #e3b85c;
+    --v-partial: #e8c06a;
     --v-false: #f29483;
-    --v-unknown: #b9bdc3;
-    --rule-strong: #6e737b;
+    --v-unknown: #c3c7cd;
+    --rule-strong: #7d828a;
     --rule: #2f333a;
     --heat-1: #242830;
     --heat-2: #30353e;
@@ -66,15 +66,15 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #14161a;
-  --surface: #1d2026;
+  --surface: #23272e;
   --text: #e8e6e1;
-  --muted: #a9a59d;
+  --muted: #b5b1a9;
   --accent: #79c6db;
   --v-confirmed: #7fd39a;
-  --v-partial: #e3b85c;
+  --v-partial: #e8c06a;
   --v-false: #f29483;
-  --v-unknown: #b9bdc3;
-  --rule-strong: #6e737b;
+  --v-unknown: #c3c7cd;
+  --rule-strong: #7d828a;
   --rule: #2f333a;
   --heat-1: #242830;
   --heat-2: #30353e;

@@ -1,0 +1,52 @@
+---
+// 연결이 없고 저장분도 없는 쪽을 열었을 때 서비스 워커가 대신 보여 주는 쪽(설계 4-18).
+// 이 기기에 저장된 판 목록은 스크립트가 캐시에서 읽어 그린다. 색인과 검색에서 뺀다.
+import Base from "../../layouts/Base.astro";
+import { url } from "../../lib/paths";
+---
+<Base title="연결 없음" noindex>
+  <h1>연결이 없어 이 쪽을 열 수 없다</h1>
+  <p class="lead-p">이 기기에 저장해 둔 판만 연결 없이 볼 수 있다. 최근에 연 이슈 기록을 저장하고, 다시 연결되면 내린 기록부터 지운다.</p>
+  <section class="section" aria-labelledby="saved-h">
+    <h2 id="saved-h">이 기기에 저장된 판</h2>
+    <p class="empty" data-saved-empty>저장된 판이 없다.</p>
+    <ul class="rows" data-saved-list hidden></ul>
+  </section>
+  <p class="small back"><a href={url()}>첫 화면</a></p>
+</Base>
+<script>
+  import { url } from "../../lib/paths";
+  const list = document.querySelector<HTMLUListElement>("[data-saved-list]")!;
+  const empty = document.querySelector<HTMLElement>("[data-saved-empty]")!;
+  const fmt = (iso: string) => {
+    try {
+      const p = Object.fromEntries(new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(iso)).map((x) => [x.type, x.value]));
+      return `${p.month}월 ${p.day}일 ${p.hour}:${p.minute}`;
+    } catch { return ""; }
+  };
+  (async () => {
+    try {
+      const r = await caches.match(location.origin + url("__ozl-saved__"));
+      const idx: { slug: string; title: string; rev: string; at: string }[] = r ? await r.json() : [];
+      if (!idx.length) return;
+      for (const e of idx) {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = url(`i/${e.slug}/`);
+        a.textContent = e.title || e.slug;
+        const meta = document.createElement("p");
+        meta.className = "xs muted";
+        meta.textContent = [e.rev ? `${e.rev}판` : "", e.at ? `저장 ${fmt(e.at)}` : ""].filter(Boolean).join(" · ");
+        li.append(a, meta);
+        list.append(li);
+      }
+      list.hidden = false;
+      empty.hidden = true;
+    } catch {}
+  })();
+</script>
+<style>
+  .lead-p { margin-top: var(--sp-3); }
+  .back { margin-top: var(--sp-5); }
+  .back a, .rows a { display: inline-block; padding: 10px 0; }
+</style>

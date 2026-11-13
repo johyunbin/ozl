@@ -81,15 +81,17 @@ main:focus { outline: none; }
 .verdict.md { font-size: var(--fs-md); }
 .verdict.v-confirmed { color: var(--v-confirmed); }
 .verdict.v-partial { color: var(--v-partial); }
-.verdict.v-false { color: var(--v-false); font-weight: 700; }
-.verdict.v-false .label { border: 1.5px solid currentColor; padding: 0 0.25em; border-radius: 2px; }
+.verdict.v-false { color: var(--v-false); }
 .verdict.v-unknown { color: var(--v-unknown); }
 .verdict.v-none { color: var(--muted); font-weight: 400; }
 .verdict.struck { color: var(--muted); font-weight: 400; }
-.verdict.struck .label { text-decoration: line-through; border: 0; padding: 0; }
+.verdict.struck .label { text-decoration: line-through; }
 .arrow { color: var(--muted); margin: 0 0.3em; }
 .vsum { display: inline; font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+/* 판정 집계: 가운뎃점 없이 항목 단위로만 줄을 바꾼다(설계 4-1). */
+.vsum .items { display: inline-flex; flex-wrap: wrap; gap: 0 var(--sp-3); vertical-align: top; }
 .vsum .item { white-space: nowrap; }
+.vsum .basis-label { color: var(--muted); margin-right: var(--sp-2); white-space: nowrap; }
 
 /* 화면 읽기 전용 / 색인 전용 */
 .sr-only, .index-only {
@@ -109,3 +111,23 @@ table { border-collapse: collapse; }
 
 /* "짧게" 보기(설계 4-12) */
 html[data-view="short"] [data-short="hide"] { display: none; }
+
+/* 연결 없이 저장분을 보여 줄 때 서비스 워커가 body 맨 앞에 넣는 띠(설계 4-18). */
+.offline-band { background: var(--surface); color: var(--text); font-size: var(--fs-sm); line-height: 1.6; padding: var(--sp-2) var(--gutter); border-bottom: 1px solid var(--rule-strong); }
+
+/* 긴 제목 링크(목록의 이슈 제목): 본문 색, 밑줄 없음. 누를 수 있다는 표시는 끝의 화살표(설계 3-5). */
+.row-title a { color: var(--text); text-decoration: none; }
+.row-title a::after { content: " →"; content: " →" / ""; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.row-title a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+
+/* 넓은 화면(1100px 이상)의 2단(설계 0, 1-3, 1-4). 본문 열은 그대로 40rem 이고, 옆 단 18rem 을 더한다. */
+:root { --aside: 18rem; }
+.only-wide { display: none; }
+@media (min-width: 1100px) {
+  body.wide .wrap { max-width: calc(var(--measure) + var(--aside) + var(--sp-7) + 2 * var(--gutter)); }
+  .two-col { display: grid; grid-template-columns: minmax(0, var(--measure)) var(--aside); gap: 0 var(--sp-7); align-items: start; }
+  .two-col > .main-col, .two-col > .col-main { min-width: 0; }
+  .only-wide { display: block; }
+  .only-narrow { display: none; }
+  .two-col > aside.side { position: sticky; top: var(--sp-4); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; padding-bottom: var(--sp-4); }
+}

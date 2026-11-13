@@ -1,4 +1,5 @@
 ---
+import { safeHref } from "../lib/data";
 // 첫 화면(설계 1-3).
 import Base from "../layouts/Base.astro";
 import TopicRow from "../components/TopicRow.astro";
@@ -6,7 +7,8 @@ import PreTopicRow from "../components/PreTopicRow.astro";
 import DateNav from "../components/DateNav.astro";
 import VerdictSummary from "../components/VerdictSummary.astro";
 import ExampleTag from "../components/ExampleTag.astro";
-import StatusTag from "../components/StatusTag.astro";
+import OpsBox from "../components/OpsBox.astro";
+import { readerTopics, topicOps } from "../lib/ops";
 import { latestTopicDay, loadSite, sortedDates, visibleTopics } from "../lib/data";
 import { IS_PREVIEW } from "../lib/mode";
 import { fmtClock, fmtDate, fmtDateTime, fmtDateWeek } from "../lib/format";
@@ -19,29 +21,35 @@ const dates = sortedDates(site);
 const at = day ? dates.indexOf(day.date) : -1;
 const prev1 = at > 0 ? dates[at - 1] : undefined;
 const prev2 = at > 1 ? dates[at - 2] : undefined;
-const pre = t ? t.pre.filter((p) => IS_PREVIEW || !p.excluded.length) : [];
+const pre = t ? t.pre.filter((p) => !p.excluded.length) : [];
 const allRecords = [...site.index].filter((r) => site.issues.has(r.slug)).sort((a, b) => b.rev_at.localeCompare(a.rev_at));
 // 첫 화면 용량이 기록 수에 따라 늘지 않게 최근 것만 둔다. 나머지는 날짜 쪽과 달력에서 찾는다.
 const RECENT = 30;
 const records = allRecords.slice(0, RECENT);
 const lastMonth = sortedDates(site).at(-1)?.slice(0, 7);
-const newItems = t ? visibleTopics(site, t.new, IS_PREVIEW, `${day!.date} 새로 뜬 것`).slice(0, 4) : [];
-const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date} 이어지는 것`).slice(0, 6) : [];
+const newVis = t ? visibleTopics(site, t.new, IS_PREVIEW, `${day!.date} 새로 뜬 것`) : [];
+const ongoingVis = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date} 이어지는 것`) : [];
+// 독자 화면에는 공개 기록이 있는 이슈만. 정리 전 빈 항목, 작업 상태, 수집 실패는 운영 정보 상자로.
+const newItems = readerTopics(site, newVis).slice(0, 4);
+const ongoingItems = readerTopics(site, ongoingVis).slice(0, 6);
+const ops = topicOps(site, t, [...newVis, ...ongoingVis]);
+const recOps = IS_PREVIEW && !t ? records.filter((r) => r.publish_state && r.publish_state !== "게시").map((r) => `${r.publish_state}: ${r.title}`) : [];
+const INTRO = "그날 화제가 된 일에서 떠도는 주장마다 판정과 근거를 붙여 기록한다.";
 ---
-<Base title="" description="그날 여러 곳에서 함께 오르내리는 이슈를 골라 떠도는 주장마다 판정과 근거를 붙이는 이슈 기록">
+<Base title="" description={INTRO} wide>
+  <OpsBox slot="ops" items={[...ops, ...recOps]} />
   <h1 class="sr-only">OZL 오늘의 이슈 기록</h1>
+  <p class="intro">{INTRO}</p>
   {t && day ? (
     <>
-      <div class="base-line">
-        <p class="xs muted num">
-          {fmtDateWeek(day.date)}
-          {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
-          {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
-          {t.line.source_kinds_failed.length > 0 && <><span class="sep" /><strong class="failed">{t.line.source_kinds_failed.join(", ")} 수집 실패</strong></>}
-        </p>
-        <p class="links small"><a href={url("search/")}>검색</a><a href={monthUrl(day.date.slice(0, 7))}>다른 날</a></p>
-      </div>
+      <p class="base-line xs muted num">
+        {fmtDateWeek(day.date)}
+        {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
+        {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
+      </p>
 
+      <div class="two-col">
+      <div class="col-main">
       <section class="section first" aria-labelledby="new-h">
         <h2 id="new-h">오늘 새로 뜬 것</h2>
         {newItems.length ? <ol class="rows">{newItems.map((it) => <TopicRow item={it} site={site} />)}</ol>
@@ -54,10 +62,12 @@ const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date
           : <p class="empty">{t.empty_note.ongoing || "며칠째 이어지는 이슈가 없다."}</p>}
       </section>
 
+      </div>
+      <aside class="col-side" aria-label="다가오는 일과 정리 전 화제">
       <section class="section" aria-labelledby="up-h">
         <h2 id="up-h">다가오는 일</h2>
         {t.upcoming.length ? (
-          <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {u.url ? <a href={u.url} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
+          <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {safeHref(u.url) ? <a href={safeHref(u.url)} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
         ) : <p class="empty">{t.empty_note.upcoming || "날짜가 정해진 일정이 없다."}</p>}
       </section>
 
@@ -67,6 +77,8 @@ const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date
         {pre.length ? <ul class="rows">{pre.map((p) => <PreTopicRow p={p} />)}</ul>
           : <p class="empty">{t.empty_note.pre || "정리 전 화제가 없다."}</p>}
       </section>
+      </aside>
+      </div>
 
       <section class="section">
         <h2 class="sr-only">날짜 이동</h2>
@@ -88,7 +100,7 @@ const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date
               <li>
                 <p class="row-title"><ExampleTag show={r.example} /><a href={issueUrl(r.slug)}>{r.title}</a></p>
                 <p class="row-sub num">{r.rev !== null && `${r.rev}판`}{fmtDateTime(r.rev_at) && ` · ${fmtDateTime(r.rev_at)}`}</p>
-                <p class="row-line"><VerdictSummary summary={r.verdict_summary} />{r.publish_state && <> <StatusTag state={r.publish_state} /></>}</p>
+                <p class="row-line"><VerdictSummary summary={r.verdict_summary} /></p>
               </li>
             ))}
           </ol>
@@ -103,12 +115,10 @@ const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date
   )}
 </Base>
 <style>
-  .base-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 var(--sp-4); }
-  .base-line .failed { color: var(--text); }
-  .base-line .links { display: flex; gap: var(--sp-4); }
-  .base-line .links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .intro { font-size: var(--fs-md); font-weight: 600; }
+  .base-line { margin-top: var(--sp-2); }
   .section.first { margin-top: var(--sp-5); }
-  .rows a { display: inline; }
+  @media (min-width: 1100px) { .col-side > .section:first-child { margin-top: var(--sp-5); } }
   .first-empty { margin-top: var(--sp-4); }
   .more { margin-top: var(--sp-4); }
   .more a { display: inline-block; padding: 10px 0; }

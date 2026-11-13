@@ -5,11 +5,14 @@ import "../styles/base.css";
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import PreviewBar from "../components/PreviewBar.astro";
-import { IS_PREVIEW } from "../lib/mode";
+import { IS_PREVIEW, IS_PUBLIC } from "../lib/mode";
 import { url } from "../lib/paths";
 import previewCss from "../styles/preview.css?raw";
-interface Props { title: string; canonical?: string; refresh?: string; description?: string }
-const { title, canonical, refresh, description } = Astro.props;
+interface Props { title: string; canonical?: string; refresh?: string; description?: string; noindex?: boolean; wide?: boolean }
+const { title, canonical, refresh, description, noindex = false, wide = false } = Astro.props;
+// 공개용 빌드의 콘텐츠 보안 정책(설계 6-1). 미리보기는 운영 서버가 응답 머리로 준다.
+// wasm-unsafe-eval: 검색 색인(Pagefind)이 WebAssembly 를 쓴다. form-action 'self': 스크립트가 꺼졌을 때의 검색 상자 제출.
+const CSP = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'";
 const full = title ? `${title} · OZL` : "OZL";
 ---
 <!doctype html>
@@ -17,24 +20,34 @@ const full = title ? `${title} · OZL` : "OZL";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {IS_PUBLIC && <meta http-equiv="Content-Security-Policy" content={CSP} />}
     <title>{full}</title>
     {description && <meta name="description" content={description} />}
-    {IS_PREVIEW && <meta name="robots" content="noindex,nofollow" />}
+    {(IS_PREVIEW || noindex) && <meta name="robots" content="noindex,nofollow" />}
     {canonical && <link rel="canonical" href={canonical} />}
     {refresh && <meta http-equiv="refresh" content={`0; url=${refresh}`} />}
     {/* 글꼴 묶음 목록(약 150KB)은 그리기를 막지 않게 늦게 붙인다. 받기 전에는 시스템 글꼴로 먼저 그린다(밤 5 기준 3초). */}
-    <link rel="preload" as="style" href={url("fonts/pretendard.css")} onload="this.onload=null;this.rel='stylesheet'" />
+    <link rel="preload" as="style" href={url("fonts/pretendard.css")} data-font-css />
     <noscript><link rel="stylesheet" href={url("fonts/pretendard.css")} /></noscript>
+    {/* 홈 화면 추가(설계 4-18): 매니페스트, 글자 로고 아이콘, 서비스 워커 등록. */}
+    <link rel="manifest" href={url("manifest.webmanifest")} />
+    <link rel="icon" href={url("icons/icon.svg")} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={url("icons/icon-192.png")} />
+    <meta name="theme-color" content="#faf8f3" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14161a" media="(prefers-color-scheme: dark)" />
     {IS_PREVIEW && <style is:inline set:html={previewCss}></style>}
     <slot name="head" />
   </head>
-  <body>
+  <body class:list={{ wide }}>
     <a class="skip" href="#main">본문으로 건너뛰기</a>
     <SiteHeader />
     <PreviewBar />
+    {IS_PREVIEW && Astro.slots.has("ops") && <div class="wrap ops-wrap"><slot name="ops" /></div>}
     <main id="main" class="wrap" tabindex="-1">
       <slot />
     </main>
     <SiteFooter />
+    <script src="../scripts/fonts.ts"></script>
+    <script src="../scripts/sw-register.ts"></script>
   </body>
 </html>

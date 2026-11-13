@@ -12,3 +12,8 @@ const { items, label = "날짜 이동" } = Astro.props;
     </>
   ))}
 </nav>
+<style>
+  /* 누르기 쉬운 크기(44px 이상)의 날짜 이동. */
+  .date-nav a, .date-nav .off { min-width: 44px; padding: 0 var(--sp-2); justify-content: center; }
+  .date-nav a:first-of-type, .date-nav .off:first-child { padding-left: 0; }
+</style>

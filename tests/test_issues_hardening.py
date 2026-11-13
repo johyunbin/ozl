@@ -74,6 +74,7 @@ def test_cause_doc_must_be_third_party(desk):
     issue, evs = load(I2)
     c = _c3_confirmed(issue, evs)
     evs[F2]["doc"]["doc_kind"] = "원인 발표"                                  # 당사자 회사가 스스로 낸 원인 발표
+    evs[F2]["doc"].pop("admission")                                         # 인정 범위 검사와 섞이지 않게(원인 문서 규칙만 본다)
     c["evidence"] = [link(F2, "지지", "다", c, passage_role="사실 기재", refers_to_original=True, addresses_cause=True)]
     assert has(errors(issue, evs), "claims.c3.verdict", rules.MSG_CAUSE)
 
@@ -664,6 +665,7 @@ def test_crime_title_exempt_needs_confirmed_ga(desk):
                   allegation=True, target_kind="공인의 공적 활동")
     c["evidence"] = [link(eid, "지지", "가", c)]
     issue["titles"]["candidates"][0]["text"] = issue["titles"]["chosen"] = "버스 400원 인상, 시 회계 횡령 확정 판결도"
+    issue["numbers"]["titles.candidates.0"] = issue["numbers"]["titles.candidates.0"][:1]   # 바꾼 제목에 없는 숫자 항목은 뺀다
     issue["titles"]["basis_claims"] = [c["id"]]
     assert errors(issue, evs) == []
     c["allegation"] = False                                                    # 의혹 표시가 없어도

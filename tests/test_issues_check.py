@@ -294,6 +294,7 @@ def test_reject_crime_word_title(desk):
     c["evidence"] = [link(eid, "지지", "가", c)]
     t = "버스 400원 인상, 시 회계 횡령 확정 판결도"
     issue["titles"]["candidates"][0]["text"] = issue["titles"]["chosen"] = t
+    issue["numbers"]["titles.candidates.0"] = issue["numbers"]["titles.candidates.0"][:1]   # 바꾼 제목에 없는 숫자 항목은 뺀다
     issue["titles"]["basis_claims"] = []
     assert has(errors(issue, evs), "titles.chosen", style.MSG_CRIME)
     issue["titles"]["basis_claims"] = [c["id"]]

@@ -7,7 +7,8 @@
 .tag.status { color: var(--preview); }
 .pending, .draft { color: var(--preview); }
 
-.ops { background: var(--surface); color: var(--preview); padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); align-items: center; }
-.ops details { flex: 1 1 auto; }
-.ops summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
-.ops li, .ops details > p { padding: var(--sp-1) 0; }
+.ops-wrap { padding-top: var(--sp-2); }
+.ops { background: var(--surface); color: var(--preview); font-size: var(--fs-sm); padding: 0 var(--sp-3); border-left: 2px solid var(--preview); }
+.ops summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.ops ul { padding-bottom: var(--sp-2); }
+.ops li { padding: var(--sp-1) 0; }

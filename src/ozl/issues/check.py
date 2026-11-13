@@ -13,11 +13,15 @@ from ozl.research import cards
 
 from . import evidence as EV
 from . import ids, model, numbers, rules, style
+from .allegation import _allegation_errors, _crime_exempt
 
 MSG_ELECTION = "선거 관련 이슈는 선거 종류, 선거일, 제한 기간(선거일 엿새 전부터)을 적는다"
 MSG_ANNOUNCE = "발표와 조치는 발표문이나 기관 자료로 확인한다"
 MSG_NA = f"없으면 '{model.NA}'을 글자로 적는다"
 VH_KEYS = {"rev", "at", "from", "to", "why"}
+CORRECTION_KEYS = {"rev", "at", "kind", "before", "after", "why"}
+MSG_KW_POLL = "선거 관련 이슈의 키워드에는 판세 낱말을 쓰지 않는다(키워드는 가림 표시가 없다)"
+MSG_KW_QTY = "키워드에는 수량을 쓰지 않는다 — 키워드는 숫자 종류 검사를 받을 수 없다"
 
 
 class _Acc:
@@ -122,9 +126,16 @@ def _top(a: _Acc, issue: dict, evidences: dict, post: bool):
         a.add("issue_id", f"이슈 번호 '{issue.get('issue_id')}'가 i20261114-01 꼴(실제 날짜)이 아니다")
     if ids.slug_error(issue.get("slug")):
         a.add("slug", ids.slug_error(issue.get("slug")))
-    for s in issue.get("aliases") or []:
+    al = issue.get("aliases")
+    if al is not None and not isinstance(al, list):
+        a.add("aliases", "별칭은 주소 이름 목록이다")
+    for s in al if isinstance(al, list) else []:
         if ids.slug_error(s):
             a.add("aliases", f"별칭 '{s}': {ids.slug_error(s)}")
+        elif s == issue.get("slug"):
+            a.add("aliases", f"별칭 '{s}'이 주소 이름과 같다")
+    if isinstance(al, list) and len(set(map(str, al))) != len(al):
+        a.add("aliases", "같은 별칭이 둘이다")
     rev = issue.get("revision")
     if not isinstance(rev, int) or isinstance(rev, bool) or rev < 1:
         a.add("revision", "판 번호는 1 이상 정수다")
@@ -180,7 +191,9 @@ def _top(a: _Acc, issue: dict, evidences: dict, post: bool):
             a.add("titles.candidates", f"제목 후보는 서로 다른 각도({', '.join(model.ANGLES)}) 3개 이상이다")
         for i, c in enumerate(cands):
             a.enum(c.get("angle"), model.ANGLES, f"titles.candidates.{i}.angle", "angle")
+            a.need(c, "text", f"titles.candidates.{i}.text")
             a.length(c.get("text"), model.LIMITS["titles.chosen"], f"titles.candidates.{i}.text")
+        a.need(t, "chosen", "titles.chosen")
         if t.get("chosen") not in [c.get("text") for c in cands]:
             a.add("titles.chosen", "고른 제목은 후보 가운데 하나다")
     a.length(t.get("chosen"), model.LIMITS["titles.chosen"], "titles.chosen")
@@ -204,22 +217,35 @@ def _top(a: _Acc, issue: dict, evidences: dict, post: bool):
     nm = issue.get("numbers", {})
     if not isinstance(nm, dict) or any(not isinstance(v, list) for v in nm.values()):
         a.add("numbers", "numbers 는 {칸 경로: [숫자 항목]} 꼴이다")
+    elif nm:
+        ok_paths = model.top_number_paths(issue)
+        for k in sorted(map(str, nm)):
+            if k not in ok_paths:
+                a.add(f"numbers.{k}", "최상위 numbers 의 칸 경로가 독자에게 보이는 글 칸이 아니다(빈 글 칸, 주장, numbers 칸이 있는 항목은 "
+                                      "최상위 지도를 쓰지 않는다)")
     prod = issue.get("production") if isinstance(issue.get("production"), dict) else {}
     if not isinstance(prod.get("researched_by"), list) or cards._blank(prod.get("chosen_by")) or (post and cards._blank(prod.get("drafted_by"))):
         a.add("production", "만든 쪽(researched_by 목록, chosen_by, 게시할 때는 drafted_by 까지)을 적는다")
     if issue.get("topic_state") is not None:
         a.enum(issue.get("topic_state"), model.TOPIC_STATES, "topic_state")
-    tr = issue.get("trend")
-    if tr is not None and not (isinstance(tr, dict) and isinstance(tr.get("score"), int) and 0 <= tr["score"] <= 100
-                               and isinstance(tr.get("bars7"), list) and len(tr["bars7"]) == 7):
-        a.add("trend", "trend 는 {score: 0~100 정수, bars7: 수 7개, asof, formula_version} 꼴이다")
+    tr_err = model.trend_error(issue.get("trend"))
+    if tr_err:
+        a.add("trend", f"{tr_err} — trend 는 {{score: 0~100 정수, bars7: 수 7개, asof, formula_version}} 꼴이다")
     a.enum(issue.get("work_state"), model.WORK_STATES, "work_state")
     for i, r in enumerate(issue.get("reviews") or []):
         if not (isinstance(r, dict) and r.get("kind") in model.REVIEW_KINDS and r.get("family") in model.REVIEW_FAMILIES
                 and r.get("result") in model.REVIEW_RESULTS):
             a.add(f"reviews.{i}", "검토 줄의 kind·family·result 가 허용 값이 아니다")
-    for i, c in enumerate(issue.get("corrections") or []):
+    corr = issue.get("corrections")
+    if corr is not None and not isinstance(corr, list):
+        a.add("corrections", "corrections 는 목록이다")
+    for i, c in enumerate(corr if isinstance(corr, list) else []):
         a.enum((c or {}).get("kind") if isinstance(c, dict) else None, model.CORRECTION_KINDS, f"corrections.{i}.kind", "kind")
+        need = ("at", "why", "after") + (("before",) if isinstance(c, dict) and c.get("kind") in ("정정", "판정 변경") else ())
+        if not isinstance(c, dict) or set(c) - CORRECTION_KEYS or not isinstance(c.get("rev"), int) or isinstance(c.get("rev"), bool) \
+                or not 1 <= c["rev"] <= (rev if isinstance(rev, int) and not isinstance(rev, bool) else 1) \
+                or any(cards._blank(c.get(k)) or not isinstance(c.get(k), str) for k in need):
+            a.add(f"corrections.{i}", "정정 줄은 {rev(이 판 이하 정수), at, kind, before, after, why} 꼴이다(정정과 판정 변경은 before 까지)")
     sp = issue.get("spillover") if isinstance(issue.get("spillover"), dict) else {}
     for i, c in enumerate(sp.get("similar_cases") or []):
         if not isinstance(c, dict) or set(c) - {"text", "url"} or cards._blank(c.get("text")) or not _http(c.get("url")):
@@ -233,6 +259,10 @@ def _top(a: _Acc, issue: dict, evidences: dict, post: bool):
             a.e += [(f"keywords.{i}", m) for m in style.text_errors("keywords", k)]
             if style.crime_words(k):
                 a.add(f"keywords.{i}", style.MSG_CRIME)
+            if "선거" in sens and style.poll_words(k):
+                a.add(f"keywords.{i}", MSG_KW_POLL)
+            if numbers.keyword_qty(k):                  # 숫자가 이름의 일부인 키워드(5G, 4대강)는 받는다
+                a.add(f"keywords.{i}", MSG_KW_QTY)
 
 
 def _lists(a: _Acc, issue: dict, evidences: dict):
@@ -253,6 +283,7 @@ def _lists(a: _Acc, issue: dict, evidences: dict):
         a.length(c.get("gist"), model.LIMITS["claims.gist"], f"{p}.gist")
         for pt in c.get("parts") or []:
             if isinstance(pt, dict):
+                a.need(pt, "gist", f"{p}.parts.{pt.get('id')}.gist")
                 a.length(pt.get("gist"), model.LIMITS["parts.gist"], f"{p}.parts.{pt.get('id')}.gist")
                 if "kind" in pt:
                     a.enum(pt.get("kind"), rules.CLAIM_KINDS, f"{p}.parts.{pt.get('id')}.kind", "kind")
@@ -307,47 +338,13 @@ def _lists(a: _Acc, issue: dict, evidences: dict):
     for p, g in _items(a, issue, "figures", "g"):
         for k in ("caption", "alt"):
             a.need(g, k, f"{p}.{k}")
+        ge = g.get("evidence")
+        if ge is not None or g.get("kind") == "공식 문서 캡처":
+            if not isinstance(ge, str) or cards._blank(ge):
+                a.add(f"{p}.evidence", "그림의 근거 번호는 하나(문자열)로 적는다")
+            elif ge not in evidences:
+                a.add(f"{p}.evidence", f"근거 기록이 없다: {ge}")
         _common_item(a, p, g, issue, nums=False)
-
-
-def _settled(c: dict, issue: dict, evidences: dict, copy_errs: dict) -> bool:
-    """'확인'이고 판정이 성립하며, 권한 있는 기관의 확정 판단(가)이 지지 근거로 받치는 주장인가."""
-    if not isinstance(c, dict) or c.get("verdict") != "확인" or rules.verdict_errors(c, evidences, copy_errs, issue):
-        return False
-    infos, _ = rules.classify(c, evidences, copy_errs)
-    return any(i["counted"] == "가" and i["link"].get("stance") == "지지" for i in infos)
-
-
-def _crime_exempt(issue: dict, evidences: dict, copy_errs: dict) -> set[str]:
-    """제목이 기대는 주장(titles.basis_claims)이 '확인'이고 확정 판단 근거로 받쳐지면 그 요지의 범죄 낱말은 첫 화면에 쓸 수 있다."""
-    out: set[str] = set()
-    basis = ((issue.get("titles") or {}).get("basis_claims") or []) if isinstance(issue.get("titles"), dict) else []
-    for c in issue.get("claims") or []:
-        if isinstance(c, dict) and c.get("id") in basis and rules.item_public(issue, c) and _settled(c, issue, evidences, copy_errs):
-            out |= set(style.crime_words(str(c.get("gist") or "")))
-    return out
-
-
-ALLEGATION_RUN = 8   # 의혹 주장의 요지와 이만큼(정규화한 글자 수) 겹치면 그 요지를 옮긴 것으로 본다
-
-
-def _allegation_errors(issue: dict, evidences: dict, copy_errs: dict) -> list[tuple[str, str]]:
-    """의혹 주장(allegation: true)의 요지를 제목과 첫 화면(그림 설명 포함)에 옮기지 않는다. 확정 판단으로 '확인'된 주장만 예외."""
-    out: list[tuple[str, str]] = []
-    t = issue.get("titles") if isinstance(issue.get("titles"), dict) else {}
-    basis = t.get("basis_claims") if isinstance(t.get("basis_claims"), list) else []
-    firsts = [(p, style.norm(x)) for p, x, _n, _i in model.reader_items(issue) if style.FIRST_SCREEN.match(p)]
-    for c in issue.get("claims") or []:
-        if not isinstance(c, dict) or c.get("allegation") is not True or _settled(c, issue, evidences, copy_errs):
-            continue
-        if c.get("id") in basis:
-            out.append(("titles.basis_claims", f"{style.MSG_CRIME} — 의혹 주장({c.get('id')})에 제목을 기대지 않는다"))
-        g = style.norm(str(c.get("gist") or ""))
-        wins = {g[i:i + ALLEGATION_RUN] for i in range(0, max(0, len(g) - ALLEGATION_RUN + 1))}
-        for p, n in firsts:
-            if any(w in n for w in wins):
-                out.append((p, f"{style.MSG_CRIME} — 의혹 주장({c.get('id')})의 요지를 옮겼다"))
-    return out
 
 
 def check_issue(issue: dict, evidences: dict, public: bool = False, articles=(), ledger: dict | None = None) -> dict:

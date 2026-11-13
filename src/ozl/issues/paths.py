@@ -28,6 +28,20 @@ def is_real_root() -> bool:
     return desk_root().resolve() == real_root().resolve()
 
 
+def is_alias_of_real_root() -> bool:
+    """시험 루트로 보이는데 실제 자료 루트와 같은 폴더인가 — APFS 의 대소문자만 다른 경로(private/DESK)는 resolve() 로 같아지지
+    않는다. 파일 시스템의 같은 폴더인지(samefile)로 본다. 이런 루트에서 '시험' 승인을 실제 발행 목록에 쓰지 않게 승인이 막는다."""
+    if is_real_root():
+        return False
+    for a, b in ((desk_root(), real_root()), (desk_root() / "issues", real_root() / "issues")):
+        try:
+            if os.path.samefile(a, b):
+                return True
+        except OSError:
+            continue
+    return False
+
+
 def issues_dir() -> pathlib.Path:
     return desk_root() / "issues"
 

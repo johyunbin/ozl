@@ -23,3 +23,8 @@ export function keywordSlug(k: string): string {
 
 export const keywordUrl = (k: string) => url(`k/${encodeURI(keywordSlug(k))}/`);
 export const keywordSlugUrl = (slug: string) => url(`k/${encodeURI(slug)}/`);
+
+/** 넘겨 보는 카드(설계 1-14). 최신판만 만든다. */
+export const cardsUrl = (slug: string) => url(`i/${slug}/cards/`);
+/** 카드 그림 전용 화면(미리보기 빌드에만 있다). */
+export const cardsPrintUrl = (slug: string) => url(`i/${slug}/cards/print/`);

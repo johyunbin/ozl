@@ -42,11 +42,18 @@ def _sources(item, evidences) -> list[dict]:
     return [_source(evidences.get(e), e) for e in model.item_evidence_ids(item)]
 
 
-def _nums(item) -> list[dict]:
+ITEM_NUMBER_KEYS = ("value", "kind", "unit", "formula", "inputs", "rounding", "refutes")
+
+
+def _nums(item, keys=ITEM_NUMBER_KEYS) -> list[dict]:
     out = []
     for n in (item.get("numbers") if isinstance(item, dict) else None) or []:
         if isinstance(n, dict):
-            out.append({k: n[k] for k in ("value", "kind", "unit", "formula", "inputs", "rounding", "refutes") if k in n})
+            d = {k: n[k] for k in keys if k in n}
+            if isinstance(d.get("inputs"), dict):   # 계산 입력도 정해진 칸만 싣는다
+                d["inputs"] = {k: ({x: v[x] for x in model.INPUT_KEYS if x in v} if isinstance(v, dict) else v)
+                               for k, v in d["inputs"].items()}
+            out.append(d)
     return out
 
 
@@ -84,10 +91,11 @@ def _top_numbers(issue: dict) -> dict:
     top = issue.get("numbers") if isinstance(issue.get("numbers"), dict) else {}
     shown = {f"{lst}.{it.get('id')}." for lst in model.ITEM_LISTS for it in _public(issue, lst)}
     shown |= {f"corrections.{i}." for i in range(len(issue.get("corrections") or []))}
+    ok_paths = model.top_number_paths(issue)        # 검사기가 보는 글 칸 경로만 — 그 밖의 키는 검사받지 않으므로 싣지 않는다
     out = {}
-    for k, v in sorted(top.items()):
-        if k.startswith(TOP_TEXT_PREFIX) or any(k.startswith(s) for s in shown):
-            out[k] = [n for n in v or [] if isinstance(n, dict)]
+    for k, v in sorted(top.items(), key=lambda x: str(x[0])):
+        if k in ok_paths and (k.startswith(TOP_TEXT_PREFIX) or any(k.startswith(s) for s in shown)):
+            out[k] = _nums({"numbers": v if isinstance(v, list) else []}, model.NUMBER_KEYS)
     return out
 
 

@@ -380,7 +380,7 @@ def _unique_span(norm_find: dict, what: str, errs: list[str]):
 _TEXT_CACHE: dict[tuple[str, str, str, str], dict] = {}   # (사본 경로, sha256, 종류, charset) → 뽑은 글. 덱 검사가 같은 사본을 장마다 다시 읽지 않게
 
 
-_STRONG_KINDS = {"html", "pdf", "xlsx"}   # 바이트만으로 가를 수 있는 종류
+_STRONG_KINDS = {"html", "pdf", "xlsx", "hwpx"}   # 바이트만으로 가를 수 있는 종류
 
 
 def copy_source(c: dict) -> dict:
@@ -413,7 +413,7 @@ def copy_source(c: dict) -> dict:
     with open(path, "rb") as f:
         head = f.read(8192)
     bk = K.byte_kind(head)
-    if (bk in _STRONG_KINDS and bk != kind) or (kind in ("pdf", "xlsx") and bk != kind):
+    if (bk in _STRONG_KINDS and bk != kind) or (kind in ("pdf", "xlsx", "hwpx") and bk != kind):
         out["reason"] = f"사본 바이트는 {bk or '판별 불가'} 인데 기록의 kind 는 {kind} 다 — 종류를 바꿔 읽지 않는다"
         return out
     key = (str(path), str(cap.get("sha256")), str(kind), str(cap.get("charset") or ""))

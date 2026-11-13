@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>OZL</title>
+  <!-- 글자 로고 OZL. 글꼴 없이 막대와 둥근 상자로 그렸다. 글자는 가운데 원(반지름 40%) 안에 있어 마스크 아이콘으로도 쓴다. -->
+  <rect width="512" height="512" fill="#FAF8F3"/>
+  <g fill="#1B1B1B">
+    <path fill-rule="evenodd" d="M144 176a48 48 0 0 1 48 48v64a48 48 0 0 1-96 0v-64a48 48 0 0 1 48-48zm0 36a12 12 0 0 0-12 12v64a12 12 0 0 0 24 0v-64a12 12 0 0 0-12-12z"/>
+    <path d="M208 176h96v36h-96z M208 300h96v36h-96z M262 212h42l-54 88h-42z"/>
+    <path d="M320 176h36v124h60v36h-96z"/>
+  </g>
+</svg>

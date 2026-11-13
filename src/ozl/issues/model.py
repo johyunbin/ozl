@@ -180,6 +180,65 @@ def reader_items(issue: dict) -> list[tuple[str, str, list, dict | None]]:
     return out
 
 
+def top_number_paths(issue: dict) -> set[str]:
+    """최상위 numbers 지도에 둘 수 있는 칸 경로 — reader_items 가 최상위 지도에서 숫자를 읽는 글 칸(이슈의 문자열 칸, numbers 칸이
+    없는 항목의 글 칸)만. 주장은 항목 안 numbers 만 쓰므로 들지 않는다. 빈 글 칸도 들지 않는다(검사받지 않는 숫자가 실리지 않게)."""
+    out: set[str] = set()
+    for path, _t, _n, item in reader_items(issue):
+        if item is None:
+            out.add(path)
+        elif not path.startswith("claims.") and "numbers" not in item:
+            out.add(path)
+    t = issue.get("titles") if isinstance(issue.get("titles"), dict) else {}
+    if "titles.chosen" in out:
+        cands = [c for c in (t.get("candidates") or []) if isinstance(c, dict)]
+        out |= {f"titles.candidates.{i}" for i, c in enumerate(cands) if _s(c.get("text")).strip()}
+    return out
+
+
+# 숫자 항목과 계산 입력에 둘 수 있는 칸(공개 본문에 실리므로 모르는 칸은 거부한다)
+NUMBER_KEYS = ("value", "kind", "evidence", "inputs", "formula", "unit", "rounding", "refutes")
+INPUT_KEYS = ("value", "kind", "evidence", "of")
+
+# 추이(trend · score.json) — 지문 밖 칸이라 승인 뒤에도 바뀐다. 모양이 맞는 값만 싣는다.
+TREND_KEYS = ("score", "bars7", "asof", "formula_version")
+_ASOF = re.compile(r"^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?([+-]\d{2}:?\d{2})?)?$")
+
+
+def _num(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float("inf")
+
+
+def trend_error(tr) -> str:
+    """추이 칸의 모양 오류(None 은 맞다). {score: 0~100 정수, bars7: 0~100 수 7개, asof: 날짜·시각, formula_version: 1 이상 정수}."""
+    if tr is None:
+        return ""
+    if not isinstance(tr, dict) or set(tr) - set(TREND_KEYS):
+        return "trend 는 {score, bars7, asof, formula_version} 칸만 둔다"
+    s, b = tr.get("score"), tr.get("bars7")
+    if not (isinstance(s, int) and not isinstance(s, bool) and 0 <= s <= 100):
+        return "trend 는 score 가 0~100 정수다"
+    if not (isinstance(b, list) and len(b) == 7 and all(_num(x) and 0 <= x <= 100 for x in b)):
+        return "trend 는 bars7 이 0~100 수 7개다"
+    if tr.get("asof") is not None and not (isinstance(tr["asof"], str) and _ASOF.match(tr["asof"].strip())):
+        return "trend 는 asof 가 날짜·시각(YYYY-MM-DD HH:MM)이다"
+    fv = tr.get("formula_version")
+    if fv is not None and not (isinstance(fv, int) and not isinstance(fv, bool) and fv >= 1):
+        return "trend 는 formula_version 이 1 이상 정수다"
+    return ""
+
+
+def clean_trend(tr) -> dict | None:
+    """공개 출력에 싣는 추이 — 모양이 맞으면 정해진 칸만 새로 만든 사전, 아니면(또는 점수가 없으면) None."""
+    if not isinstance(tr, dict) or tr.get("score") is None or trend_error(tr):
+        return None
+    return {"score": tr["score"], "bars7": [x for x in tr["bars7"]], "asof": tr.get("asof"), "formula_version": tr.get("formula_version")}
+
+
+def clean_topic_state(v):
+    return v if v in TOPIC_STATES else None
+
+
 def item_evidence_ids(item: dict | None) -> list[str]:
     """항목이 인용한 근거 번호. 사실·흐름은 목록, 입장·그림은 한 개, 주장은 근거 연결·작은 주장·당사자 입장의 근거."""
     if not isinstance(item, dict):

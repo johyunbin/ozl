@@ -1,4 +1,5 @@
 ---
+import { safeHref } from "../../../lib/data";
 // 날짜 쪽(YYYY-MM-DD)과 달 쪽(YYYY-MM)(설계 1-6, 1-7).
 import Base from "../../../layouts/Base.astro";
 import TopicRow from "../../../components/TopicRow.astro";
@@ -6,6 +7,9 @@ import PreTopicRow from "../../../components/PreTopicRow.astro";
 import DateNav from "../../../components/DateNav.astro";
 import VerdictSummary from "../../../components/VerdictSummary.astro";
 import ExampleTag from "../../../components/ExampleTag.astro";
+import OpsBox from "../../../components/OpsBox.astro";
+import { readerTopics, topicOps } from "../../../lib/ops";
+import { rowById } from "../../../lib/data";
 import { loadSite, months, sortedDates, visibleTopics, type Day } from "../../../lib/data";
 import { IS_PREVIEW } from "../../../lib/mode";
 import { fmtClock, fmtDate, fmtDateWeek, fmtMonthDay, num, weekday } from "../../../lib/format";
@@ -34,6 +38,19 @@ const t = day?.topics ?? null;
 const newVis = t ? visibleTopics(site, t.new, IS_PREVIEW, `${key} 새로 뜬 것`) : [];
 const ongoingVis = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${key} 이어지는 것`) : [];
 const exists = (slug: string) => site.issues.has(slug);
+// 화제 줄에 그날의 판정 집계를 바로 붙이고, 그 줄에 없는 기록만 아래 "그 밖의 OZL 기록"에 둔다(같은 이슈를 두 번 보이지 않게).
+const newRows = readerTopics(site, newVis);
+const ongoingRows = readerTopics(site, ongoingVis);
+const recBySlug = new Map((day?.records ?? []).map((r) => [r.slug, r]));
+const inTopics = new Set([...newRows, ...ongoingRows].map((it) => (it.type === "issue" ? rowById(site, it.issue_id)?.slug : "")).filter(Boolean) as string[]);
+const otherRecords = (day?.records ?? []).filter((r) => exists(r.slug) && !inTopics.has(r.slug));
+const revOf = (it: (typeof newRows)[number]) => (it.type === "issue" ? recBySlug.get(rowById(site, it.issue_id)?.slug ?? "")?.rev ?? undefined : undefined);
+const ops = isDay ? topicOps(site, t, [...newVis, ...ongoingVis]) : [];
+const dayNav = [
+  { label: prevDay ? `← ${fmtMonthDay(prevDay)}` : "← 전날", href: prevDay ? dayUrl(prevDay) : undefined },
+  { label: nextDay ? `${fmtMonthDay(nextDay)} →` : "다음날 →", href: nextDay ? dayUrl(nextDay) : undefined },
+  { label: "이달 달력", href: monthUrl(key.slice(0, 7)) },
+];
 const rowFor = (slug: string) => site.index.find((r) => r.slug === slug);
 
 // 달 쪽
@@ -65,55 +82,54 @@ const monthDays = isDay ? [] : Array.from({ length: daysInMonth }, (_, i) => cel
 const title = isDay ? `${fmtMonthDay(key)} ${weekday(key)}요일 기록` : `${yy}년 ${mm}월`;
 ---
 <Base title={isDay ? `${fmtMonthDay(key)} 기록` : title}>
+  <OpsBox slot="ops" items={ops} />
   {isDay && day ? (
     <>
       <h1>{fmtDate(key)} {weekday(key)}요일 기록</h1>
-      <DateNav items={[
-        { label: prevDay ? `← ${fmtMonthDay(prevDay)}` : "← 전날", href: prevDay ? dayUrl(prevDay) : undefined },
-        { label: nextDay ? `${fmtMonthDay(nextDay)} →` : "다음날 →", href: nextDay ? dayUrl(nextDay) : undefined },
-        { label: "이달 달력", href: monthUrl(key.slice(0, 7)) },
-      ]} />
+      <DateNav items={dayNav} />
 
       <section class="section" aria-labelledby="topics-h">
         <h2 id="topics-h">그날의 화제</h2>
         {t ? (
           <>
-            <p class="lead">그날 아침의 화제 순서다. 판정은 아래 OZL 기록에 있다.</p>
+            <p class="lead">그날 아침의 화제 순서다. 판정 집계는 그날 기록한 판의 것이다.</p>
             <p class="xs muted num">
               {fmtDateWeek(key)}
               {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
               {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
-              {t.line.source_kinds_failed.length > 0 && <><span class="sep" /><strong class="failed">{t.line.source_kinds_failed.join(", ")} 수집 실패</strong></>}
             </p>
             <h3>새로 뜬 것</h3>
-            {newVis.length ? <ol class="rows">{newVis.map((it) => <TopicRow item={it} site={site} withVerdicts={false} />)}</ol>
+            {newRows.length ? <ol class="rows">{newRows.map((it) => <TopicRow item={it} site={site} rev={revOf(it)} />)}</ol>
               : <p class="empty">{t.empty_note.new || "새로 정리한 이슈가 없었다."}</p>}
             <h3>이어지는 것</h3>
-            {ongoingVis.length ? <ol class="rows">{ongoingVis.map((it) => <TopicRow item={it} site={site} withVerdicts={false} />)}</ol>
+            {ongoingRows.length ? <ol class="rows">{ongoingRows.map((it) => <TopicRow item={it} site={site} rev={revOf(it)} />)}</ol>
               : <p class="empty">{t.empty_note.ongoing || "며칠째 이어지는 이슈가 없었다."}</p>}
             <h3>다가오는 일</h3>
-            {t.upcoming.length ? <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {u.url ? <a href={u.url} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
+            {t.upcoming.length ? <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {safeHref(u.url) ? <a href={safeHref(u.url)} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
               : <p class="empty">{t.empty_note.upcoming || "날짜가 정해진 일정이 없었다."}</p>}
             <h3>정리 전 화제</h3>
-            {t.pre.filter((p) => IS_PREVIEW || !p.excluded.length).length ? <ul class="rows">{t.pre.filter((p) => IS_PREVIEW || !p.excluded.length).map((p) => <PreTopicRow p={p} />)}</ul>
+            {t.pre.filter((p) => !p.excluded.length).length ? <ul class="rows">{t.pre.filter((p) => !p.excluded.length).map((p) => <PreTopicRow p={p} />)}</ul>
               : <p class="empty">{t.empty_note.pre || "정리 전 화제가 없었다."}</p>}
           </>
         ) : <p class="empty">이날의 화제 목록은 남아 있지 않다.</p>}
       </section>
 
-      <section class="section" aria-labelledby="records-h">
-        <h2 id="records-h">그날의 OZL 기록</h2>
-        {day.records.filter((r) => exists(r.slug)).length ? (
-          <ol class="rows">
-            {day.records.filter((r) => exists(r.slug)).map((r) => (
-              <li>
-                <p class="row-title"><ExampleTag show={rowFor(r.slug)?.example ?? false} /><a href={issueUrl(r.slug)}>{r.title || rowFor(r.slug)?.title}</a></p>
-                <p class="row-line">{r.rev !== null && <span class="num nw">{r.rev}판<span class="sep" /></span>}<VerdictSummary summary={r.verdict_summary} /></p>
-              </li>
-            ))}
-          </ol>
-        ) : <p class="empty">이날 정리한 OZL 기록이 없다.</p>}
-      </section>
+      {(otherRecords.length > 0 || !t) && (
+        <section class="section" aria-labelledby="records-h">
+          <h2 id="records-h">{t ? "그 밖의 OZL 기록" : "그날의 OZL 기록"}</h2>
+          {otherRecords.length ? (
+            <ol class="rows">
+              {otherRecords.map((r) => (
+                <li>
+                  <p class="row-title"><ExampleTag show={rowFor(r.slug)?.example ?? false} /><a href={issueUrl(r.slug)}>{r.title || rowFor(r.slug)?.title}</a></p>
+                  {r.rev !== null && <p class="row-sub num">{r.rev}판</p>}
+                  <p class="row-line"><VerdictSummary summary={r.verdict_summary} /></p>
+                </li>
+              ))}
+            </ol>
+          ) : <p class="empty">이날 정리한 OZL 기록이 없다.</p>}
+        </section>
+      )}
 
       {day.restored && (
         <section class="section" aria-labelledby="restored-h">
@@ -124,6 +140,11 @@ const title = isDay ? `${fmtMonthDay(key)} ${weekday(key)}요일 기록` : `${yy
           </ol>
         </section>
       )}
+
+      <section class="section bottom-nav">
+        <h2 class="sr-only">날짜 이동</h2>
+        <DateNav items={dayNav} label="날짜 이동(아래)" />
+      </section>
     </>
   ) : (
     <>
@@ -163,8 +184,6 @@ const title = isDay ? `${fmtMonthDay(key)} ${weekday(key)}요일 기록` : `${yy
 </Base>
 <style>
   h1 { margin-bottom: var(--sp-2); }
-  .failed { color: var(--text); }
-  .rows a { display: inline; }
   .cal { width: 100%; table-layout: fixed; margin-top: var(--sp-4); }
   .cal th { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); padding: var(--sp-1) 0; }
   .cal td { height: 56px; min-width: 44px; padding: 0; border: 1px solid var(--rule); vertical-align: top; }

@@ -1,0 +1,68 @@
+---
+// 넘겨 보는 카드(설계 1-14, 4-17). 최신판 본문으로 만든다. 스크립트가 없으면 카드를 세로로 차례로 둔다.
+import Base from "../../../../layouts/Base.astro";
+import Card from "../../../../components/Card.astro";
+import ExampleTag from "../../../../components/ExampleTag.astro";
+import RevisionMark from "../../../../components/RevisionMark.astro";
+import ViewToggle from "../../../../components/ViewToggle.astro";
+import { loadSite, type Issue } from "../../../../lib/data";
+import { deckFor } from "../../../../lib/cards";
+import { issueUrl } from "../../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  return [...site.issues.values()].map((is) => ({ params: { slug: is.slug }, props: { issue: is } }));
+}
+const { issue } = Astro.props as { issue: Issue };
+const site = loadSite();
+const b = issue.latest;
+const deck = deckFor(site, issue);
+const total = deck.cards.length;
+---
+<Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""} · 카드`} description={b.so_far.join(" ")}>
+  <Fragment slot="head">{b.rev !== null && <meta name="ozl-rev" content={String(b.rev)} />}</Fragment>
+  <h1><ExampleTag show={b.example} />{b.title}</h1>
+  <div class="rev-row">
+    <RevisionMark rev={b.rev} at={b.rev_at} />
+    <ViewToggle issueHref={issueUrl(issue.slug)} current="cards" />
+  </div>
+  <p class="small muted lead-line">카드 <span class="num">{total}</span>장. <span data-deck-hint hidden>옆으로 넘기거나 이전, 다음 단추와 좌우 화살표 키로 넘긴다.</span><span data-deck-nohint>차례로 아래에 이어 둔다.</span> 근거 문서의 주소와 정정 기록은 <a href={issueUrl(issue.slug)}>이슈 화면</a>에 있다.</p>
+
+  <div class="deck" data-deck data-total={total}>
+    <div class="deck-view" data-deck-view role="region" aria-label={`카드 ${total}장`}>
+      <ol class="deck-strip">
+        {deck.cards.map((c, i) => <li class="deck-item"><Card card={c} deck={deck} n={i + 1} total={total} /></li>)}
+      </ol>
+    </div>
+    <div class="deck-controls" data-deck-controls hidden>
+      <button type="button" data-deck-prev>이전</button>
+      <p class="deck-count num" data-deck-count aria-live="polite" aria-atomic="true">1 / {total}</p>
+      <button type="button" data-deck-next>다음</button>
+    </div>
+  </div>
+</Base>
+<script src="../../../../scripts/cards.ts"></script>
+<style>
+  h1 { margin-top: var(--sp-2); }
+  h1 :global(.tag) { font-size: var(--fs-xs); vertical-align: 0.35em; }
+  .rev-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2) var(--sp-4); }
+  .lead-line { margin-top: var(--sp-3); }
+  .lead-line a { display: inline-block; padding: 10px 0; }
+  .deck { margin-top: var(--sp-4); max-width: 28rem; margin-left: auto; margin-right: auto; }
+  /* 스크립트가 없을 때: 세로로 이어 읽는다. */
+  .deck-item + .deck-item { margin-top: var(--sp-5); }
+  /* 스크립트가 붙으면: 카드 띠 안에서만 옆으로 넘긴다(쪽 전체에는 가로 스크롤이 생기지 않는다). */
+  .deck-view { position: relative; }
+  .deck[data-enhanced] .deck-view { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; }
+  .deck[data-enhanced] .deck-strip { display: flex; gap: var(--sp-4); }
+  .deck[data-enhanced] .deck-item { flex: 0 0 100%; margin-top: 0; scroll-snap-align: start; scroll-snap-stop: always; }
+  .deck-view:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .deck-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-3); }
+  .deck-controls[hidden] { display: none; }
+  .deck-controls button {
+    min-height: 44px; min-width: 72px; padding: 0 var(--sp-4); background: var(--bg); color: var(--text);
+    border: 1px solid var(--rule-strong); border-radius: 2px; font-size: var(--fs-sm); cursor: pointer;
+  }
+  .deck-controls button[aria-disabled="true"] { color: var(--muted); cursor: default; }
+  .deck-count { font-size: var(--fs-sm); }
+</style>

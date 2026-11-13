@@ -1,0 +1,115 @@
+---
+// 넘겨 보는 카드 한 장(설계 4-17). 카드 보기와 그림 전용 화면이 같은 부품을 쓴다.
+// 카드 안의 크기는 모두 --b(카드 폭의 1/22.5, 화면에서는 1rem 이상) 의 배수다. 그래서 폭 358 의 화면 카드와
+// 폭 1080 의 그림 카드가 같은 자리에서 줄을 바꾼다. 화면 카드는 4:5 를 최소 높이로 두고 글이 길면 늘어난다.
+// 그림 카드(print)는 1080×1350 에 고정하고 본문 상자를 넘치면 잘리게 둔다 — 찍는 스크립트가 넘침을 잰다.
+import type { Block, Card, Deck } from "../lib/cards";
+import VerdictMark from "./VerdictMark.astro";
+import { VERDICTS } from "../lib/verdicts";
+interface Props { card: Card; deck: Deck; n: number; total: number; print?: boolean }
+const { card, deck, n, total, print = false } = Astro.props;
+
+// 이어지는 목록 덩어리(part, li, src)는 한 목록으로 묶는다.
+type Run = { list: false; b: Block } | { list: true; kind: string; items: Block[] };
+const runs: Run[] = [];
+for (const b of card.blocks) {
+  const isList = b.t === "part" || b.t === "li" || b.t === "src";
+  const last = runs[runs.length - 1];
+  if (isList && last && last.list && last.kind === b.t) last.items.push(b);
+  else runs.push(isList ? { list: true, kind: b.t, items: [b] } : { list: false, b });
+}
+const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filter(Boolean);
+---
+<section class:list={["card", `k-${card.kind}`, { print }]} data-card={n} data-card-kind={card.kind}>
+  <div class="card-in">
+    <h2 class="card-label"><span class="sr-only">{n} / {total}: </span>{card.label}</h2>
+    <div class="card-body" data-card-body>
+      {runs.map((r) => {
+        if (r.list) {
+          return (
+            <ul class={`c-list c-list-${r.kind}`}>
+              {r.items.map((b) => (
+                b.t === "part" ? <li class="c-part"><VerdictMark verdict={b.verdict} /> {b.core && <span class="tag">핵심</span>}<span>{b.text}</span></li>
+                : b.t === "src" ? <li class="c-src"><strong>{b.by}</strong>{b.by && b.title && <span class="sep" />}<span>{b.title}</span>{b.host && <span class="c-host">{b.host}</span>}</li>
+                : b.t === "li" ? <li class="c-li">{b.text}</li>
+                : null
+              ))}
+            </ul>
+          );
+        }
+        const b = r.b;
+        switch (b.t) {
+          case "title": return <p class="c-title">{b.example && <span class="tag">예시</span>}{b.text}</p>;
+          case "meta": return <p class="c-meta num">{b.text}</p>;
+          case "summary": return (
+            <ul class="c-summary" aria-label={`주장 ${b.total}건의 판정`}>
+              {VERDICTS.map((v) => <li class:list={{ zero: !b.summary[v] }}><VerdictMark verdict={v} /> <span class="num">{b.summary[v] || 0}</span>건</li>)}
+            </ul>
+          );
+          case "h": return <h3 class="c-h">{b.text}</h3>;
+          case "p": return <p class:list={["c-p", { small: b.small }]}>{b.text}</p>;
+          case "gist": return <p class="c-gist">{b.kind && <span class="tag">{b.kind}</span>}{b.text}</p>;
+          case "verdict": return (
+            <div class="c-verdict">
+              <p class="c-vline">{b.past && <><VerdictMark verdict={b.past} struck /><span class="arrow" aria-hidden="true">→</span></>}<VerdictMark verdict={b.verdict} /></p>
+              {b.evidence && <p class="c-ev">근거: {b.evidence}</p>}
+            </div>
+          );
+          case "link": return (
+            <p class="c-link">{print ? <span class="c-linktext">{b.text}</span> : <a href={b.href}>{b.text}</a>}<span class="c-url">{b.shown}</span></p>
+          );
+          default: return null;
+        }
+      })}
+    </div>
+    <p class="card-foot" aria-hidden={print ? undefined : "true"}><span>{foot.join(" · ")}</span><span class="num">{n} / {total}</span></p>
+  </div>
+</section>
+
+<style>
+  /* 카드 폭이 기준이다. 화면에서는 글자가 1rem 보다 작아지지 않게(확대해도 글이 커지게) 막는다. */
+  /* position: relative — 화면 읽기 전용 글(절대 위치)이 카드 띠 밖으로 나가 쪽에 가로 스크롤을 만들지 않게. */
+  .card { container-type: inline-size; width: 100%; position: relative; }
+  .card-in {
+    --b: max(1rem, calc(100cqw / 22.5));
+    font-size: var(--b); line-height: 1.55; aspect-ratio: 4 / 5; display: flex; flex-direction: column;
+    padding: calc(var(--b) * 1.25); background: var(--bg); color: var(--text); border: 1px solid var(--rule-strong);
+  }
+  .card-label { font-size: calc(var(--b) * 0.8125); line-height: 1.5; font-weight: 600; color: var(--muted); margin: 0 0 calc(var(--b) * 0.75); }
+  .card-body { flex: 1 1 auto; }
+  .card-body > :first-child, .card-body > ul:first-child > li:first-child { margin-top: 0; }
+  .card-foot {
+    display: flex; justify-content: space-between; gap: var(--b); margin-top: calc(var(--b) * 0.75);
+    font-size: calc(var(--b) * 0.8125); line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .card :global(.verdict.sm), .card :global(.verdict.md) { font-size: inherit; }
+  .card .tag { font-size: calc(var(--b) * 0.8125); padding: 0 0.4em; margin-right: 0.5em; vertical-align: 0.15em; }
+
+  .c-title { font-size: calc(var(--b) * 1.625); line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+  .c-meta { font-size: calc(var(--b) * 0.875); line-height: 1.5; color: var(--muted); margin-top: calc(var(--b) * 0.5); }
+  .c-summary { margin-top: calc(var(--b) * 0.5); font-size: var(--b); line-height: 1.5; display: grid; gap: calc(var(--b) * 0.5); }
+  .c-summary .zero { color: var(--muted); }
+  .c-h { font-size: calc(var(--b) * 0.875); line-height: 1.5; font-weight: 700; color: var(--muted); margin-top: var(--b); }
+  .c-p { font-size: var(--b); line-height: 1.55; margin-top: calc(var(--b) * 0.25); }
+  .c-p.small { font-size: calc(var(--b) * 0.875); line-height: 1.5; margin-top: calc(var(--b) * 0.5); }
+  .c-gist { font-size: calc(var(--b) * 1.25); line-height: 1.4; font-weight: 700; }
+  .c-verdict { margin-top: calc(var(--b) * 0.75); font-size: var(--b); line-height: 1.5; }
+  .c-vline { min-height: calc(var(--b) * 1.6); display: flex; flex-wrap: wrap; align-items: center; }
+  .c-ev { color: var(--text); }
+  .c-list { margin: 0; padding: 0; }
+  .c-part, .c-li { font-size: calc(var(--b) * 0.9375); line-height: 1.5; margin-top: calc(var(--b) * 0.375); }
+  .c-part { padding-left: 0; }
+  .c-li { padding-left: 1em; text-indent: -1em; }
+  .c-li::before { content: "– "; color: var(--muted); }
+  .c-src { font-size: calc(var(--b) * 0.875); line-height: 1.45; margin-top: calc(var(--b) * 0.5); }
+  .c-host { display: block; font-size: 0.93em; color: var(--muted); }
+  .c-link { font-size: calc(var(--b) * 0.9375); line-height: 1.5; margin-top: calc(var(--b) * 0.5); }
+  .c-link a { display: inline-block; padding: 0.35em 0; }
+  .c-linktext { font-weight: 600; }
+  .c-url { display: block; font-size: 0.867em; color: var(--muted); overflow-wrap: anywhere; }
+
+  /* 그림 카드: 1080×1350 고정, 테두리 없음, 본문이 넘치면 잘린다(찍는 스크립트가 잰다). */
+  .card.print { width: 1080px; }
+  .card.print .card-in { --b: calc(1080px / 22.5); width: 1080px; height: 1350px; aspect-ratio: auto; border: 0; }
+  .card.print .card-body { min-height: 0; overflow: hidden; }
+</style>

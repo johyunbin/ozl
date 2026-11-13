@@ -90,6 +90,21 @@ def snapshot_view(issue: dict, evidences: dict) -> dict:
     return {"issue": issue_view(issue), "evidence": {e: evidence_view(evidences[e]) for e in cited(issue, evidences) if e in evidences}}
 
 
+def snapshot_hash(snap) -> str:
+    """snapshot_view 사본에서 다시 계산한 내용 해시(content_hash 와 같은 값이어야 한다) — 사본을 바꿔치기했는지 본다."""
+    if not isinstance(snap, dict) or not isinstance(snap.get("issue"), dict) or not isinstance(snap.get("evidence") or {}, dict):
+        return ""
+    iv = issue_view(snap["issue"])
+    evs = snap.get("evidence") or {}
+    rows = [evs[e] if e in evs else {"evidence_id": e, "missing": True} for e in sorted(set(model.cited_evidence_ids(iv)))]
+    return _canon([iv, rows])
+
+
+def findings_hash(findings) -> str:
+    """검토 줄의 지적 목록 지문 — 검토를 더할 때 적어 두고 이어받기에서 다시 계산해 본다(나중에 고친 지적은 믿지 않는다)."""
+    return _canon(list(findings or []))
+
+
 def changed_paths(before: dict, after: dict) -> list[str]:
     """두 snapshot_view 사이에 바뀐 칸 경로. 항목 목록은 '<목록>.<id>.<칸>', 근거는 'evidence.<번호>' 까지 내려간다."""
     out: list[str] = []

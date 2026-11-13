@@ -1,13 +1,14 @@
 ---
-// 판정 요약 줄 "● 확인 3 · ○ 확인 못 함 2". 0건인 판정은 뺀다.
-// 구분점은 앞 항목 끝에 붙인다. 줄이 넘어가도 새 줄이 구분점으로 시작하지 않는다.
-// trail 이 참이면 마지막 항목 뒤에도 구분점을 둔다(뒤에 "이 밖에 다루지 않은 주장" 이 이어질 때).
+// 판정 집계 "주장 5건의 판정  ● 확인 1  ◐ 일부 맞음 1 …"(설계 4-1). 0건인 판정은 뺀다.
+// 기준은 맨 위 주장의 수다(나눠 본 작은 주장은 세지 않는다). 가운뎃점 없이 항목 단위로만 줄을 바꾼다.
+// label 이 거짓이면 "주장 n건의 판정" 머리를 붙이지 않는다.
 import VerdictMark from "./VerdictMark.astro";
-import { summaryParts, type Summary } from "../lib/verdicts";
-interface Props { summary: Summary; empty?: string; trail?: boolean }
-const { summary, empty = "판정할 주장 없음, 확인된 사실만", trail = false } = Astro.props;
+import { summaryParts, summaryTotal, type Summary } from "../lib/verdicts";
+interface Props { summary: Summary; empty?: string; label?: boolean }
+const { summary, empty = "판정할 주장 없음, 확인된 사실만", label = true } = Astro.props;
 const parts = summaryParts(summary);
+const total = summaryTotal(summary);
 ---
 {parts.length ? (
-  <span class="vsum">{parts.map((p, i) => <span class="item"><VerdictMark verdict={p.verdict} /> <span class="num">{p.n}</span>{(i < parts.length - 1 || trail) && <span class="sep" />}</span>)}</span>
-) : <span class="vsum muted">{empty}{trail && <span class="sep" />}</span>}
+  <span class="vsum">{label && <span class="basis-label">주장 <span class="num">{total}</span>건의 판정</span>}<span class="items">{parts.map((p) => <span class="item"><VerdictMark verdict={p.verdict} /> <span class="num">{p.n}</span></span>)}</span></span>
+) : <span class="vsum muted">{empty}</span>}

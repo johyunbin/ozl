@@ -4,18 +4,19 @@ import type { Claim } from "../lib/data";
 import { fmtDate } from "../lib/format";
 import VerdictMark from "./VerdictMark.astro";
 import SourceList from "./SourceList.astro";
-interface Props { c: Claim; currentRev: number | null }
-const { c, currentRev } = Astro.props;
+interface Props { c: Claim; currentRev: number | null; anchor?: string }
+const { c, currentRev, anchor } = Astro.props;
 const isFalse = c.verdict === "사실과 다름";
 const past = c.history.length ? c.history[c.history.length - 1] : null;
 const showReasons = c.verdict === "확인 못 함" || c.verdict === "일부 맞음";
-const hasMore = c.parts.length || c.not_found || (showReasons && (c.reasons.length || c.would_decide)) || c.party_position || c.sources.length || c.history.length;
+const hasMore = c.basis.length || c.parts.some((p) => p.basis.length) || c.parts.length || c.not_found || (showReasons && (c.reasons.length || c.would_decide)) || c.party_position || c.sources.length || c.history.length;
 const shortHide = isFalse ? undefined : "hide";
 // '사실과 다름' 작은 주장은 접어도, 짧게 보기에서도 요지 줄에 꺼내 둔다(계획 4-3).
 const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과 다름");
 ---
-<li class="claim">
-  <details open={isFalse} data-claim-open={isFalse ? "keep" : "fold"}>
+<li class="claim" id={anchor}>
+  {/* "전부" 보기(기본, 스크립트 없을 때 포함)에서는 모두 펼친다. "짧게" 에서만 '사실과 다름' 밖의 것을 접는다. */}
+  <details open data-claim-open={isFalse ? "keep" : "fold"}>
     <summary>
       <span class="gist">{c.kind && <span class="tag muted">{c.kind}</span>}{c.gist}</span>
       <span class="meta">
@@ -28,10 +29,12 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
     </summary>
     {hasMore && (
       <div class="more">
+        {c.basis.length > 0 && <div class="basis"><p class="mh">근거가 말하는 것</p><ul class="dots">{c.basis.map((x) => <li>{x}</li>)}</ul></div>}
         {c.parts.length > 0 && (
-          <div><p class="mh">작은 주장</p>
+          <div><p class="mh">나눠 본 판정</p>
             <ul class="parts">{c.parts.map((p) => <li><VerdictMark verdict={p.verdict} /> {p.core && <span class="tag">핵심</span>}{p.gist}
-              {p.reasons.length > 0 && <span class="small muted"> — {p.reasons.join(", ")}</span>}</li>)}</ul>
+              {p.reasons.length > 0 && <span class="small muted"> — {p.reasons.join(", ")}</span>}
+              {p.basis.length > 0 && <ul class="dots pbasis">{p.basis.map((x) => <li>{x}</li>)}</ul>}</li>)}</ul>
           </div>
         )}
         {c.not_found && <div><p class="mh">찾지 못한 것</p><p>{c.not_found}</p></div>}
@@ -49,7 +52,7 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
   </details>
 </li>
 <style>
-  .claim { border-top: 1px solid var(--rule); }
+  .claim { border-top: 1px solid var(--rule); scroll-margin-top: var(--sp-4); }
   .claim:last-child { border-bottom: 1px solid var(--rule); }
   summary { cursor: pointer; padding: var(--sp-4) 0; display: block; list-style: none; min-height: 44px; }
   summary::-webkit-details-marker { display: none; }
@@ -58,9 +61,10 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
   .gist { display: block; font-size: var(--fs-md); }
   .meta { display: block; font-size: var(--fs-sm); margin-top: var(--sp-1); }
   .searched { color: var(--muted); }
-  .more { background: var(--surface); border-left: 2px solid var(--rule-strong); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: var(--fs-sm); }
+  .more { background: var(--surface); border: 1px solid var(--rule-strong); border-left-width: 3px; padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: var(--fs-sm); }
   .more > div + div { margin-top: var(--sp-3); }
   .mh { font-weight: 700; }
   .parts li, .dots li { padding: var(--sp-1) 0; }
+  .pbasis { font-size: var(--fs-sm); padding-left: 1.4em; }
   .dots li::before { content: "– "; color: var(--muted); }
 </style>
