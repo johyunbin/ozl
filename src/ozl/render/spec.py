@@ -427,10 +427,20 @@ def footnote_text(sl: dict, claims: dict, card: dict | None, labels: dict | None
         if label not in parts:
             parts.append(label)
     refs = [str(x) for x in sl.get("refs") or []]
+    # 카드 sources 의 등급이 T1·T2(기업·기관이 낸 문서)인 refs 는 '자료', 그 밖(보도·등급 모름)은 '보도'로 부른다
+    # — 회사 문서를 보도로 읽히게 하지 않는다(2026-11-13 덱 검토). 숫자 근거가 아닌 것은 둘 다 같다.
+    doc_names = {str(s.get("name")) for s in (card or {}).get("sources") or [] if isinstance(s, dict) and s.get("tier") in DOC_TIERS}
+    docs = [x for x in refs if x in doc_names]
+    press = [x for x in refs if x not in doc_names]
     out = ("출처: " + " / ".join(parts)) if parts else ""
-    if refs:
-        out += ("  ·  " if out else "") + "보도: " + " / ".join(refs)
+    if docs:
+        out += ("  ·  " if out else "") + "자료: " + " / ".join(docs)
+    if press:
+        out += ("  ·  " if out else "") + "보도: " + " / ".join(press)
     return out
+
+
+DOC_TIERS = ("T1", "T2")   # refs 각주·부록에서 '자료'로 부르는 출처 등급
 
 
 # ── 단계 순서 ────────────────────────────────────────────────────────────

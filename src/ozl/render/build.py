@@ -556,7 +556,9 @@ def source_rows(spec: dict, claims: dict, card: dict, pending=None) -> list[list
     for ref, pg in ref_pages.items():
         s = by_name.get(ref) or {}
         mark = f"\n{PENDING_MARK}" if pend_pages & set(pg) else ""
-        rows.append([f"보도({s.get('tier', '')})" + mark, ref, "검증 기록 없음 — 보도 인용", str(s.get("url") or ""), "", ", ".join(map(str, pg))])
+        doc = s.get("tier") in S.DOC_TIERS   # 각주(footnote_text)와 같은 기준 — 기업·기관 문서는 보도로 부르지 않는다
+        rows.append([f"{'자료' if doc else '보도'}({s.get('tier', '')})" + mark, ref,
+                     "검증 기록 없음 — " + ("문서 인용(숫자 근거 아님)" if doc else "보도 인용"), str(s.get("url") or ""), "", ", ".join(map(str, pg))])
     return rows
 
 

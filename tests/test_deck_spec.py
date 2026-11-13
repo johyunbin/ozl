@@ -805,3 +805,21 @@ def test_same_quantity_in_different_spacing_passes_both_ways(shown, recorded):
     for a, b in ((shown, recorded), (recorded, shown)):
         claims = {CX: claim(CX, text="가상의 섬 통계.", observed=f"가상 지표 {b}")}
         assert S.number_errors(slide(body=[f"가상 {a}"], claim_ids=[CX]), claims) == [], (a, b)
+
+
+def test_refs_label_follows_source_tier():
+    """refs 의 꼬리표는 카드 sources 의 등급을 따른다 — T1·T2(기업·기관 문서)는 '자료', T3 이하는 '보도'(2026-11-13).
+    각주와 부록 출처표가 같은 기준을 쓴다. 예시 이름은 지어낸 것이다."""
+    sp = spec_of([slide(body=["가상 섬의 계획"], refs=["가상 섬 정부 발표 자료", "가상 일보"])])
+    card = {"card_id": "2099-01-02-am-01", "sources": [
+        {"name": "가상 섬 정부 발표 자료", "tier": "T1", "url": "https://example.org/gov"},
+        {"name": "가상 일보", "tier": "T3", "url": "https://example.org/news"}]}
+    assert S.check(sp, {}, TEMPLATE, card=card).ok
+    ft = S.footnote_text(sp["slides"][2], {}, card, {})
+    assert ft == "자료: 가상 섬 정부 발표 자료  ·  보도: 가상 일보", ft
+    rows = B.source_rows(sp, {}, card, {})
+    by = {r[1]: r for r in rows}
+    assert by["가상 섬 정부 발표 자료"][0] == "자료(T1)" and "문서 인용" in by["가상 섬 정부 발표 자료"][2]
+    assert by["가상 일보"][0] == "보도(T3)" and "보도 인용" in by["가상 일보"][2]
+    card["sources"][0]["tier"] = "T3"                                 # 등급이 보도면 종전처럼 '보도'
+    assert S.footnote_text(sp["slides"][2], {}, card, {}) == "보도: 가상 섬 정부 발표 자료 / 가상 일보"
