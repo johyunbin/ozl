@@ -19,6 +19,8 @@ from ozl.pulse import community, rank, signals, snapshot, store  # noqa: E402
 
 NOW = datetime(2026, 11, 11, 12, 0, tzinfo=timezone.utc)   # KST 21:00
 SRC = {s["id"]: s for s in community.SOURCES}
+# 실제 설정에서는 모든 소스가 꺼져 있다(약관). 파서와 요청 처리 시험에서만 파서가 있는 소스를 켠 사본을 쓴다.
+ON = [{**s, "enabled": bool(s["parser"])} for s in community.SOURCES]
 
 SIGNAL_JSON = json.dumps({
     "now": 0,
@@ -136,7 +138,8 @@ def table_ok():
             SRC["ppomppu_free"]["url"]: (200, PPOMPPU_RSS), SRC["ppomppu_issue"]["url"]: (200, PPOMPPU_RSS)}
 
 
-def test_one_request_per_enabled_source_and_disabled_never_requested():
+def test_one_request_per_enabled_source_and_disabled_never_requested(monkeypatch):
+    monkeypatch.setattr(community, "SOURCES", ON)
     get = FakeGet(table_ok())
     items, sts = community.fetch_all(NOW, get=get)
     enabled = [s for s in community.SOURCES if s["enabled"]]
@@ -149,7 +152,8 @@ def test_one_request_per_enabled_source_and_disabled_never_requested():
     assert len(items) == 8
 
 
-def test_failures_recorded_and_others_continue():
+def test_failures_recorded_and_others_continue(monkeypatch):
+    monkeypatch.setattr(community, "SOURCES", ON)
     t = table_ok()
     t[SRC["signal_realtime"]["url"]] = (429, b"")
     t[SRC["bobae_best"]["url"]] = ConnectionError("x")
@@ -226,6 +230,7 @@ def news(title, outlet, mins=30):
 def test_run_with_community_option(tmp_path, monkeypatch):
     feed = [news("가상시 공영주차장 요금 인상 결정", "가상일보"), news("가상시 공영주차장 요금 인상 확정", "가상경제")]
     monkeypatch.setattr(snapshot, "fetch_all", lambda now: (list(feed), []))
+    monkeypatch.setattr(community, "SOURCES", ON)
     calls = []
     get = FakeGet({SRC["signal_realtime"]["url"]: (200, SIGNAL_JSON), SRC["bobae_best"]["url"]: (200, BOBAE_HTML),
                    SRC["ppomppu_free"]["url"]: (503, b""), SRC["ppomppu_issue"]["url"]: (200, PPOMPPU_RSS)})
@@ -251,3 +256,32 @@ def test_run_with_community_option(tmp_path, monkeypatch):
     assert rows and rows[0]["votes"] == 57 and rows[0]["comments"] == 1204 and rows[0]["kind"] == "community"
     pol = [w for w in store.window_items(con, NOW + timedelta(minutes=1), 6) if w.get("politics")]
     assert pol and all(w["outlet"] == "뽐뿌 정치자유게시판" for w in pol)
+
+
+# ── 약관 조치(2026-11-14): 실제 설정에서는 모든 소스가 꺼져 있다 ─────────────
+def test_real_sources_all_off_and_no_request_goes_out():
+    assert all(s["enabled"] is False for s in community.SOURCES)
+    get = FakeGet({})
+    items, sts = community.fetch_all(NOW, get=get)
+    assert items == [] and get.calls == []   # 요청이 한 건도 나가지 않는다
+    assert all(s["enabled"] is False and s["error"].startswith("꺼짐") for s in sts)
+    assert community.off_feeds() == {"signal_realtime", "clien_park", "bobae_best", "ppomppu_free", "ppomppu_issue"}
+
+
+def test_stored_items_from_off_sources_are_left_out_of_scoring(tmp_path, monkeypatch):
+    """꺼 둔 소스에서 전에 받아 둔 항목은 창 안에 있어도 점수와 화면에 들어가지 않는다."""
+    feed = [news("가상시 공영주차장 요금 인상 결정", "가상일보"), news("가상시 공영주차장 요금 인상 확정", "가상경제")]
+    monkeypatch.setattr(snapshot, "fetch_all", lambda now: (list(feed), []))
+    db = tmp_path / "p.db"
+    con = store.connect(db)
+    old = community.parse_bobae(BOBAE_HTML, SRC["bobae_best"], NOW) + community.parse_signal(SIGNAL_JSON, SRC["signal_realtime"], NOW)
+    assert store.add_items(con, old, NOW) == len(old) > 0
+    con.commit()
+    out = tmp_path / "out"
+    r = snapshot.run(fetch=True, now=NOW + timedelta(minutes=1), db=db, out_dir=out, youtube=[])
+    assert r["ok"]
+    d = json.loads((out / "now.json").read_text(encoding="utf-8"))
+    assert d["n_window"] == 2   # 저장된 커뮤니티·시그널 항목은 세지 않는다
+    assert not any(i["kind"] == "community" for t in d["topics"] for i in t["items"])
+    assert not any("커뮤니티" in x or "실시간 검색어" in x for t in d["topics"] for x in t["reasons"])
+    assert d["signal_status"]["youtube"] == "꺼짐"

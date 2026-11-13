@@ -27,9 +27,12 @@ from ..research import collect
 
 KST = collect.KST
 
+# 2026-11-14: 시그널·보배드림·뽐뿌를 껐다. 시그널(제13조)과 보배드림(제11조③) 약관은 승낙 없이 얻은 정보를 이용하는 것을 막고,
+# 뽐뿌(제13조②)는 영리 목적 이용과 제3자 제공을 막는다. 뽐뿌는 출처 대장에서 약관을 다시 확인해 허용이면 비공개 단서로만 켠다.
+# 파서와 시험은 남겨 둔다(다시 켤 때 쓴다). 꺼진 소스에서 전에 받아 둔 항목은 off_feeds() 로 점수와 화면에서 뺀다.
 SOURCES: list[dict] = [
     {"id": "signal_realtime", "source": "signal", "outlet": "시그널 실시간검색어", "url": "https://api.signal.bz/news/realtime",
-     "parser": "signal", "section": "실시간 검색어", "enabled": True,
+     "parser": "signal", "section": "실시간 검색어", "enabled": False,
      "terms": "불명 — 이용약관에 자동 수집 조항 없음. 제13조(회원의 의무)가 서비스의 영리 목적 무단 이용을 막는다. robots.txt 전체 허용. "
               "공개 문서화된 API 는 아니다(사이트 화면이 부르는 주소). 비영리·비공개 신호로만 쓴다."},
     {"id": "clien_park", "source": "clien", "outlet": "클리앙 모두의공원", "url": "https://www.clien.net/service/board/park?&od=T31",
@@ -37,17 +40,22 @@ SOURCES: list[dict] = [
      "terms": "금지 — 이용약관 제13조③이 서비스로 얻은 정보를 권리자 동의 없이 수집·복제·배포하는 것을 막는다. "
               "robots.txt 가 ClaudeBot·anthropic-ai 를 막고, 모든 수집기에 쿼리 주소(/*?*)와 /service/recommend 를 막는다."},
     {"id": "bobae_best", "source": "bobaedream", "outlet": "보배드림 베스트", "url": "https://www.bobaedream.co.kr/list?code=best",
-     "parser": "bobae", "section": "베스트글", "enabled": True,
+     "parser": "bobae", "section": "베스트글", "enabled": False,
      "terms": "불명 — 이용약관에 자동 수집 조항 없음. 제11조③(회원의 의무)이 서비스로 얻은 정보를 회사 사전 승낙 없이 복제·사용·제공하는 "
               "것을 막는다(영리 여부 구분 없음). robots.txt 전체 허용(Amazonbot 만 차단). 제목은 비공개 신호 계산에만 쓰고 밖으로 내보내지 않는다."},
     {"id": "ppomppu_free", "source": "ppomppu", "outlet": "뽐뿌 자유게시판", "url": "https://www.ppomppu.co.kr/rss.php?id=freeboard",
-     "parser": "ppomppu", "section": "자유게시판", "enabled": True,
+     "parser": "ppomppu", "section": "자유게시판", "enabled": False,
      "terms": "허용(공식 RSS) — 사이트가 RSS 를 내놓고 있다. 이용약관에 자동 수집 조항 없음. 제13조②가 사전 승낙 없는 영리 목적 이용과 "
               "제3자 제공을 막는다. robots.txt 는 /rss.php 를 막지 않는다."},
     {"id": "ppomppu_issue", "source": "ppomppu", "outlet": "뽐뿌 정치자유게시판", "url": "https://www.ppomppu.co.kr/rss.php?id=issue",
-     "parser": "ppomppu", "section": "정치자유게시판", "politics": True, "enabled": True,
+     "parser": "ppomppu", "section": "정치자유게시판", "politics": True, "enabled": False,
      "terms": "ppomppu_free 와 같음. 게시판 이름은 issue 지만 실제로는 정치 게시판이다(표시만 하고 거르지 않는다)."},
 ]
+
+
+def off_feeds(sources: list[dict] | None = None) -> set[str]:
+    """꺼 둔 소스의 id. 그 소스에서 전에 받아 둔 항목을 점수와 화면에서 빼는 데 쓴다."""
+    return {s["id"] for s in (sources or SOURCES) if not s.get("enabled", True)}
 
 
 def _item(src: dict, title: str, url: str, published: datetime | None, now: datetime, **counts) -> dict:

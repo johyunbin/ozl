@@ -243,3 +243,14 @@ def test_searches_carry_sensitivity(tmp_path):
     snapshot.run(fetch=False, now=NOW, db=db, out_dir=out, youtube=[])
     d = __import__("json").loads((out / "now.json").read_text(encoding="utf-8"))
     assert d["searches"] and d["searches"][0]["sensitivity"]["level"] in ("GREEN", "YELLOW", "RED")
+
+
+def test_youtube_signal_off_by_policy_sends_no_request(monkeypatch):
+    """키가 있어도 유튜브 인기 영상은 받지 않는다(유튜브 API 정책 — 점수에 쓰지 않는다)."""
+    monkeypatch.setenv("OZL_YOUTUBE_API_KEY", "지어낸-키")
+    def boom(*a, **k):
+        raise AssertionError("유튜브로 요청이 나갔다")
+    monkeypatch.setattr(signals.requests, "get", boom)
+    assert signals.YOUTUBE_SIGNAL_ENABLED is False
+    vids, st = signals.fetch_youtube(NOW)
+    assert vids == [] and st["enabled"] is False and st["error"] == signals.YOUTUBE_OFF_REASON

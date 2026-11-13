@@ -77,8 +77,7 @@ def write_overview(handle: str, rows: list[dict]) -> pathlib.Path:
     wd = Counter(datetime.strptime(r["published_kst"], "%Y-%m-%d %H:%M").strftime("%a") for r in rows if r["kind"] == "video")
     hours = Counter(r["published_kst"][11:13] + "시" for r in rows if r["kind"] == "video")
     recent = [r for r in rows if r["kind"] == "video" and r["published_kst"] >= (datetime.now(KST) - timedelta(days=365)).strftime("%Y-%m-%d")]
-    views = sorted((r["view_count"] or 0) for r in recent)
-    med = statistics.median(views) if views else 0
+    # 조회수 집계는 내지 않는다(2026-11-14). 유튜브 API 개발자 정책이 API 통계로 집계와 새 지표를 만드는 것을 막는다.
     total_h = sum(r["duration_sec"] for r in rows) / 3600
     lines = [f"# {name} 채널 개요 (집계)", "",
              f"- 기준: YouTube Data API v3 · 수집 {rows[0]['fetched_at'][:10] if rows else ''} · 개별 영상 데이터는 비공개(집계만 공개)",
@@ -92,7 +91,6 @@ def write_overview(handle: str, rows: list[dict]) -> pathlib.Path:
     for k in ["<5분", "5~15", "15~30", "30~60", "60~120", "120+"]:
         lines.append(f"| {k} | {durb.get(k, 0):,} |")
     lines += ["", f"## 최근 12개월 일반 영상 {len(recent):,}편", "",
-              f"- 조회수 중앙값 {med:,.0f} · 상위 10% 경계 {views[int(len(views)*0.9)] if views else 0:,} · 하위 10% 경계 {views[int(len(views)*0.1)] if views else 0:,}",
               f"- 평균 길이 {statistics.mean([r['duration_sec'] for r in recent])/60:.1f}분" if recent else "",
               "", "## 업로드 요일(일반 영상)", "", "| 요일 | 편수 |", "|---|---|"]
     for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]:

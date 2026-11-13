@@ -16,6 +16,7 @@ import pathlib
 from datetime import datetime, timezone
 
 from ..pulse import signals as psig
+from ..pulse import community as pcommunity
 from ..pulse import store
 from ..research import collect, sensitive
 
@@ -215,7 +216,8 @@ def run(slot: str, date: str | None = None, hours: float = 24.0, top: int = 30, 
     now = now or datetime.now(timezone.utc)
     date = date or now.astimezone(collect.KST).strftime("%Y-%m-%d")
     con = store.connect(db)
-    items = store.window_items(con, now, hours)
+    off = pcommunity.off_feeds()   # 꺼 둔 소스에서 전에 받아 둔 항목은 쓰지 않는다
+    items = [i for i in store.window_items(con, now, hours) if i.get("feed") not in off]
     cands = build(items, top)
     out_dir = (out_root or BRIEFS) / date / slot
     out_dir.mkdir(parents=True, exist_ok=True)

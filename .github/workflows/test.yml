@@ -1,0 +1,23 @@
+name: tests
+# 코드가 바뀐 푸시에서만 돈다. 일일 기록(daily, claims, docs)만 바뀐 푸시에서는 돌지 않는다.
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", "scripts/**", "pyproject.toml", ".github/workflows/test.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils fonts-nanum
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q

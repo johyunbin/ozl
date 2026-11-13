@@ -166,9 +166,10 @@ def _run(fetch: bool, now: datetime, db, out_dir: pathlib.Path, youtube, communi
     run_id = cur.lastrowid
 
     # 급상승어는 이번 수집분이 기준(지난 시각 급상승어는 지금 뜨는 것이 아니다). --no-fetch 면 최근 2시간 저장분.
+    off = community_mod.off_feeds()   # 꺼 둔 소스에서 전에 받아 둔 항목은 점수와 화면에 쓰지 않는다
     trends_now = [i for i in fetched if i["kind"] == "trend"] if fetch else \
-        [i for i in store.window_items(con, now, 2) if i["kind"] == "trend"]
-    window = store.window_items(con, now, WINDOW_H)
+        [i for i in store.window_items(con, now, 2) if i["kind"] == "trend" and i.get("feed") not in off]
+    window = [i for i in store.window_items(con, now, WINDOW_H) if i.get("feed") not in off]
     scored = score_clusters(window, trends_now, yt, signals.load_calendar(), now)
 
     topic_ids = match_topics([s["c"] for s in scored], store.active_topics(con, now))

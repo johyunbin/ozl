@@ -21,6 +21,10 @@ from ..research import collect
 
 NEWS_KINDS = ("news", "official")
 YT_URL = "https://www.googleapis.com/youtube/v3/videos"
+# 2026-11-14: 유튜브 인기 영상 신호를 껐다. 유튜브 API 개발자 정책은 API 로 받은 자료로 새 지표를 만드는 것을 막는다
+# (III.E.4.h). 인기 영상 제목을 화제 점수에 넣는 것이 여기에 걸린다. 요청 자체를 보내지 않는다.
+YOUTUBE_SIGNAL_ENABLED = False
+YOUTUBE_OFF_REASON = "꺼짐(유튜브 API 정책 — 점수에 쓰지 않는다)"
 
 
 def parse_traffic(s: str) -> int | None:
@@ -138,6 +142,9 @@ def youtube_key() -> str:
 
 def fetch_youtube(now: datetime) -> tuple[list[dict], dict]:
     """유튜브 인기 동영상(KR) 제목. 키가 없으면 꺼짐 상태만 돌려준다(0점이 아니라 '측정 안 함')."""
+    if not YOUTUBE_SIGNAL_ENABLED:   # 키가 있어도 요청하지 않는다
+        return [], {"id": "youtube_popular_kr", "outlet": "YouTube 인기(KR)", "http": None, "entries": 0,
+                    "error": YOUTUBE_OFF_REASON, "enabled": False}
     key = youtube_key()
     st = {"id": "youtube_popular_kr", "outlet": "YouTube 인기(KR)", "http": None, "entries": 0, "error": None, "enabled": bool(key)}
     if not key:
