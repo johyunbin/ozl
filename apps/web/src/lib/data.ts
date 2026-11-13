@@ -12,10 +12,12 @@ import { keywordSlug } from "./paths";
 // ---------- 꼴 ----------
 export type Source = { kind: string; by: string; title: string; url: string; checked_at: string };
 export type History = { rev: number | null; at: string; from: string; to: string; why: string };
-/** basis: 그 판정을 받치는 확인된 사실 문장(선택 칸 — 내보내기가 아직 싣지 않으면 빈 목록). */
-export type Part = { gist: string; core: boolean; verdict: string; reasons: string[]; would_decide: string; sources: Source[]; basis: string[] };
+/** basis: 그 판정을 받치는 확인된 사실 문장(선택 칸 — 내보내기가 아직 싣지 않으면 빈 목록).
+ *  scope: 그 판정이 어디까지를 확인한 것인지 적은 문장(선택 칸 — 없으면 빈 글. 화면은 판정 바로 아래 "확인한 범위"로 싣는다). */
+export type Part = { gist: string; core: boolean; verdict: string; scope: string; reasons: string[]; would_decide: string; sources: Source[]; basis: string[] };
+/** evidence_label: 판정에 쓴 공식 근거의 종류. press_label: 주장을 실은 보도의 요약(판정의 근거가 아니다. 옛 자료에는 없어 빈 글). */
 export type Claim = {
-  id: string; gist: string; kind: string; verdict: string; evidence_label: string; searched: string; not_found: string;
+  id: string; gist: string; kind: string; verdict: string; scope: string; evidence_label: string; press_label: string; searched: string; not_found: string;
   reasons: string[]; would_decide: string; party_position: string; parts: Part[]; sources: Source[]; history: History[]; basis: string[];
 };
 export type Group = { verdict: string; note: string; claims: Claim[] };
@@ -193,12 +195,12 @@ function history(o: O, w: string): History {
 
 function claim(o: O, w: string): Claim {
   return {
-    id: str(o, "id", w), gist: str(o, "gist", w), kind: str(o, "kind", w), verdict: verdict(o, "verdict", w),
-    evidence_label: str(o, "evidence_label", w), searched: str(o, "searched", w), not_found: str(o, "not_found", w),
+    id: str(o, "id", w), gist: str(o, "gist", w), kind: str(o, "kind", w), verdict: verdict(o, "verdict", w), scope: str(o, "scope", w),
+    evidence_label: str(o, "evidence_label", w), press_label: str(o, "press_label", w), searched: str(o, "searched", w), not_found: str(o, "not_found", w),
     reasons: strs(o, "reasons", w), would_decide: str(o, "would_decide", w), party_position: str(o, "party_position", w),
     parts: objs(o, "parts", w).map((p, i) => {
       const pw = `${w}.parts[${i}]`;
-      return { gist: str(p, "gist", pw), core: bool(p, "core"), verdict: verdict(p, "verdict", pw), reasons: strs(p, "reasons", pw),
+      return { gist: str(p, "gist", pw), core: bool(p, "core"), verdict: verdict(p, "verdict", pw), scope: str(p, "scope", pw), reasons: strs(p, "reasons", pw),
         would_decide: str(p, "would_decide", pw), sources: sources(p, pw), basis: strs(p, "basis", pw) };
     }),
     sources: sources(o, w),

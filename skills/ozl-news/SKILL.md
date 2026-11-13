@@ -5,7 +5,7 @@ description: OZL 이슈 브리핑 — 커뮤니티·실시간 검색어에서 �
 
 # /ozl-news — 이슈 브리핑 덱 절차
 
-작업 폴더 `~/OZL`, 파이썬 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md`. 형식과 판정 정의의 정본은 `skills/ozl-news/deck_example.yaml`, 실제 덱의 본보기는 `private/briefs/2026-11-11/2026-11-11-pm-b01.yaml`(비공개). 모든 산문은 한국어. 슈카 대비 일일 데스크(`/ozl`)와 별개 트랙이다 — 카드·클레임 파일을 건드리지 않는다.
+작업 폴더 `~/OZL`, 파이썬 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md` 와 `~/OZL/agent/issues.md`. 형식과 판정 정의의 정본은 `skills/ozl-news/deck_example.yaml`, 실제 덱의 본보기는 `private/briefs/2026-11-11/2026-11-11-pm-b01.yaml`(비공개). 모든 산문은 한국어. 슈카 대비 일일 데스크(`/ozl`)와 별개 트랙이다 — 카드·클레임 파일을 건드리지 않는다.
 
 인자: `am` · `pm`. 날짜는 오늘(KST). 회차당 덱 수는 `N`(기본 3, 사용자가 말하면 그 수).
 

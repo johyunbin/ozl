@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from ozl.research import cards
 
 from . import evidence as EV
-from . import ids, model, numbers, rules, style
+from . import basis, dates, fields, idents, ids, model, numbers, rules, style
 from .allegation import _allegation_errors, _crime_exempt
 
 MSG_ELECTION = "선거 관련 이슈는 선거 종류, 선거일, 제한 기간(선거일 엿새 전부터)을 적는다"
@@ -261,8 +261,9 @@ def _top(a: _Acc, issue: dict, evidences: dict, post: bool):
                 a.add(f"keywords.{i}", style.MSG_CRIME)
             if "선거" in sens and style.poll_words(k):
                 a.add(f"keywords.{i}", MSG_KW_POLL)
-            if numbers.keyword_qty(k):                  # 숫자가 이름의 일부인 키워드(5G, 4대강)는 받는다
+            if numbers.keyword_qty(k, numbers.identifiers(issue)):   # 숫자가 이름의 일부인 키워드(5G, 4대강)와 식별자는 받는다
                 a.add(f"keywords.{i}", MSG_KW_QTY)
+    a.e += idents.identifier_list_errors(issue)
 
 
 def _lists(a: _Acc, issue: dict, evidences: dict):
@@ -322,7 +323,10 @@ def _lists(a: _Acc, issue: dict, evidences: dict):
     for p, w in _items(a, issue, "flow", "w"):
         a.need(w, "what", f"{p}.what")
         a.enum(w.get("kind"), model.FLOW_KINDS, f"{p}.kind")
-        if not _real_date(w.get("event_date")):
+        ed = w.get("event_date")        # 일어난 날을 확인하지 못했으면 비운다(화면은 보도된 날만 적고 그 사실을 밝힌다)
+        if cards._blank(ed) and not _real_date(w.get("report_date")):
+            a.add(f"{p}.event_date", "일어난 날(event_date)을 비우려면 보도된 날(report_date)이 YYYY-MM-DD 로 있어야 한다")
+        elif not cards._blank(ed) and not _real_date(ed):
             a.add(f"{p}.event_date", "event_date 는 YYYY-MM-DD 다")
         _cited(a, p, w.get("evidence"), evidences)
         _common_item(a, p, w, issue)
@@ -356,8 +360,12 @@ def check_issue(issue: dict, evidences: dict, public: bool = False, articles=(),
     _top(a, issue, evidences, post)
     _lists(a, issue, evidences)
     copy_errs: dict[str, list[str]] = {}
+    a.e += fields.issue_field_errors(issue) + fields.sentence_errors(issue) + dates.date_errors(issue, evidences)
+    b_errs, b_warns = basis.basis_errors(issue)
+    a.e += b_errs
     for eid, ev in evidences.items():
         a.e += [(f"evidence.{eid}.{k}", m) for k, m in EV.structure_errors(ev, iid, eid)]
+        a.e += [(f"evidence.{eid}.{k}", m) for k, m in fields.evidence_field_errors(ev)]
         copy_errs[eid] = EV.copy_errors(ev)
         a.e += [(f"evidence.{eid}", m) for m in copy_errs[eid]]
     for c in issue.get("claims") or []:
@@ -371,7 +379,8 @@ def check_issue(issue: dict, evidences: dict, public: bool = False, articles=(),
         a.e += ids.ledger_errors(issue, list(evidences), ids.load_ledger() if ledger is None else ledger)
     except (ValueError, json.JSONDecodeError, OSError) as e:
         a.add("issue_id", f"발급 대장을 읽지 못했다: {e}")
-    warns = style.copy20_warnings(issue, evidences, articles) + style.cause_warnings(issue)
+    warns = style.copy20_warnings(issue, evidences, articles) + style.cause_warnings(issue) + dates.flow_warnings(issue) + b_warns \
+        + basis.recheck_warnings(issue, evidences)
     errors = list(dict.fromkeys(f"{iid} {p}: {m}" for p, m in a.e))
     return {"errors": errors, "warnings": [f"경고 {iid} {p}: {m}" for p, m in warns]}
 

@@ -6,6 +6,8 @@
     hash 번호 | day:날짜 | restored:날짜                               지금 내용 해시와 판 번호
     capture 번호 근거번호 / machine-verify 번호 근거번호               원문 받기(네트워크) / 기계 대조
     review add 번호 --kind --by-model --family --result --notes-path 검토원문 [--findings 파일] [--before-hash H --addresses r1,r2]
+                [--content-hash H]                                    검토가 본 내용(snapshot 으로 남긴 사본)에 묶는다
+    snapshot 번호                                                     지금 내용의 사본을 남기고 해시를 찍는다(검토 묶음을 보낼 때)
     approve 대상 --rev N --hash H --by 이름 [--request-id R]          0 승인, 1 미충족, 2 사용 오류·시험 규칙, 3 충돌
     export --preview|--public --out 폴더 [--now 시각]                 0, 1 출력 검사 실패, 2 연락처·출력 자리, 4 일부 판 빠짐
     withdraw 대상 [--rev N] --by 이름 --reason 까닭
@@ -23,7 +25,7 @@ import yaml
 
 from ozl.research import cards
 
-from . import digest, export, ids, links, model, paths, revisions, units
+from . import digest, export, ids, links, model, numbers, paths, revisions, units
 from . import evidence as EV
 
 
@@ -55,8 +57,19 @@ def _check(a) -> int:
         for iid, r in res.items():
             for line in r["errors"] + r["warnings"]:
                 print(line)
+            note = _exempt_note(iid)
+            if note:
+                print(f"알림 {iid}: {note}")             # 알림은 오류·경고 건수에 넣지 않는다
             print(f"{iid}: 오류 {len(r['errors'])}건, 경고 {len(r['warnings'])}건")
     return 1 if n_err else 0
+
+
+def _exempt_note(iid: str) -> str:
+    """식별자로 면제한 표기 알림('수량으로 보지 않은 표기: KTX-1(3곳)'). 읽지 못하면 빈 글."""
+    try:
+        return numbers.exempt_note(model.load_issue(iid))
+    except (OSError, ValueError):
+        return ""
 
 
 def _new(a) -> int:
@@ -146,10 +159,19 @@ def _review(a) -> int:
         return _err(f"작업본이 없다: {a.issue}")
     try:
         row = revisions.add_review(a.issue, a.kind, a.by_model, a.family, a.result, findings, a.before_hash,
-                                   [x for x in (a.addresses or "").split(",") if x], a.notes_path or "")
+                                   [x for x in (a.addresses or "").split(",") if x], a.notes_path or "",
+                                   content_hash=a.content_hash or None)
     except ValueError as e:
         return _err(str(e), 1)
     print(f"{a.issue} {row['id']} {row['kind']} {row['result']} (내용 해시 {row['content_hash']})")
+    return 0
+
+
+def _snapshot(a) -> int:
+    if not paths_ok(a.issue):
+        return _err(f"작업본이 없다: {a.issue}")
+    h = revisions.save_snapshot(a.issue)
+    print(f"{a.issue} 내용 해시 {h} (사본 snapshots/{h}.yaml)")
     return 0
 
 
@@ -198,6 +220,16 @@ def _status(a) -> int:
         lp = f"공개 {r['latest_public']}판" if r["latest_public"] else "공개 판 없음"
         print(f"{r['id']} {r['rev']}판 · {r['work_state']} · {r['approval']} · {lp} · {r['review']} · "
               f"숨긴 주장 {r['hidden_claims']}건 · 내용 해시 {r['content_hash']}")
+        try:
+            issue = model.load_issue(r["id"])
+            miss = revisions.missing_reviews(issue, model.load_evidences(r["id"]))
+        except (OSError, ValueError):
+            issue, miss = {}, []
+        if miss:
+            print(f"  검토 완료까지 빠진 것: {'; '.join(miss)}")
+        note = numbers.exempt_note(issue) if issue else ""
+        if note:
+            print(f"  {note}")
     return 0
 
 
@@ -257,6 +289,9 @@ def _parser() -> argparse.ArgumentParser:
     c.add_argument("--before-hash")
     c.add_argument("--addresses")
     c.add_argument("--notes-path")
+    c.add_argument("--content-hash", help="검토가 본 내용의 해시(snapshot 으로 남긴 사본이 있어야 한다)")
+    c = sub.add_parser("snapshot", help="지금 내용의 사본을 남기고 해시를 찍는다")
+    c.add_argument("issue")
     c = sub.add_parser("approve", help="승인 요청")
     c.add_argument("target")
     c.add_argument("--rev", type=int, required=True)
@@ -284,7 +319,7 @@ def _parser() -> argparse.ArgumentParser:
 
 
 HANDLERS = {"check": _check, "new": _new, "ids": _ids, "hash": _hash, "capture": _capture, "machine-verify": _machine,
-            "review": _review, "approve": _approve, "export": _export, "withdraw": _withdraw, "status": _status, "links": _links}
+            "review": _review, "snapshot": _snapshot, "approve": _approve, "export": _export, "withdraw": _withdraw, "status": _status, "links": _links}
 
 
 def main(argv=None) -> int:

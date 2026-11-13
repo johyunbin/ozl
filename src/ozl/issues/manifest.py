@@ -61,6 +61,8 @@ def is_withdrawn(man: dict, unit: str, uid: str, rev: int | None) -> bool:
 
 def approver_error(by: str) -> tuple[int, str]:
     """(종료 코드, 문구) — 승인한 쪽 이름의 시험·실제 규칙(6-12)."""
+    if paths.in_runner():
+        return 2, paths.MSG_RUNNER
     if cards._blank(by):
         return 2, "승인한 쪽(--by)을 적는다"
     if paths.is_alias_of_real_root():

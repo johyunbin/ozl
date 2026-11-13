@@ -1,0 +1,733 @@
+# 묶기 정답 60쌍(설계 문서 §9-2). 제목·이름·회사·지명은 전부 지어낸 것이다.
+# 정답(same_issue, event_a/event_b)은 코드를 짜기 전에 적었고, 코드 결과에 맞추려고 바꾸지 않는다.
+# 지지 기사(support)는 그 쪽 기사와 가상 이름 둘 이상(또는 하나와 제목 유사도 0.55 이상)을 공유하게 쓴다(그 쪽을 이슈로 만드는 것이 목적).
+# 쌍: id, kind, names(가상 고유명사 — analyze() 가 entity 로 내는지 시험이 먼저 단언), a·b(title, outlet, published[KST], summary 선택), support(각 쪽을 이슈로 만드는 다른 매체 기사, for: a|b),
+#     event_a·event_b(정답 사건 라벨), same_issue, 전재는 same_copy_group, why(까닭 한 줄).
+# 가상의 2주: 2030-03-01 ~ 2030-03-14.
+
+# ── 같은 사건의 다른 표현 15 (같은 날, 고유명사 2개 이상 공유)
+- id: s01
+  kind: 같은사건
+  names: [한빛전자, 가람시]
+  a: {title: "한빛전자, 가람시에 2조원 들여 배터리 공장 신설", outlet: 연합뉴스, published: "2030-03-01T09:00"}
+  b: {title: "가람시 배터리 공장에 2조 베팅한 한빛전자…일자리 3천개 기대", outlet: 한국경제, published: "2030-03-01T10:20"}
+  support:
+    - {for: a, title: "한빛전자 가람시 신공장, 2028년 가동 목표", outlet: 매일경제, published: "2030-03-01T11:00"}
+  event_a: E-s01
+  event_b: E-s01
+  same_issue: true
+  why: "같은 회사의 같은 공장 투자 발표를 두 매체가 다르게 썼다"
+- id: s02
+  kind: 같은사건
+  names: [두리항공, 나래공항]
+  a: {title: "두리항공 여객기, 나래공항 착륙 중 활주로 이탈…승객 12명 경상", outlet: 연합뉴스, published: "2030-03-01T13:00"}
+  b: {title: "나래공항에서 두리항공 여객기 미끄러져…활주로 폐쇄에 결항 속출", outlet: SBS, published: "2030-03-01T14:10"}
+  support:
+    - {for: b, title: "두리항공 사고 여객기, 나래공항 착륙 때 기체 결함 의심", outlet: 경향신문, published: "2030-03-01T15:00"}
+  event_a: E-s02
+  event_b: E-s02
+  same_issue: true
+  why: "같은 공항의 같은 활주로 이탈 사고"
+- id: s03
+  kind: 같은사건
+  names: [미르건설, 아라시]
+  a: {title: "미르건설 노조, 아라시 현장서 무기한 파업 돌입", outlet: 한국경제, published: "2030-03-01T16:00"}
+  b: {title: "아라시 신도시 공사 올스톱…미르건설 노조 파업에 입주 지연 걱정", outlet: 조선일보, published: "2030-03-01T18:00"}
+  support:
+    - {for: a, title: "미르건설 파업 여파, 아라시 입주예정자들 날벼락", outlet: 머니투데이, published: "2030-03-01T19:00"}
+  event_a: E-s03
+  event_b: E-s03
+  same_issue: true
+  why: "같은 노조의 같은 파업"
+- id: s04
+  kind: 같은사건
+  names: [별솔게임즈, 윤새봄]
+  a: {title: "별솔게임즈 윤새봄 대표, 신작 출시 하루 만에 사과문", outlet: 매일경제, published: "2030-03-01T20:00"}
+  b: {title: "신작 서버 먹통에 별솔게임즈 윤새봄 대표 고개 숙여", outlet: 동아일보, published: "2030-03-01T21:00"}
+  support:
+    - {for: b, title: "윤새봄 별솔게임즈 대표 사과에도 이용자 환불 요구 빗발", outlet: 서울경제, published: "2030-03-01T21:30"}
+  event_a: E-s04
+  event_b: E-s04
+  same_issue: true
+  why: "같은 신작 접속 장애에 대한 같은 사과"
+- id: s05
+  kind: 같은사건
+  names: [온결모터스, 다솜시]
+  a: {title: "온결모터스, 전기차 화재 위험에 다솜시 공장 생산 중단", outlet: 연합뉴스, published: "2030-03-01T22:00"}
+  b: {title: "다솜시 공장 멈춘 온결모터스…전기차 리콜 7만대 규모", outlet: 한국경제, published: "2030-03-01T23:00"}
+  support:
+    - {for: a, title: "온결모터스 다솜시 공장 가동 멈춰…배터리 화재 원인 조사", outlet: SBS, published: "2030-03-01T23:30"}
+  event_a: E-s05
+  event_b: E-s05
+  same_issue: true
+  why: "같은 전기차 화재 위험으로 같은 공장이 멈춘 일"
+- id: s06
+  kind: 같은사건
+  names: [해람조선, 여울시]
+  a: {title: "해람조선, 여울시 조선소서 LNG선 4척 수주…1조 규모", outlet: 서울경제, published: "2030-03-02T10:30"}
+  b: {title: "여울시 조선소 일감 확보한 해람조선, LNG 운반선 연속 수주", outlet: 매일경제, published: "2030-03-02T11:30"}
+  support:
+    - {for: a, title: "해람조선 LNG선 수주 소식에 여울시 협력업체들 활기", outlet: 머니투데이, published: "2030-03-02T12:00"}
+  event_a: E-s06
+  event_b: E-s06
+  same_issue: true
+  why: "같은 조선사의 같은 수주"
+- id: s07
+  kind: 같은사건
+  names: [셀린식품, 시루군]
+  a: {title: "셀린식품 도시락 먹은 시루군 초등생 30여명 식중독 증세", outlet: 연합뉴스, published: "2030-03-02T13:00"}
+  b: {title: "시루군 학교 식중독 원인으로 셀린식품 납품 도시락 지목", outlet: 경향신문, published: "2030-03-02T15:00"}
+  support:
+    - {for: b, title: "셀린식품, 시루군 식중독 사태에 역학조사 적극 협조", outlet: SBS, published: "2030-03-02T16:00"}
+  event_a: E-s07
+  event_b: E-s07
+  same_issue: true
+  why: "같은 학교 식중독"
+- id: s08
+  kind: 같은사건
+  names: [하늬증권]
+  a: {title: "하늬증권 MTS 3시간 먹통…투자자 주문 못해 분통", outlet: 한국경제, published: "2030-03-02T17:00"}
+  b: {title: "하늬증권 MTS 3시간 먹통 보상 요구 빗발…금감원 점검", outlet: 조선일보, published: "2030-03-02T18:00"}
+  support:
+    - {for: a, title: "하늬증권 MTS 장애 피해 전액 보상하겠다", outlet: 머니투데이, published: "2030-03-02T18:30"}
+  event_a: E-s08
+  event_b: E-s08
+  same_issue: true
+  why: "같은 증권사 앱 장애"
+- id: s09
+  kind: 같은사건
+  names: [탄린중공업, 바름시]
+  a: {title: "바름시 탄린중공업 공장서 폭발 사고…근로자 2명 사망", outlet: 연합뉴스, published: "2030-03-02T19:00"}
+  b: {title: "탄린중공업 바름시 공장 폭발, 중대재해법 적용 검토", outlet: SBS, published: "2030-03-02T20:30"}
+  support:
+    - {for: b, title: "경찰, 탄린중공업 바름시 공장 폭발 경위 조사", outlet: 경향신문, published: "2030-03-02T21:00"}
+  event_a: E-s09
+  event_b: E-s09
+  same_issue: true
+  why: "같은 공장의 같은 폭발 사고"
+- id: s10
+  kind: 같은사건
+  names: [넥타에너지, 하랑군]
+  a: {title: "넥타에너지, 하랑군에 국내 최대 해상풍력 단지 조성", outlet: 서울경제, published: "2030-03-02T21:30"}
+  b: {title: "하랑군 앞바다 해상풍력 단지에 발전기 100기…넥타에너지 5조 시동", outlet: 동아일보, published: "2030-03-02T22:30"}
+  support:
+    - {for: a, title: "넥타에너지 하랑군 해상풍력, 어민 반발 넘을까", outlet: 매일경제, published: "2030-03-02T23:00"}
+  event_a: E-s10
+  event_b: E-s10
+  same_issue: true
+  why: "같은 풍력 단지 계획"
+- id: s11
+  kind: 같은사건
+  names: [큐빈카드, 금융감독원]
+  a: {title: "큐빈카드 고객 50만명 결제정보 해킹 피해…금감원 긴급 점검", outlet: 한국경제, published: "2030-03-03T09:30"}
+  b: {title: "금감원, 큐빈카드 해킹 사고 특별검사 착수", outlet: 연합뉴스, published: "2030-03-03T10:30"}
+  support:
+    - {for: a, title: "큐빈카드 해킹 피해 고객에 카드 무료 재발급…금감원 권고", outlet: 조선일보, published: "2030-03-03T11:00"}
+  event_a: E-s11
+  event_b: E-s11
+  same_issue: true
+  why: "같은 카드사 해킹"
+- id: s12
+  kind: 같은사건
+  names: [초롱엔터, 한여울]
+  a: {title: "초롱엔터 소속 가수 한여울, 전속계약 해지 소송 제기", outlet: SBS, published: "2030-03-03T12:00"}
+  b: {title: "가수 한여울, 초롱엔터 상대 소송…정산 갈등 법정으로", outlet: 경향신문, published: "2030-03-03T13:00"}
+  support:
+    - {for: b, title: "초롱엔터, 한여울 소송에 정산 갈등 주장 사실 아니라고 반박", outlet: 동아일보, published: "2030-03-03T13:30"}
+  event_a: E-s12
+  event_b: E-s12
+  same_issue: true
+  why: "같은 가수와 소속사의 같은 계약 분쟁"
+- id: s13
+  kind: 같은사건
+  names: [이음택배, 덴텍물류센터]
+  a: {title: "이음택배 덴텍물류센터 화재…수도권 택배 배송 차질", outlet: 연합뉴스, published: "2030-03-03T14:00"}
+  b: {title: "덴텍물류센터 불길 잡혔지만…이음택배 배송 정상화에 일주일", outlet: 머니투데이, published: "2030-03-03T15:30"}
+  support:
+    - {for: a, title: "이음택배 덴텍물류센터 화재 원인은 전기 합선 추정", outlet: 한국경제, published: "2030-03-03T16:00"}
+  event_a: E-s13
+  event_b: E-s13
+  same_issue: true
+  why: "같은 물류센터 화재"
+- id: s14
+  kind: 같은사건
+  names: [롬빈물산, 배아름]
+  a: {title: "롬빈물산 배아름 회장, 장남에 지분 전량 증여", outlet: 매일경제, published: "2030-03-03T17:00"}
+  b: {title: "배아름 회장 지분 증여로 롬빈물산 3세 경영 본격화", outlet: 서울경제, published: "2030-03-03T18:00"}
+  support:
+    - {for: a, title: "롬빈물산 경영권 승계 마무리…배아름 회장 2선 후퇴", outlet: 조선일보, published: "2030-03-03T18:30"}
+  event_a: E-s14
+  event_b: E-s14
+  same_issue: true
+  why: "같은 회장의 같은 지분 증여"
+- id: s15
+  kind: 같은사건
+  names: [라온바이오, 켐빈맵]
+  a: {title: "라온바이오 치매 신약 켐빈맵, 미국 FDA 승인 획득", outlet: 연합뉴스, published: "2030-03-03T19:00"}
+  b: {title: "FDA 문턱 넘은 라온바이오…켐빈맵 내년 미국 출시", outlet: 한국경제, published: "2030-03-03T20:00"}
+  support:
+    - {for: b, title: "라온바이오 상한가…켐빈맵 FDA 승인 효과", outlet: 매일경제, published: "2030-03-03T20:30"}
+  event_a: E-s15
+  event_b: E-s15
+  same_issue: true
+  why: "같은 신약의 같은 승인"
+
+# ── 같은 인물의 다른 사건 15 (같은 인물·회사 둘을 공유하되 사건 낱말이 다르고 1~3일 간격)
+- id: p01
+  kind: 같은인물다른사건
+  names: [새솔제약, 정다솔]
+  a: {title: "새솔제약 정다솔 대표, 탈모 신약 임상 3상 성공 발표", outlet: 연합뉴스, published: "2030-03-04T09:00"}
+  b: {title: "정다솔 새솔제약 대표, 회삿돈 횡령 혐의로 검찰 소환", outlet: 조선일보, published: "2030-03-06T10:00"}
+  support:
+    - {for: a, title: "새솔제약 정다솔 대표 탈모 신약 임상 성공에 주가 급등", outlet: 한국경제, published: "2030-03-04T10:00"}
+    - {for: b, title: "검찰, 새솔제약 정다솔 대표 횡령 혐의 수사 본격화", outlet: 경향신문, published: "2030-03-06T11:00"}
+  event_a: E-p01a
+  event_b: E-p01b
+  same_issue: false
+  why: "신약 임상 성공과 횡령 수사는 다른 사건"
+- id: p02
+  kind: 같은인물다른사건
+  names: [아름화학, 윤바름]
+  a: {title: "아름화학 윤바름 회장, 이차전지 소재 사업에 3조 베팅", outlet: 매일경제, published: "2030-03-04T11:00"}
+  b: {title: "윤바름 아름화학 회장, 골프장 갑질 혐의 경찰 조사", outlet: SBS, published: "2030-03-05T14:00"}
+  support:
+    - {for: a, title: "아름화학 윤바름 회장, 이차전지 소재 세계 1위 목표", outlet: 서울경제, published: "2030-03-04T12:00"}
+    - {for: b, title: "경찰, 아름화학 윤바름 회장 갑질 혐의 입건", outlet: 동아일보, published: "2030-03-05T15:00"}
+  event_a: E-p02a
+  event_b: E-p02b
+  same_issue: false
+  why: "소재 투자와 갑질 수사는 다른 사건"
+- id: p03
+  kind: 같은인물다른사건
+  names: [칼론FC, 진솔빛]
+  a: {title: "칼론FC 진솔빛 감독, 리그 개막전 3대0 완승", outlet: SBS, published: "2030-03-04T21:00"}
+  b: {title: "칼론FC 진솔빛 감독, 심판 폭언으로 5경기 출장정지", outlet: 조선일보, published: "2030-03-07T10:00"}
+  support:
+    - {for: a, title: "진솔빛 감독 데뷔전 승리…칼론FC 개막전 완승", outlet: 경향신문, published: "2030-03-04T22:00"}
+    - {for: b, title: "진솔빛 칼론FC 감독 출장정지 징계에 구단 재심 청구", outlet: 연합뉴스, published: "2030-03-07T11:00"}
+  event_a: E-p03a
+  event_b: E-p03b
+  same_issue: false
+  why: "개막전 승리와 징계는 다른 사건"
+- id: p04
+  kind: 같은인물다른사건
+  names: [늘봄전자, 류하늬]
+  a: {title: "늘봄전자 류하늬 사장, 접는 스마트폰 폴드원 공개", outlet: 한국경제, published: "2030-03-05T09:00"}
+  b: {title: "늘봄전자 류하늬 사장 전격 사임…이사회 갈등설", outlet: 연합뉴스, published: "2030-03-07T15:00"}
+  support:
+    - {for: a, title: "류하늬 늘봄전자 사장, 폴드원으로 점유율 2배 자신", outlet: 매일경제, published: "2030-03-05T10:00"}
+    - {for: b, title: "류하늬 사장 물러난 늘봄전자, 후임 인선 착수", outlet: 머니투데이, published: "2030-03-07T16:00"}
+  event_a: E-p04a
+  event_b: E-p04b
+  same_issue: false
+  why: "신제품 공개와 사임은 다른 사건"
+- id: p05
+  kind: 같은인물다른사건
+  names: [젠타은행, 남궁별]
+  a: {title: "젠타은행 남궁별 행장, 연 7% 청년 적금 출시", outlet: 서울경제, published: "2030-03-05T10:00"}
+  b: {title: "젠타은행 남궁별 행장, 금감원 중징계 통보 받아", outlet: 한국경제, published: "2030-03-08T09:00"}
+  support:
+    - {for: a, title: "남궁별 젠타은행 행장, 청년 적금으로 고객 100만 확보", outlet: 동아일보, published: "2030-03-05T11:00"}
+    - {for: b, title: "금감원, 젠타은행 남궁별 행장에 문책경고", outlet: 조선일보, published: "2030-03-08T10:00"}
+  event_a: E-p05a
+  event_b: E-p05b
+  same_issue: false
+  why: "적금 출시와 징계는 다른 사건"
+- id: p06
+  kind: 같은인물다른사건
+  names: [셀루엔터, 차세빛]
+  a: {title: "배우 차세빛, 셀루엔터와 재계약…드라마 봄길 주연", outlet: SBS, published: "2030-03-05T13:00"}
+  b: {title: "차세빛 음주운전 적발…셀루엔터 깊이 반성", outlet: 경향신문, published: "2030-03-06T16:00"}
+  support:
+    - {for: a, title: "셀루엔터, 차세빛과 재계약 체결", outlet: 동아일보, published: "2030-03-05T14:00"}
+    - {for: b, title: "셀루엔터 소속 차세빛 음주운전, 드라마 하차 수순", outlet: 연합뉴스, published: "2030-03-06T17:00"}
+  event_a: E-p06a
+  event_b: E-p06b
+  same_issue: false
+  why: "재계약과 음주운전은 다른 사건"
+- id: p07
+  kind: 같은인물다른사건
+  names: [톤곡건설, 도담시]
+  a: {title: "톤곡건설, 도담시 재개발 시공권 따내…1조 수주", outlet: 머니투데이, published: "2030-03-04T14:00"}
+  b: {title: "도담시 톤곡건설 현장서 타워크레인 붕괴…작업자 부상", outlet: 연합뉴스, published: "2030-03-06T09:00"}
+  support:
+    - {for: a, title: "도담시 재개발 최대어, 톤곡건설 품에", outlet: 매일경제, published: "2030-03-04T15:00"}
+    - {for: b, title: "톤곡건설 도담시 현장 크레인 붕괴, 경찰 수사", outlet: SBS, published: "2030-03-06T10:00"}
+  event_a: E-p07a
+  event_b: E-p07b
+  same_issue: false
+  why: "시공권 수주와 크레인 사고는 다른 사건"
+- id: p08
+  kind: 같은인물다른사건
+  names: [소담유통, 윤곡시]
+  a: {title: "소담유통, 윤곡시에 초대형 복합쇼핑몰 개장", outlet: 서울경제, published: "2030-03-05T11:00"}
+  b: {title: "소담유통 윤곡시 매장, 납품업체 대금 미지급", outlet: 경향신문, published: "2030-03-07T13:00"}
+  support:
+    - {for: a, title: "윤곡시 복합쇼핑몰 개장 첫날 소담유통에 10만명 몰려", outlet: 한국경제, published: "2030-03-05T12:00"}
+    - {for: b, title: "공정위, 소담유통 윤곡시 매장 납품 대금 미지급 조사", outlet: 동아일보, published: "2030-03-07T14:00"}
+  event_a: E-p08a
+  event_b: E-p08b
+  same_issue: false
+  why: "쇼핑몰 개장과 대금 미지급은 다른 사건"
+- id: p09
+  kind: 같은인물다른사건
+  names: [단샘제과, 담곡시]
+  a: {title: "단샘제과 담곡시 공장 증설…과자 수출 늘린다", outlet: 매일경제, published: "2030-03-04T16:00"}
+  b: {title: "단샘제과 담곡시 공장서 노동자 끼임 사고", outlet: SBS, published: "2030-03-05T17:00"}
+  support:
+    - {for: a, title: "담곡시에 단샘제과 제2공장…일자리 500개", outlet: 서울경제, published: "2030-03-04T17:00"}
+    - {for: b, title: "고용부, 단샘제과 담곡시 공장 작업중지 명령", outlet: 연합뉴스, published: "2030-03-05T18:00"}
+  event_a: E-p09a
+  event_b: E-p09b
+  same_issue: false
+  why: "공장 증설과 끼임 사고는 다른 사건"
+- id: p10
+  kind: 같은인물다른사건
+  names: [보람항공, 서다온]
+  a: {title: "보람항공 서다온 사장, 중동 노선 신규 취항 발표", outlet: 한국경제, published: "2030-03-06T10:00"}
+  b: {title: "보람항공 서다온 사장, 조종사 노조와 임금 협상 결렬", outlet: 조선일보, published: "2030-03-08T11:00"}
+  support:
+    - {for: a, title: "서다온 보람항공 사장, 중동 하늘길 연다", outlet: 머니투데이, published: "2030-03-06T11:00"}
+    - {for: b, title: "보람항공 조종사 노조, 서다온 사장 퇴진 요구", outlet: 경향신문, published: "2030-03-08T12:00"}
+  event_a: E-p10a
+  event_b: E-p10b
+  same_issue: false
+  why: "노선 취항과 임금 협상 결렬은 다른 사건"
+- id: p11
+  kind: 같은인물다른사건
+  names: [한울소프트, 이솔찬]
+  a: {title: "한울소프트 이솔찬 대표, AI 비서 한울봇 출시", outlet: 서울경제, published: "2030-03-06T13:00"}
+  b: {title: "한울소프트 이솔찬 대표, 스톡옵션 대량 매도에 주주 반발", outlet: 연합뉴스, published: "2030-03-08T15:00"}
+  support:
+    - {for: a, title: "이솔찬 한울소프트 대표, 한울봇 월 구독 9천원", outlet: 한국경제, published: "2030-03-06T14:00"}
+    - {for: b, title: "이솔찬 대표 지분 매도…한울소프트 주가 급락", outlet: 매일경제, published: "2030-03-08T16:00"}
+  event_a: E-p11a
+  event_b: E-p11b
+  same_issue: false
+  why: "제품 출시와 지분 매도는 다른 사건"
+- id: p12
+  kind: 같은인물다른사건
+  names: [벨론호텔, 윤가온]
+  a: {title: "벨론호텔 윤가온 사장, 외국인 관광객 겨냥 새 브랜드 출범", outlet: 매일경제, published: "2030-03-05T15:00"}
+  b: {title: "벨론호텔 윤가온 사장, 객실 몰카 사건에 공식 사과", outlet: SBS, published: "2030-03-07T16:00"}
+  support:
+    - {for: a, title: "윤가온 벨론호텔 사장, 새 브랜드로 해외 공략", outlet: 서울경제, published: "2030-03-05T16:00"}
+    - {for: b, title: "경찰, 벨론호텔 객실 몰카 수사…윤가온 사장 사과", outlet: 조선일보, published: "2030-03-07T17:00"}
+  event_a: E-p12a
+  event_b: E-p12b
+  same_issue: false
+  why: "브랜드 출범과 몰카 사건은 다른 사건"
+- id: p13
+  kind: 같은인물다른사건
+  names: [퀼텍자동차, 백도윤]
+  a: {title: "퀼텍자동차 백도윤 사장, 수소트럭 양산 계획 발표", outlet: 연합뉴스, published: "2030-03-06T08:00"}
+  b: {title: "퀼텍자동차 백도윤 사장, 하청업체 기술 탈취 혐의로 피소", outlet: 머니투데이, published: "2030-03-08T08:00"}
+  support:
+    - {for: a, title: "백도윤 퀼텍자동차 사장, 수소트럭 연 1만대", outlet: 한국경제, published: "2030-03-06T09:00"}
+    - {for: b, title: "퀼텍자동차 하청 기술 탈취 혐의…백도윤 사장 사실무근", outlet: 경향신문, published: "2030-03-08T09:00"}
+  event_a: E-p13a
+  event_b: E-p13b
+  same_issue: false
+  why: "양산 계획과 기술 탈취 소송은 다른 사건"
+- id: p14
+  kind: 같은인물다른사건
+  names: [한솔대, 진아람]
+  a: {title: "한솔대 진아람 총장, 등록금 동결 선언", outlet: 동아일보, published: "2030-03-05T08:00"}
+  b: {title: "한솔대 진아람 총장, 논문 표절 의혹에 사퇴 압박", outlet: SBS, published: "2030-03-06T15:00"}
+  support:
+    - {for: a, title: "진아람 한솔대 총장, 올해 등록금 올리지 않겠다", outlet: 연합뉴스, published: "2030-03-05T09:00"}
+    - {for: b, title: "한솔대 교수회, 진아람 총장 표절 조사하라", outlet: 경향신문, published: "2030-03-06T16:00"}
+  event_a: E-p14a
+  event_b: E-p14b
+  same_issue: false
+  why: "등록금 동결과 표절 의혹은 다른 사건"
+- id: p15
+  kind: 같은인물다른사건
+  names: [해솔커피, 주보람]
+  a: {title: "해솔커피 주보람 대표, 미국 1호 매장 개점", outlet: 매일경제, published: "2030-03-07T09:00"}
+  b: {title: "해솔커피 주보람 대표, 가맹점주 상대 갑질 혐의", outlet: SBS, published: "2030-03-09T10:00"}
+  support:
+    - {for: a, title: "주보람 해솔커피 대표, 미국서 100호점 목표", outlet: 서울경제, published: "2030-03-07T10:00"}
+    - {for: b, title: "해솔커피 가맹점주들, 주보람 대표 사과하라", outlet: 동아일보, published: "2030-03-09T11:00"}
+  event_a: E-p15a
+  event_b: E-p15b
+  same_issue: false
+  why: "해외 매장 개점과 가맹점 갑질은 다른 사건"
+
+# ── 전재 10 (제목 같음 5, 한자 약칭만 다름 2, 요약만 같음 3)
+- id: c01
+  kind: 전재
+  names: [가비은행]
+  a: {title: "[속보] 가비은행 PF 대출 부실 2천억 공시", outlet: 연합뉴스, published: "2030-03-09T10:00"}
+  b: {title: "[속보] 가비은행 PF 대출 부실 2천억 공시", outlet: 한국경제, published: "2030-03-09T10:04"}
+  support:
+    - {for: a, title: "가비은행 2천억 PF 대출 부실 공시…건전성 걱정 커져", outlet: 조선일보, published: "2030-03-09T11:00"}
+  event_a: E-c01
+  event_b: E-c01
+  same_issue: true
+  same_copy_group: true
+  why: "속보 제목을 그대로 옮겨 실었다"
+- id: c02
+  kind: 전재
+  names: [렉사조선]
+  a: {title: "렉사조선, 하청노조 파업으로 진수 일정 연기", outlet: 연합뉴스, published: "2030-03-09T12:00"}
+  b: {title: "렉사조선, 하청노조 파업으로 진수 일정 연기", outlet: 매일경제, published: "2030-03-09T12:30"}
+  support:
+    - {for: a, title: "렉사조선 하청노조 파업 길어져 진수 일정 또 밀릴 듯", outlet: 경향신문, published: "2030-03-09T13:30"}
+  event_a: E-c02
+  event_b: E-c02
+  same_issue: true
+  same_copy_group: true
+  why: "통신 기사를 제목 그대로 실었다"
+- id: c03
+  kind: 전재
+  names: [쿤사시, 큰솔화학]
+  a: {title: "[속보] 쿤사시 큰솔화학 공장서 유독가스 누출…주민 대피령", outlet: 연합뉴스, published: "2030-03-09T14:00"}
+  b: {title: "[속보] 쿤사시 큰솔화학 공장서 유독가스 누출…주민 대피령", outlet: SBS, published: "2030-03-09T14:02"}
+  support:
+    - {for: a, title: "큰솔화학 쿤사시 공장 유독가스 누출 원인은 밸브 파손", outlet: 동아일보, published: "2030-03-09T16:00"}
+  event_a: E-c03
+  event_b: E-c03
+  same_issue: true
+  same_copy_group: true
+  why: "속보 제목을 그대로 옮겨 실었다"
+- id: c04
+  kind: 전재
+  names: [다래통신]
+  a: {title: "다래통신, 5G 요금 월 1만원 인하", outlet: 연합뉴스, published: "2030-03-09T16:00"}
+  b: {title: "다래통신, 5G 요금 월 1만원 인하", outlet: 서울경제, published: "2030-03-09T16:20"}
+  support:
+    - {for: a, title: "다래통신 5G 요금 월 1만원 인하에 경쟁 통신사도 눈치", outlet: 머니투데이, published: "2030-03-09T17:00"}
+  event_a: E-c04
+  event_b: E-c04
+  same_issue: true
+  same_copy_group: true
+  why: "통신 기사를 제목 그대로 실었다"
+- id: c05
+  kind: 전재
+  names: [별하증권, 문태오]
+  a: {title: "[속보] 검찰, 별하증권 문태오 대표 구속영장 청구", outlet: 연합뉴스, published: "2030-03-09T18:00"}
+  b: {title: "[속보] 검찰, 별하증권 문태오 대표 구속영장 청구", outlet: 한국경제, published: "2030-03-09T18:03"}
+  support:
+    - {for: a, title: "별하증권 문태오 대표 시세조종 혐의 영장 심사 내일", outlet: 조선일보, published: "2030-03-09T19:00"}
+  event_a: E-c05
+  event_b: E-c05
+  same_issue: true
+  same_copy_group: true
+  why: "속보 제목을 그대로 옮겨 실었다"
+- id: c06
+  kind: 전재
+  names: [솔라웨이브, 연지시]
+  a: {title: "美 솔라웨이브, 연지시 반도체 공장 건설 철회", outlet: 연합뉴스, published: "2030-03-10T08:00",
+      summary: "(서울=연합뉴스) 김가상 기자 = 미국 반도체 기업 솔라웨이브가 연지시에 짓기로 했던 반도체 공장 건설 계획을 철회한다고 10일 밝혔다. 회사는 수요 둔화를 이유로 들었다."}
+  b: {title: "미국 솔라웨이브, 연지시 반도체 공장 건설 철회", outlet: SBS, published: "2030-03-10T08:40",
+      summary: "미국 반도체 기업 솔라웨이브가 연지시에 짓기로 했던 반도체 공장 건설 계획을 철회한다고 10일 밝혔습니다. 회사는 수요 둔화를 이유로 들었습니다."}
+  support:
+    - {for: a, title: "솔라웨이브 연지시 공장 철회에 지역 경제 비상", outlet: 매일경제, published: "2030-03-10T10:00"}
+  event_a: E-c06
+  event_b: E-c06
+  same_issue: true
+  same_copy_group: true
+  why: "한자 약칭만 풀어 쓴 통신 기사 전재"
+- id: c07
+  kind: 전재
+  names: [룽하이그룹, 하람항]
+  a: {title: "中 룽하이그룹, 하람항 터미널 지분 인수", outlet: 연합뉴스, published: "2030-03-10T09:00",
+      summary: "(베이징=연합뉴스) 박가상 특파원 = 중국 룽하이그룹이 하람항 컨테이너 터미널 지분 40%를 인수하기로 했다고 10일 발표했다. 인수 금액은 공개하지 않았다."}
+  b: {title: "중국 룽하이그룹, 하람항 터미널 지분 인수", outlet: SBS, published: "2030-03-10T09:30",
+      summary: "중국 룽하이그룹이 하람항 컨테이너 터미널 지분 40%를 인수하기로 했다고 10일 발표했습니다. 인수 금액은 공개하지 않았습니다."}
+  support:
+    - {for: a, title: "룽하이그룹 하람항 터미널 인수…물류 안보 걱정", outlet: 한국경제, published: "2030-03-10T11:00"}
+  event_a: E-c07
+  event_b: E-c07
+  same_issue: true
+  same_copy_group: true
+  why: "한자 약칭만 풀어 쓴 통신 기사 전재"
+- id: c08
+  kind: 전재
+  names: [넥론전자, 하솔공장]
+  a: {title: "넥론전자, 하솔공장 감산 여파로 1분기 3천억 적자", outlet: 연합뉴스, published: "2030-03-10T11:00",
+      summary: "(서울=연합뉴스) 최가상 기자 = 넥론전자가 올해 1분기 영업손실 3천억원을 기록하며 적자로 돌아섰다. 넥론전자는 하솔공장 감산에 따른 재고 평가손실이 반영됐다고 10일 공시했다."}
+  b: {title: "넥론전자 1분기 3천억원 적자…하솔공장 감산 영향", outlet: SBS, published: "2030-03-10T12:10",
+      summary: "넥론전자가 올해 1분기 영업손실 3천억원을 기록하며 적자로 돌아섰습니다. 넥론전자는 하솔공장 감산에 따른 재고 평가손실이 반영됐다고 10일 공시했습니다."}
+  support:
+    - {for: a, title: "하솔공장 멈춘 넥론전자, 2분기도 적자 걱정", outlet: 매일경제, published: "2030-03-10T13:00"}
+  event_a: E-c08
+  event_b: E-c08
+  same_issue: true
+  same_copy_group: true
+  why: "제목만 고쳐 쓰고 요약은 같은 통신 기사 전재"
+- id: c09
+  kind: 전재
+  names: [모아페이, 은하뱅크]
+  a: {title: "모아페이, 은하뱅크와 손잡고 해외 간편결제 출시", outlet: 연합뉴스, published: "2030-03-10T14:00",
+      summary: "(서울=연합뉴스) 정가상 기자 = 모아페이는 은하뱅크와 제휴해 해외 30개국에서 쓸 수 있는 간편결제 서비스를 출시한다고 10일 밝혔다. 이용자는 별도 환전 없이 현지 가맹점에서 결제할 수 있다."}
+  b: {title: "은하뱅크·모아페이 해외 간편결제 서비스 공동 출시", outlet: 머니투데이, published: "2030-03-10T15:00",
+      summary: "모아페이는 은하뱅크와 제휴해 해외 30개국에서 쓸 수 있는 간편결제 서비스를 출시한다고 10일 밝혔다. 이용자는 별도 환전 없이 현지 가맹점에서 결제할 수 있다."}
+  support:
+    - {for: a, title: "은하뱅크 모아페이 제휴…해외 결제 시장 공략", outlet: 서울경제, published: "2030-03-10T16:00"}
+  event_a: E-c09
+  event_b: E-c09
+  same_issue: true
+  same_copy_group: true
+  why: "보도자료를 제목만 바꿔 옮겨 쓴 기사"
+- id: c10
+  kind: 전재
+  names: [그린솔, 덴진시]
+  a: {title: "그린솔, 덴진시 수소충전소 20곳 구축 협약", outlet: 연합뉴스, published: "2030-03-10T17:00",
+      summary: "(봄들=연합뉴스) 한가상 기자 = 수소 기업 그린솔은 덴진시와 수소충전소 20곳을 구축하는 협약을 맺었다고 10일 밝혔다. 충전소는 2031년까지 차례로 문을 연다."}
+  b: {title: "덴진시에 수소충전소 20곳…그린솔과 구축 협약 체결", outlet: SBS, published: "2030-03-10T18:00",
+      summary: "수소 기업 그린솔은 덴진시와 수소충전소 20곳을 구축하는 협약을 맺었다고 10일 밝혔습니다. 충전소는 2031년까지 차례로 문을 엽니다."}
+  support:
+    - {for: a, title: "그린솔 덴진시 수소충전소 구축, 2031년 완공", outlet: 경향신문, published: "2030-03-10T19:00"}
+  event_a: E-c10
+  event_b: E-c10
+  same_issue: true
+  same_copy_group: true
+  why: "제목만 고쳐 쓰고 요약은 같은 통신 기사 전재"
+
+# ── 후속 사건 10 (다음 날, 고유명사 둘과 사건 낱말 하나 공유, 제목 유사도 0.3 미만)
+- id: f01
+  kind: 후속
+  names: [덴포시, 켐텍화학]
+  a: {title: "덴포시 켐텍화학 공장 화재…연기 확산에 주민 대피", outlet: 연합뉴스, published: "2030-03-10T09:00"}
+  b: {title: "켐텍화학 사장 직접 사과문 발표…화재 피해 가구에 위로금 지급하고 덴포시와 복구 협의", outlet: 한국경제, published: "2030-03-11T10:00"}
+  support:
+    - {for: a, title: "켐텍화학 덴포시 공장 화재 진화 중…인명 피해 없어", outlet: SBS, published: "2030-03-10T10:00"}
+    - {for: b, title: "덴포시, 켐텍화학 화재 피해 주민 지원센터 운영", outlet: 동아일보, published: "2030-03-11T11:00"}
+  event_a: E-f01
+  event_b: E-f01
+  same_issue: true
+  why: "화재 다음 날의 보상 약속은 같은 이슈의 후속"
+- id: f02
+  kind: 후속
+  names: [단꿈제약, 단꿈콜드]
+  a: {title: "단꿈제약 감기약 단꿈콜드서 발암물질 검출", outlet: 연합뉴스, published: "2030-03-10T12:00"}
+  b: {title: "식약처 회수 명령 하루 만에 단꿈콜드 약국서 사라져…단꿈제약 검출 사과문 내고 환불 시작", outlet: SBS, published: "2030-03-11T13:00"}
+  support:
+    - {for: a, title: "식약처, 단꿈제약 단꿈콜드 발암물질 검출 확인", outlet: 경향신문, published: "2030-03-10T13:00"}
+    - {for: b, title: "단꿈콜드 약국서 사라진 첫날 혼선…단꿈제약 환불 콜센터 마비", outlet: 머니투데이, published: "2030-03-11T14:00"}
+  event_a: E-f02
+  event_b: E-f02
+  same_issue: true
+  why: "발암물질 검출 다음 날의 회수는 같은 이슈의 후속"
+- id: f03
+  kind: 후속
+  names: [셀텍항공, 단솔공항]
+  a: {title: "셀텍항공 엔진 결함으로 단솔공항 여객기 20편 결항", outlet: 한국경제, published: "2030-03-10T15:00"}
+  b: {title: "국토부 특별감사팀 셀텍항공 정비 기록 전수 조사…단솔공항 결항 책임 묻는다", outlet: 조선일보, published: "2030-03-11T09:00"}
+  support:
+    - {for: a, title: "단솔공항 셀텍항공 무더기 결항에 승객 발 묶여", outlet: 연합뉴스, published: "2030-03-10T16:00"}
+    - {for: b, title: "셀텍항공 특별감사 착수, 단솔공항 운항은 정상화", outlet: 서울경제, published: "2030-03-11T10:00"}
+  event_a: E-f03
+  event_b: E-f03
+  same_issue: true
+  why: "결항 다음 날의 정부 감사는 같은 이슈의 후속"
+- id: f04
+  kind: 후속
+  names: [큐린은행, 다올지점]
+  a: {title: "큐린은행 직원 600억 횡령…다올지점서 10년간", outlet: 연합뉴스, published: "2030-03-11T09:00"}
+  b: {title: "다올지점 600억 횡령 책임지고 큐린은행 행장 사퇴", outlet: 매일경제, published: "2030-03-12T10:00"}
+  support:
+    - {for: a, title: "큐린은행 다올지점 600억 횡령, 내부통제 구멍", outlet: 한국경제, published: "2030-03-11T10:00"}
+    - {for: b, title: "다올지점 횡령에 큐린은행 경영진 줄사퇴", outlet: 경향신문, published: "2030-03-12T11:00"}
+  event_a: E-f04
+  event_b: E-f04
+  same_issue: true
+  why: "횡령 다음 날 그 횡령의 책임을 지고 한 행장 사퇴는 같은 이슈의 후속(확신 중간 — 사퇴를 따로 인사 이슈로 볼 사람이 있다. 2026-11-14 검토로 b 제목을 사건 하나로 줄였다)"
+- id: f05
+  kind: 후속
+  names: [산들게임즈, 젠론워즈]
+  a: {title: "산들게임즈 젠론워즈 아이템 확률 조작 드러나", outlet: 서울경제, published: "2030-03-11T12:00"}
+  b: {title: "공정위, 젠론워즈 확률 조작 산들게임즈에 과징금 100억", outlet: 연합뉴스, published: "2030-03-12T14:00"}
+  support:
+    - {for: a, title: "젠론워즈 확률 조작 파문…산들게임즈 이용자 집단 반발", outlet: 한국경제, published: "2030-03-11T13:00"}
+    - {for: b, title: "산들게임즈 과징금 100억, 젠론워즈 이용자 보상 시작", outlet: SBS, published: "2030-03-12T15:00"}
+  event_a: E-f05
+  event_b: E-f05
+  same_issue: true
+  why: "확률 조작 다음 날 그 조작에 내린 제재는 같은 이슈의 후속(확신 중간. 2026-11-14 검토로 b 제목을 사건 하나로 줄였다)"
+- id: f06
+  kind: 후속
+  names: [벨빈시, 소롱댐]
+  a: {title: "벨빈시 소롱댐 균열 발견…하류 마을 긴급 대피", outlet: 연합뉴스, published: "2030-03-11T15:00"}
+  b: {title: "소롱댐 보수 공사 착수한 벨빈시, 균열 원인 정밀 조사", outlet: 동아일보, published: "2030-03-12T09:00"}
+  support:
+    - {for: a, title: "소롱댐 균열에 벨빈시 하류 주민 3천명 대피", outlet: SBS, published: "2030-03-11T16:00"}
+    - {for: b, title: "벨빈시 소롱댐 보수에 6개월…주민 귀가는 언제", outlet: 경향신문, published: "2030-03-12T10:00"}
+  event_a: E-f06
+  event_b: E-f06
+  same_issue: true
+  why: "댐 균열 다음 날의 보수 공사는 같은 이슈의 후속"
+- id: f07
+  kind: 후속
+  names: [퀼린모바일, 퀼린X]
+  a: {title: "퀼린모바일 새 스마트폰 퀼린X 배터리 발화 잇따라", outlet: 한국경제, published: "2030-03-12T09:00"}
+  b: {title: "퀼린모바일 결국 퀼린X 120만대 전량 리콜…새 배터리로 무상 교체해 준다", outlet: 매일경제, published: "2030-03-13T10:00"}
+  support:
+    - {for: a, title: "퀼린X 충전 중 발화 신고 30건…퀼린모바일 배터리 조사", outlet: 연합뉴스, published: "2030-03-12T10:00"}
+    - {for: b, title: "퀼린모바일 퀼린X 전량 리콜 비용 5천억…판매도 중단", outlet: 서울경제, published: "2030-03-13T11:00"}
+  event_a: E-f07
+  event_b: E-f07
+  same_issue: true
+  why: "발화 다음 날의 리콜은 같은 이슈의 후속"
+- id: f08
+  kind: 후속
+  names: [롬텍시, 칼벤버스]
+  a: {title: "롬텍시 칼벤버스 노조 파업…출근길 교통대란", outlet: 연합뉴스, published: "2030-03-12T07:00"}
+  b: {title: "칼벤버스 노사 극적 타결로 롬텍시 시내버스 내일 아침부터 정상 운행…파업 하루 만에 일단락", outlet: SBS, published: "2030-03-13T08:00"}
+  support:
+    - {for: a, title: "칼벤버스 파업에 롬텍시 시내버스 70% 멈춰", outlet: 경향신문, published: "2030-03-12T08:00"}
+    - {for: b, title: "칼벤버스 노사 타결로 롬텍시 시내버스 정상 운행…임금 5% 인상", outlet: 동아일보, published: "2030-03-13T09:00"}
+  event_a: E-f08
+  event_b: E-f08
+  same_issue: true
+  why: "파업 다음 날의 타결은 같은 이슈의 후속"
+- id: f09
+  kind: 후속
+  names: [쿤린시, 덴린병원]
+  a: {title: "쿤린시 덴린병원서 수술 중 환자 사망…유족 마취 과실 주장", outlet: SBS, published: "2030-03-12T11:00"}
+  b: {title: "쿤린시 보건소 직원 10명 투입해 덴린병원 마취 장비와 의료진 자격 일제 점검", outlet: 경향신문, published: "2030-03-13T12:00"}
+  support:
+    - {for: a, title: "덴린병원 쿤린시 수술 사망 사고, 경찰 수사 착수", outlet: 연합뉴스, published: "2030-03-12T12:00"}
+    - {for: b, title: "덴린병원 마취의 자격 논란…쿤린시 점검 결과 주목", outlet: 동아일보, published: "2030-03-13T13:00"}
+  event_a: E-f09
+  event_b: E-f09
+  same_issue: true
+  why: "수술 사망 다음 날의 보건소 점검은 같은 이슈의 후속"
+- id: f10
+  kind: 후속
+  names: [다움전자, 다움홈캠]
+  a: {title: "다움전자 다움홈캠 해킹돼 가정 영상 유출", outlet: 머니투데이, published: "2030-03-12T14:00"}
+  b: {title: "개인정보위, 다움전자 상대로 홈카메라 해킹 경위 조사 착수…다움홈캠 판매도 중단", outlet: 연합뉴스, published: "2030-03-13T15:00"}
+  support:
+    - {for: a, title: "다움홈캠 해킹 영상 유출 피해 신고 잇따라…다움전자 사과", outlet: 한국경제, published: "2030-03-12T15:00"}
+    - {for: b, title: "다움전자 다움홈캠 판매 중단, 보안 업데이트 배포", outlet: 서울경제, published: "2030-03-13T16:00"}
+  event_a: E-f10
+  event_b: E-f10
+  same_issue: true
+  why: "해킹 다음 날의 당국 조사는 같은 이슈의 후속"
+
+# ── 이름이 같은 다른 사람 5 (같은 이름, 다른 소속·분야)
+- id: n01
+  kind: 동명이인
+  names: [김하람]
+  a: {title: "김하람 해밀시장, 시청사 이전 계획 발표", outlet: 연합뉴스, published: "2030-03-11T10:00"}
+  b: {title: "배우 김하람, 새 드라마 바람길 주연 확정", outlet: SBS, published: "2030-03-12T15:00"}
+  support:
+    - {for: a, title: "김하람 해밀시장, 구도심 살리려 시청사 옮긴다", outlet: 경향신문, published: "2030-03-11T11:00"}
+    - {for: b, title: "드라마 바람길 주연 김하람, 올여름 방영", outlet: 동아일보, published: "2030-03-12T16:00"}
+  event_a: E-n01a
+  event_b: E-n01b
+  same_issue: false
+  why: "시장과 배우는 이름만 같은 다른 사람"
+- id: n02
+  kind: 동명이인
+  names: [박온유, 뷰렌대, 벨텍시청]
+  a: {title: "박온유 교수 연구팀, 뷰렌대서 초전도체 신소재 개발", outlet: 동아일보, published: "2030-03-11T13:00"}
+  b: {title: "박온유 선수, 벨텍시청 소속 첫 국가대표 발탁", outlet: 조선일보, published: "2030-03-11T17:00"}
+  support:
+    - {for: a, title: "뷰렌대 박온유 교수, 상온 초전도 신소재 논문 발표", outlet: 한국경제, published: "2030-03-11T14:00"}
+    - {for: b, title: "벨텍시청 박온유, 육상 국가대표 됐다", outlet: SBS, published: "2030-03-11T18:00"}
+  event_a: E-n02a
+  event_b: E-n02b
+  same_issue: false
+  why: "교수와 운동선수는 이름만 같은 다른 사람"
+- id: n03
+  kind: 동명이인
+  names: [탁윤빈]
+  a: {title: "탁윤빈 다향군수, 지역 축제 예산 절반 삭감", outlet: 경향신문, published: "2030-03-12T09:00"}
+  b: {title: "가수 탁윤빈, 정규 3집 파도 발매", outlet: SBS, published: "2030-03-13T11:00"}
+  support:
+    - {for: a, title: "탁윤빈 다향군수, 축제 예산 삭감에 상인 반발…재정난 탓", outlet: 연합뉴스, published: "2030-03-12T10:00"}
+    - {for: b, title: "가수 탁윤빈 정규 3집 파도, 음원 차트 1위", outlet: 동아일보, published: "2030-03-13T12:00"}
+  event_a: E-n03a
+  event_b: E-n03b
+  same_issue: false
+  why: "군수와 가수는 이름만 같은 다른 사람"
+- id: n04
+  kind: 동명이인
+  names: [정해솔, 한누리증권]
+  a: {title: "정해솔 한누리증권 애널리스트, 코스피 상반기 3300 전망", outlet: 한국경제, published: "2030-03-12T13:00"}
+  b: {title: "정해솔 셰프, 요리 경연 맛의전쟁 우승", outlet: SBS, published: "2030-03-12T20:00"}
+  support:
+    - {for: a, title: "한누리증권 정해솔, 상반기 반도체 비중 확대 권고", outlet: 매일경제, published: "2030-03-12T14:00"}
+    - {for: b, title: "맛의전쟁 우승 정해솔 셰프, 상금 1억 기부", outlet: 경향신문, published: "2030-03-12T21:00"}
+  event_a: E-n04a
+  event_b: E-n04b
+  same_issue: false
+  why: "애널리스트와 요리사는 이름만 같은 다른 사람"
+- id: n05
+  kind: 동명이인
+  names: [오가람, 솔곡시]
+  a: {title: "오가람 소방관, 솔곡시 화재 현장서 아이 3명 구조", outlet: 연합뉴스, published: "2030-03-13T09:00"}
+  b: {title: "오가람 감독 영화 먼바다, 칸 영화제 초청", outlet: 조선일보, published: "2030-03-13T19:00"}
+  support:
+    - {for: a, title: "솔곡시 화재 속 아이 셋 구한 오가람 소방관 표창", outlet: SBS, published: "2030-03-13T10:00"}
+    - {for: b, title: "오가람 감독 영화 먼바다, 칸 경쟁 부문 첫 진출", outlet: 동아일보, published: "2030-03-13T20:00"}
+  event_a: E-n05a
+  event_b: E-n05b
+  same_issue: false
+  why: "소방관과 영화감독은 이름만 같은 다른 사람"
+
+# ── 식었다가 다시 오른 사건 5 (5~10일 간격)
+- id: r01
+  kind: 재상승
+  names: [가온통신, 하늘넷]
+  a: {title: "가온통신 하늘넷 고객 2천만명 개인정보 유출", outlet: 연합뉴스, published: "2030-03-02T09:00"}
+  b: {title: "가온통신 하늘넷 개인정보 유출 피해자 5만명 집단소송", outlet: 한국경제, published: "2030-03-09T10:00"}
+  support:
+    - {for: a, title: "하늘넷 개인정보 유출 2천만명, 가온통신 사상 최대 규모", outlet: 조선일보, published: "2030-03-02T10:00"}
+    - {for: b, title: "가온통신 하늘넷 유출 집단소송…피해자 1인당 30만원 청구", outlet: 경향신문, published: "2030-03-09T11:00"}
+  event_a: E-r01
+  event_b: E-r01
+  same_issue: true
+  why: "일주일 뒤 같은 유출 사고로 다시 오른 화제"
+- id: r02
+  kind: 재상승
+  names: [넥빈호, 다솔항]
+  a: {title: "다솔항 앞바다서 여객선 넥빈호 침몰…12명 실종", outlet: 연합뉴스, published: "2030-03-01T08:00"}
+  b: {title: "여객선 넥빈호 침몰 원인은 과적…다솔항 해운사 대표 입건", outlet: SBS, published: "2030-03-08T10:00"}
+  support:
+    - {for: a, title: "넥빈호 침몰 다솔항 실종자 수색 밤샘 진행", outlet: 경향신문, published: "2030-03-01T09:00"}
+    - {for: b, title: "다솔항 넥빈호 침몰 수사 결과 과적 확인", outlet: 동아일보, published: "2030-03-08T11:00"}
+  event_a: E-r02
+  event_b: E-r02
+  same_issue: true
+  why: "일주일 뒤 같은 침몰 사고의 수사 결과로 다시 오른 화제"
+- id: r03
+  kind: 재상승
+  names: [텔진시, 남궁렌]
+  a: {title: "텔진시 전세사기 피해 300세대…임대인 남궁렌 잠적", outlet: 한국경제, published: "2030-03-03T09:00"}
+  b: {title: "텔진시 전세사기 남궁렌 첫 재판…피해자들 엄벌 탄원", outlet: 연합뉴스, published: "2030-03-12T10:00"}
+  support:
+    - {for: a, title: "남궁렌 전세사기 텔진시 피해자들, 보증금 120억 못 받아", outlet: 서울경제, published: "2030-03-03T10:00"}
+    - {for: b, title: "전세사기 남궁렌 재판에 텔진시 피해자 탄원서 500장", outlet: 경향신문, published: "2030-03-12T11:00"}
+  event_a: E-r03
+  event_b: E-r03
+  same_issue: true
+  why: "아흐레 뒤 같은 전세사기의 첫 재판으로 다시 오른 화제"
+- id: r04
+  kind: 재상승
+  names: [루미너스, 송다인]
+  a: {title: "루미너스 송다인 학교폭력 의혹…소속사 법적 대응", outlet: SBS, published: "2030-03-04T10:00"}
+  b: {title: "루미너스 송다인 학교폭력 의혹 추가 제기…동창 증거 있다", outlet: 경향신문, published: "2030-03-11T10:00"}
+  support:
+    - {for: a, title: "송다인 학교폭력 의혹에 루미너스 활동 중단 위기", outlet: 동아일보, published: "2030-03-04T11:00"}
+    - {for: b, title: "송다인 학교폭력 추가 의혹에 루미너스 컴백 연기", outlet: 조선일보, published: "2030-03-11T11:00"}
+  event_a: E-r04
+  event_b: E-r04
+  same_issue: true
+  why: "일주일 뒤 같은 의혹의 추가 제기로 다시 오른 화제"
+- id: r05
+  kind: 재상승
+  names: [담텍화학, 렉엘강]
+  a: {title: "담텍화학 렉엘강 폐수 무단 방류 적발", outlet: 연합뉴스, published: "2030-03-01T14:00"}
+  b: {title: "렉엘강 폐수 방류 원인 조사…담텍화학 대표 입건", outlet: 한국경제, published: "2030-03-10T10:00"}
+  support:
+    - {for: a, title: "렉엘강 물고기 떼죽음…담텍화학 폐수 방류 탓", outlet: SBS, published: "2030-03-01T15:00"}
+    - {for: b, title: "담텍화학 렉엘강 폐수 방류 수사 확대…공장장도 소환", outlet: 동아일보, published: "2030-03-10T11:00"}
+  event_a: E-r05
+  event_b: E-r05
+  same_issue: true
+  why: "아흐레 뒤 같은 폐수 방류 사건의 수사 진전(대표 입건)으로 다시 오른 화제(2026-11-14 검토: 옛 b 의 '또 적발'은 두 번째 별개 위반으로 읽힐 수 있어 같은 사건의 진전으로 고쳤다)"

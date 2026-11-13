@@ -15,7 +15,10 @@ from . import model
 DIGEST_FIELDS = ("issue_id", "slug", "aliases", "revision", "split_from", "merged_into", "category", "keywords", "example",
                  "reason", "publish", "sensitive", "election", "syuka_deck", "event_check", "titles", "rev_line", "what_new",
                  "why_matters", "so_far", "so_far_refs", "numbers", "facts", "claims", "flow", "stances", "open_questions",
-                 "spillover", "figures", "corrections", "production")
+                 "spillover", "figures", "corrections", "production", "identifiers")
+# 나중에 더한 칸 — 없거나 비어 있으면 지문 계산에서 뺀다(그 칸이 생기기 전 이슈의 내용 해시와 검토 기록이 그대로 맞게).
+OPTIONAL_TOP = ("identifiers",)
+OPTIONAL_CLAIM = ("basis_facts",)               # 주장과 작은 주장 안의 칸
 DIGEST_SKIP = ("topic_state", "trend", "work_state", "history", "reviews")
 BODY_SKIP = ("header", "footer", "trend", "trend_now", "internal")
 
@@ -55,8 +58,21 @@ def evidence_view(ev: dict) -> dict:
     }
 
 
+def _strip_optional(c):
+    """주장(작은 주장 포함)에서 비어 있는 나중 칸을 뺀 사본. 사전이 아니면 그대로."""
+    if not isinstance(c, dict):
+        return c
+    out = {k: v for k, v in c.items() if not (k in OPTIONAL_CLAIM and not v)}
+    if isinstance(out.get("parts"), list):
+        out["parts"] = [_strip_optional(p) for p in out["parts"]]
+    return out
+
+
 def issue_view(issue: dict) -> dict:
-    return {k: issue.get(k) for k in DIGEST_FIELDS}
+    v = {k: issue.get(k) for k in DIGEST_FIELDS if not (k in OPTIONAL_TOP and not issue.get(k))}
+    if isinstance(v.get("claims"), list):
+        v["claims"] = [_strip_optional(c) for c in v["claims"]]
+    return v
 
 
 def cited(issue: dict, evidences: dict) -> list[str]:

@@ -851,6 +851,32 @@ def _snip(norm: str, start: int, end: int, side: int = 25, mid: int = 60) -> str
     return f"…{norm[max(0, start - side):start]}【{body}】{norm[end:end + side]}…"
 
 
+# 줄 머리 기호 — 정부 문서의 '□ ', 'ㅇ ', '○ ', '▲ ', '※ ', '- ' 같은 항목 머리. 기호가 줄의 처음(또는 글의 처음, 문장 끝 뒤)에 있으면
+# 그 뒤를 대목의 시작으로 받는다. 부호로도 읽히는 기호(- ▲ △)는 뒤가 숫자·통화 기호·소수점이면 받지 않는다(-3% · ▲ 3.2% 의 부호).
+_LINE_MARKERS = "□■○●◦ㅇ▲△▶▷◆◇※-•∙·"
+_SIGN_MARKERS = set("-▲△")
+_MARKER_TAIL = re.compile(r"(?:^| )([" + re.escape(_LINE_MARKERS) + r"]{1,2}) ?$")
+
+
+def _after_line_marker(text: str, pos: list[int], norm: str, start: int) -> bool:
+    """정리한 글의 start 바로 앞이 줄 머리 기호(와 공백)인가 — 기호 앞이 글의 처음·줄바꿈(줄 경계)·탭·문장 끝 뒤 공백일 때만."""
+    m = _MARKER_TAIL.search(norm[:start])
+    if not m or not (norm[start - 1] == " " or norm[start - 1] in _LINE_MARKERS):
+        return False
+    if set(m.group(1)) & _SIGN_MARKERS and re.match(r"[\d.$€£¥₩+−-]", norm[start]):
+        return False
+    ms = m.start(1)
+    if ms == 0:
+        return True
+    j = ms - 1                                       # 기호 앞 공백
+    run = _run(text, pos, j)
+    if _has_tab(run):
+        return True
+    if _has_break(run):
+        return _line_break_is_boundary(text, pos, j)
+    return bool(_SENT_END.search(norm[:j]))
+
+
 def passage_bounds_error(text: str, start: int, end: int, allow_row: bool = False) -> str:
     """정리한 글(normalize) 기준의 자리 [start, end) 가 통째 대목(문장·줄·표의 칸)인가. 빈 글이면 통과, 아니면 사유(그 자리 앞뒤 글 포함).
     시작: 글의 처음 · 탭 바로 뒤 · 줄바꿈·쪽 구분 바로 뒤(줄 경계 검사 통과) · 문장 끝('. ! ? 。 …' + 닫는 따옴표·괄호 0개 이상) 뒤 공백 바로 뒤.
@@ -880,15 +906,17 @@ def passage_bounds_error(text: str, start: int, end: int, allow_row: bool = Fals
     if start > 0:
         k = start - 1
         if norm[k] != " ":
-            return f"낱말 중간에서 시작한다: {where}"
-        run = _run(text, pos, k)
-        if _has_tab(run):
-            pass
-        elif _has_break(run):
-            if not _line_break_is_boundary(text, pos, k):
-                return f"시작하는 줄바꿈이 수량 한가운데다(앞 줄 꼬리 '{_line_tail(text, pos[k], 15)}'): {where}"
-        elif not _SENT_END.search(norm[:k]):
-            return f"문장 중간에서 시작한다: {where}"
+            if not _after_line_marker(text, pos, norm, start):   # 줄 머리 기호에 붙여 쓴 대목('□정부는')
+                return f"낱말 중간에서 시작한다: {where}"
+        else:
+            run = _run(text, pos, k)
+            if _has_tab(run):
+                pass
+            elif _has_break(run):
+                if not _line_break_is_boundary(text, pos, k):
+                    return f"시작하는 줄바꿈이 수량 한가운데다(앞 줄 꼬리 '{_line_tail(text, pos[k], 15)}'): {where}"
+            elif not _SENT_END.search(norm[:k]) and not _after_line_marker(text, pos, norm, start):
+                return f"문장 중간에서 시작한다: {where}"
     if end < len(norm):
         k = end
         if norm[k] != " ":

@@ -56,6 +56,32 @@ facts:
     publish: 게시 가능
     numbers:
       - {value: 400원, kind: 공식, evidence: i20990101-01-e1}
+  - id: f2
+    text: 시는 운송 적자와 연료비 상승을 근거로 들었고, 설명 자료의 운송 적자 수치는 2095년 결산 기준이다.
+    type: 사실
+    kind: 사실
+    evidence: [i20990101-01-e1]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: f3
+    text: 2098년 한빛시 시내버스 운송 적자는 118억 원으로 확정됐다.
+    type: 사실
+    kind: 사실
+    evidence: [i20990101-01-e2]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 118억 원, kind: 공식, evidence: i20990101-01-e2}
+  - id: f4
+    text: 2098년 한빛시 경유 평균 가격은 전년보다 12% 올랐다.
+    type: 사실
+    kind: 사실
+    evidence: [i20990101-01-e3]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 12%, kind: 공식, evidence: i20990101-01-e3}
 claims:
   - id: c1
     gist: 한빛시 버스 운송 적자가 한 해 200억 원이다.
@@ -78,6 +104,7 @@ claims:
         scope: 시내버스 전체
         unit: 원
         passage_role: 작성자의 판단
+    basis_facts: [f3]
     party_position: {text: 시는 적자 규모를 결산 기준으로 설명했다., evidence: i20990101-01-e1, checked_at: '2099-01-01 10:00'}
     allegation: false
     target_kind: 기관과 정책
@@ -98,6 +125,7 @@ claims:
     evidence:
       - {id: i20990101-01-e1, stance: 반대, basis: 다, subject: 인상 근거의 적자 수치, period: 2098년, scope: 시 보도자료,
          passage_role: 사실 기재, refers_to_original: true}
+    basis_facts: [f2]
     party_position: {none: true, checked_at: '2099-01-02 11:00'}
     allegation: false
     target_kind: 기관과 정책
@@ -133,6 +161,7 @@ claims:
     evidence:
       - {id: i20990101-01-e1, stance: 지지, basis: 다, subject: 한빛시 시내버스 기본요금 인상 폭, period: 2099년,
          scope: 시내버스 기본요금, unit: 원, passage_role: 사실 기재, refers_to_original: true}
+    basis_facts: [f1]
     party_position: {none: true, checked_at: '2099-01-02 11:00'}
     allegation: false
     target_kind: 기관과 정책
@@ -160,6 +189,7 @@ claims:
         evidence:
           - {id: i20990101-01-e1, stance: 지지, basis: 다, subject: 한빛시가 든 인상 근거, period: 2099년, scope: 시 보도자료,
              passage_role: 사실 기재, refers_to_original: true}
+        basis_facts: [f2]
       - id: p2
         gist: 연료비는 30% 올랐다.
         core: false
@@ -172,6 +202,7 @@ claims:
         evidence:
           - {id: i20990101-01-e3, stance: 반대, basis: 가, subject: 한빛시 경유 평균 가격, period: 2098년, scope: 한빛시 전체,
              unit: '%', passage_role: 작성자의 판단}
+        basis_facts: [f4]
     party_position: {none: true, checked_at: '2099-01-02 11:00'}
     allegation: false
     target_kind: 기관과 정책

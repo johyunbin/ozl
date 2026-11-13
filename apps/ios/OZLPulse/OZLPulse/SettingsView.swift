@@ -24,7 +24,7 @@ struct SettingsView: View {
                     .disabled(PulseAPI(server: draft) == nil || checking)
                     if let check { Text(check).font(.footnote).foregroundStyle(.secondary) }
                 } header: {
-                    Text("Pulse 서버 주소")
+                    Text("OZL 서버 주소")
                 } footer: {
                     Text(verbatim: "맥미니에서 tailscale status 로 이름을 확인하세요. 이 기기도 같은 tailnet 에 로그인해 있어야 열립니다. 시뮬레이터에서는 http://127.0.0.1:8765 를 쓸 수 있습니다.")
                 }

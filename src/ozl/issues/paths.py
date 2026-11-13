@@ -42,6 +42,15 @@ def is_alias_of_real_root() -> bool:
     return False
 
 
+RUNNER_ENV = "OZL_OPS_RUNNER"
+MSG_RUNNER = "운영 실행기가 띄운 작업(OZL_OPS_RUNNER=1)에서는 승인, 내림, 공개용 내보내기를 하지 않는다 — 운영 화면에서 사람이 한다"
+
+
+def in_runner() -> bool:
+    """운영 실행기가 띄운 자식 프로세스인가. 실행기의 도구 금지 규칙은 python -c 로 돌아갈 수 있어 패키지 쪽에서도 막는다."""
+    return os.environ.get(RUNNER_ENV, "").strip() not in ("", "0")
+
+
 def issues_dir() -> pathlib.Path:
     return desk_root() / "issues"
 

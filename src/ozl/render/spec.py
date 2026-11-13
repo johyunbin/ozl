@@ -27,6 +27,14 @@
        들어가야 한다(글자 크기를 최소까지 줄여도 안 들어가면 실패). 초안 모드는 기록이 아직 받아들여지지 않으면
        그 쪽을 '그림 대기'로 표시한다(pending 에 '그림:<claim_id>').
      - 엄격 모드에서 image_text 쪽에 그림이 하나도 없으면 경고(글만 있는 장이 의도일 수 있어 실패는 아니다).
+     - picture: <그림 번호> — 사양 맨 위 pictures(그림 검수 대장 · pictures.py)에 오른 그림 파일. 칸이 비었거나 판정이 '쓰지 않는다'거나 파일이 없으면
+       엄격 모드 실패, 초안 모드는 그림 대기('그림:<그림 번호>'). 밈은 엄격 모드에서 빠진다(pictures.drop_memes — check·build 명령이 먼저 뺀다).
+  ⑤ 새 종류(2026-11-14):
+     - capture_full(인용 장): title + capture(+capture_focus). 본문 글이 없고 원문 캡처가 쪽 대부분을 차지한다. 캡처 규칙은 ④와 같고,
+       '다 들어가는가'는 큰 자리의 크기(capture_geom)로 계산한다.
+     - photo_caption(사진과 설명): title + caption(한두 줄) + image 또는 picture 하나. caption 의 수량은 ①을 받는다.
+     - image_pair(그림 두 장 비교): title + pair(자리 둘 — 각각 image·chart·capture·picture 가운데 하나와 짧은 caption). 자리마다 ④를 그대로 본다
+       (chart.claims · capture 는 쪽의 claim_ids 안). 그림 칸은 쪽에 두지 않고 pair 의 각 자리에 둔다.
 
     python -m ozl.render check <사양.yaml>
 """
@@ -47,7 +55,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 TEMPLATE = ROOT / "tracks" / "syuka" / "style" / "composition_template_v0.json"
 SPECS = ROOT / "private" / "decks" / "specs"
 
-KINDS = ("title_hook", "image_text", "quote_translation", "number", "compare_table", "quote_line", "closing")
+KINDS = ("title_hook", "image_text", "quote_translation", "number", "compare_table", "quote_line", "closing",
+         "capture_full", "photo_caption", "image_pair")
 
 # 카드 어휘(cards.STAGES) → 구성 템플릿 JSON 의 단계 키
 STAGE_KEY = {
@@ -107,9 +116,16 @@ def visible_text(sl: dict) -> list[str]:
     q = sl.get("quote")
     if isinstance(q, dict):
         out += [_s(q.get("text")), _s(q.get("by"))]
+    out.append(_s(sl.get("caption")))   # photo_caption 의 설명
     img = sl.get("image")
     if isinstance(img, dict):
         out += [_s(img.get("caption")), _s(img.get("what")), _s(img.get("source"))]
+    if sl.get("kind") == "image_pair":   # 두 자리의 설명과 회색 자리 글
+        for _, v in slot_views(sl):
+            out.append(_s(v.get("caption")))
+            im = v.get("image")
+            if isinstance(im, dict):
+                out += [_s(im.get("caption")), _s(im.get("what")), _s(im.get("source"))]
     return [t for t in out if t != ""]
 
 
@@ -210,17 +226,41 @@ def number_errors(sl: dict, claims: dict[str, dict], draft: bool = False, staged
 
 
 # ── 그림(차트 · 원문 캡처) ───────────────────────────────────────────────
-VISUAL_KINDS = ("image_text", "number")  # build.plan_slide 가 왼쪽 그림 자리(deck.IMG_W × IMG_H)를 두는 종류
-VISUAL_KEYS = ("image", "chart", "capture")
-WAIT_IMAGE = "그림:"  # 초안 모드 pending 항목 머리 — '그림:<claim_id>' = 원문 화면 그림 대기
+VISUAL_KEYS = ("image", "chart", "capture", "picture")
+# 종류마다 그림 자리에 쓸 수 있는 칸(build.plan_slide 가 자리를 둔다). image_pair 는 pair 의 두 자리 각각에 적용한다.
+#   image_text · number = 왼쪽 그림 자리(deck.IMG_W × IMG_H) · photo_caption = 큰 그림 하나 · capture_full = 쪽 대부분을 차지하는 원문 캡처
+SLOT_KEYS = {
+    "image_text": VISUAL_KEYS, "number": VISUAL_KEYS, "image_pair": VISUAL_KEYS,
+    "photo_caption": ("image", "picture"), "capture_full": ("capture",),
+}
+VISUAL_KINDS = tuple(SLOT_KEYS)
+WAIT_IMAGE = "그림:"  # 초안 모드 pending 항목 머리 — '그림:<claim_id>' = 원문 화면 그림 대기 · '그림:<그림 번호>' = 검수 기록이 다 차지 않은 그림 파일
 
 
 def visual_of(sl: dict) -> str:
-    """이 쪽 그림 자리에 들어갈 것: 'chart' · 'capture' · 'image'(종전 회색 자리) · ''(없음). 둘 이상이면 앞의 것(검사가 실패시킨다)."""
-    for k in ("chart", "capture", "image"):
+    """이 쪽(또는 image_pair 의 한 자리) 그림 자리에 들어갈 것: 'chart' · 'capture' · 'picture'(검수 대장의 그림 파일) · 'image'(종전 회색 자리) · ''(없음).
+    둘 이상이면 앞의 것(검사가 실패시킨다)."""
+    for k in ("chart", "capture", "picture", "image"):
         if sl.get(k) not in (None, "", {}, []):
             return k
     return ""
+
+
+def slot_views(sl: dict) -> list[tuple[int, dict]]:
+    """그림 자리마다 (자리 번호, 검사·빌드가 쪽처럼 다룰 사전). image_pair 는 (0, 왼쪽) · (1, 오른쪽) — 쪽의 kind 와 claim_ids 를 물려받는다.
+    밈을 뺀 자리(pictures.DROPPED)와 사전이 아닌 자리는 건너뛴다. 그 밖의 종류는 [(-1, 쪽 자체)]."""
+    from ozl.render import pictures as PIC
+    if sl.get("kind") != "image_pair":
+        return [(-1, sl)]
+    out = []
+    pair = sl.get("pair")
+    for j, slot in enumerate(pair if isinstance(pair, list) else []):
+        if isinstance(slot, dict) and PIC.DROPPED not in slot:
+            out.append((j, {**slot, "kind": "image_pair", "claim_ids": sl.get("claim_ids") or []}))
+    return out
+
+
+SLOT_NAME = {-1: "", 0: "왼쪽 자리", 1: "오른쪽 자리"}
 
 
 def copy_text(c: dict) -> tuple[bool, str | None, str]:
@@ -240,10 +280,12 @@ def point_notation(pt) -> str:
 def chart_screen_text(sl: dict) -> list[str]:
     """차트 그림에 글자로 찍히는 수량(charts.chart_quantities) — number_errors 의 화면 글에 더한다. 사양 오류면 빈 목록(오류는 chart_errors 가 낸다)."""
     from ozl.render import charts as G
-    ch = sl.get("chart")
-    if not isinstance(ch, dict) or G.validate_chart(ch):
-        return []
-    return list(G.chart_quantities(ch))
+    out: list[str] = []
+    for _, v in slot_views(sl):
+        ch = v.get("chart")
+        if isinstance(ch, dict) and not G.validate_chart(ch):
+            out += list(G.chart_quantities(ch))
+    return out
 
 
 def chart_errors(sl: dict, claims: dict[str, dict]) -> list[str]:
@@ -290,10 +332,11 @@ def chart_errors(sl: dict, claims: dict[str, dict]) -> list[str]:
     return errs
 
 
-def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:
+def capture_errors(sl: dict, claims: dict[str, dict], draft: bool, geom: tuple | None = None) -> tuple[list[str], str | None]:
     """(실패, 그림 대기 claim_id | None). 원문 캡처 그림은 빌드 때 해시가 확인된 사본에서 새로 그린다(기록의 verification.image 는 쓰지 않는다).
     그래서 여기서는 그림 파일이 아니라 '기록이 받아들여지는가(acceptance_error 빈 문자열)'와 '사본에서 그림을 그릴 수 있는가'를 본다.
-    초안 모드의 그림 대기 = 기록이 아직 받아들여지지 않을 때."""
+    초안 모드의 그림 대기 = 기록이 아직 받아들여지지 않을 때.
+    geom = (픽셀 크기, 자리 폭 in) — image_pair 의 한 자리처럼 sl 이 쪽 자체가 아닐 때 그 자리의 크기(capture_geom). 없으면 sl 의 계획에서 구한다."""
     cid = _s(sl.get("capture")).strip()
     ids = [str(x) for x in sl.get("claim_ids") or []]
     ferr = focus_error(sl)
@@ -321,8 +364,9 @@ def capture_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list
     target = capture_target(c)
     if not target:
         return [f"capture {cid} 의 대조한 자리를 정하지 못했다 — observed 가 사본에 한 번만 나오거나 재대조 기록이 자리를 정해야 한다"], None
+    size_px, slot_in = geom or capture_geom(sl)
     fit = K.evidence_image(cid, src["path"], src["kind"], src["text"], _s(c.get("observed")), target["offset"], capture_meta(src["cap"]),
-                           "", size_px=capture_size(sl), check_only=True, focus=sl.get("capture_focus"))
+                           "", size_px=size_px, check_only=True, focus=sl.get("capture_focus"), slot_width_in=slot_in)
     if fit.get("reason"):
         return [f"capture {cid} 의 원문 캡처를 그릴 수 없다 — {fit['reason']}"], None
     return [], None
@@ -346,13 +390,22 @@ def capture_meta(cap: dict) -> dict:
 
 def capture_size(sl: dict) -> tuple[int, int]:
     """이 쪽 원문 캡처 그림의 픽셀 크기 — 빌드(render_visuals)와 같은 계산."""
+    return capture_geom(sl)[0]
+
+
+def capture_geom(sl: dict, slot: int = -1) -> tuple[tuple[int, int], float]:
+    """이 쪽(slot = image_pair 의 자리 번호) 원문 캡처 그림의 (픽셀 크기, 자리 폭 in) — 빌드(render_visuals)와 같은 계산.
+    자리 폭은 그림 글자를 슬라이드 위 pt 로 맞추는 기준이다. 자리가 커지면(capture_full) 같은 글자 크기로 더 많은 글이 들어간다."""
     from ozl.render import build as B
     from ozl.render import charts as G
+    from ozl.research import capture as K
     try:
-        ims = [im for im in B.plan_slide(sl).imgs if im.kind == "capture"]
+        ims = [im for im in B.plan_slide(sl).imgs if im.kind == "capture" and im.slot == slot]
     except Exception:  # noqa: BLE001 — 쪽 배치가 안 되는 사양은 다른 검사가 실패시킨다. 여기서는 기본 크기로 본다
         ims = []
-    return B.chart_png_size(ims[0]) if ims else G.DEFAULT_SIZE_PX
+    if not ims:
+        return G.DEFAULT_SIZE_PX, K.SLOT_W_IN
+    return B.chart_png_size(ims[0]), B.capture_slot_in(ims[0])
 
 
 def capture_target(c: dict) -> dict | None:
@@ -371,25 +424,113 @@ def capture_target(c: dict) -> dict | None:
     return None
 
 
-def visual_errors(sl: dict, claims: dict[str, dict], draft: bool) -> tuple[list[str], str | None]:
-    """그림 칸 검사 (실패, 그림 대기 claim_id | None)."""
-    have = [k for k in VISUAL_KEYS if sl.get(k) not in (None, "", {}, [])]
-    errs: list[str] = []
-    if len(have) > 1:
-        errs.append(f"그림 자리는 하나다 — {' · '.join(have)} 가운데 하나만 쓴다")
+def pair_shape_ok(sl: dict) -> bool:
+    """image_pair 의 pair 가 그림 자리 두 개(사전 둘)의 목록인가. 아니면 배치(layout)를 부르지 않는다."""
+    pair = sl.get("pair")
+    return isinstance(pair, list) and len(pair) == 2 and all(isinstance(x, dict) for x in pair)
+
+
+def visual_errors(sl: dict, claims: dict[str, dict], draft: bool, pics: dict | None = None) -> tuple[list[str], list[str], list[str]]:
+    """그림 칸 검사 (실패, 그림 대기 id 목록, 경고). 그림 자리마다(slot_views) 본다.
+    그림 대기 id = 원문 캡처의 claim_id 또는 검수 대장의 그림 번호."""
+    from ozl.render import pictures as PIC
     kind = sl.get("kind")
-    if sl.get("capture_focus") is not None and "capture" not in have:
-        errs.append("capture_focus 는 capture 를 쓴 쪽에서만 쓴다")
-    for k in ("chart", "capture"):
-        if k in have and kind not in VISUAL_KINDS:
-            errs.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
-    if errs:
-        return errs, None
-    if "chart" in have:
-        return chart_errors(sl, claims), None
-    if "capture" in have:
-        return capture_errors(sl, claims, draft)
-    return [], None
+    errs: list[str] = []
+    waits: list[str] = []
+    warns: list[str] = []
+    if kind == "image_pair":
+        pair = sl.get("pair")
+        if pair is not None and not pair_shape_ok(sl):
+            return ["image_pair 의 pair 는 그림 자리 두 개(사전 둘)의 목록이어야 한다"], [], []
+        if pair and all(PIC.DROPPED in slot for slot in pair):
+            # drop_memes 가 비울 수는 있지만 안전망으로 남긴다 — 두 자리가 다 빈 장은 완성본에 남기지 않는다
+            errs.append("image_pair 의 두 자리가 다 비었다(밈을 뺐다) — 그림 없는 두 칸짜리 장은 쓰지 않는다")
+        for k in VISUAL_KEYS + ("capture_focus",):
+            if sl.get(k) not in (None, "", {}, []):
+                errs.append(f"image_pair 는 '{k}' 를 쪽에 두지 않고 pair 의 각 자리에 둔다")
+        for j, slot in enumerate(pair or []):
+            if PIC.DROPPED in slot:
+                continue
+            if not _present(slot.get("caption")):
+                errs.append(f"{SLOT_NAME[j]}: 짧은 설명(caption)이 있어야 한다")
+            im = slot.get("image")
+            if im is not None and not (isinstance(im, dict) and all(_present(im.get(x)) for x in ("what", "source"))):
+                errs.append(f"{SLOT_NAME[j]}: 'image' 는 what·source 가 있는 사전이어야 한다")
+            if isinstance(im, dict) and im.get("caption"):
+                errs.append(f"{SLOT_NAME[j]}: image.caption 은 쓰지 않는다 — 자리의 caption 에 쓴다")
+    elif kind == "photo_caption" and isinstance(sl.get("image"), dict) and sl["image"].get("caption"):
+        errs.append("photo_caption 은 image.caption 을 쓰지 않는다 — 쪽의 caption 에 쓴다")
+    if kind == "capture_full" and _present(sl.get("body")):
+        errs.append("capture_full 에는 본문 글(body)을 두지 않는다 — 원문 캡처 한 장과 한 줄 제목뿐이다")
+    for j, v in slot_views(sl):
+        tag = (SLOT_NAME[j] + ": ") if j >= 0 else ""
+        have = [k for k in VISUAL_KEYS if v.get(k) not in (None, "", {}, [])]
+        e: list[str] = []
+        if len(have) > 1:
+            e.append(f"그림 자리는 하나다 — {' · '.join(have)} 가운데 하나만 쓴다")
+        if v.get("capture_focus") is not None and "capture" not in have:
+            e.append("capture_focus 는 capture 를 쓴 쪽에서만 쓴다")
+        for k in have:
+            if kind in SLOT_KEYS and k not in SLOT_KEYS[kind]:
+                e.append(f"'{k}' 는 {kind} 의 그림 자리에 쓰지 않는다({' · '.join(SLOT_KEYS[kind])} 가운데 하나)")
+            elif kind not in SLOT_KEYS and k != "image":
+                e.append(f"'{k}' 는 그림 자리가 있는 종류({', '.join(VISUAL_KINDS)})에서만 쓴다(지금 {kind})")
+        if kind in ("photo_caption", "image_pair") and not have:
+            e.append(f"그림 자리에 {' · '.join(SLOT_KEYS[kind])} 가운데 하나가 있어야 한다")
+        if e:
+            errs += [tag + x for x in e]
+            continue
+        if have == ["image"] and kind in ("photo_caption", "image_pair") and not draft:
+            # 회색 자리는 그림이 아니다 — 그림이 주인공인 종류에서 회색 상자와 '그림 자리' 글이 완성본에 찍히지 않게 엄격 모드는 실패시킨다
+            errs.append(tag + "그림 자리가 회색 자리(image)다 — 그림이 주인공인 장이라 엄격 모드(완성본)에서는 쓰지 않는다. "
+                        "검수 대장에 오른 그림(picture)이나 차트·원문 캡처로 바꾸거나, 그림이 없으면 다른 종류의 장으로 바꾼다(초안 모드는 통과)")
+        if "chart" in have:
+            errs += [tag + x for x in chart_errors(v, claims)]
+        elif "capture" in have:
+            ce, wait = capture_errors(v, claims, draft, capture_geom(sl, j) if j >= 0 else None)
+            errs += [tag + x for x in ce]
+            if wait:
+                waits.append(wait)
+        elif "picture" in have:
+            pe, wait, pw = picture_errors(sl, v, j, pics or {}, draft)
+            errs += [tag + x for x in pe]
+            warns += [tag + x for x in pw]
+            if wait:
+                waits.append(wait)
+    return errs, waits, warns
+
+
+def picture_errors(sl: dict, v: dict, slot: int, pics: dict, draft: bool) -> tuple[list[str], str | None, list[str]]:
+    """그림 파일(picture: <그림 번호>) 검사 — (실패, 그림 대기 그림 번호 | None, 경고).
+    대장(pictures)에 없으면 두 모드 모두 실패. 칸이 비었거나 판정이 '쓰지 않는다'이거나 파일이 없으면 엄격 모드 실패, 초안 모드는 그림 대기.
+    밈은 엄격 모드 검사에 오면 실패다(build · check 명령은 미리 drop_memes 로 뺀다)."""
+    from ozl.render import pictures as PIC
+    pid = _s(v.get("picture")).strip()
+    if pid not in pics:
+        return [f"picture {pid} 가 그림 검수 대장(pictures)에 없다"], None, []
+    e = pics[pid]
+    if not draft and PIC.is_meme(e):
+        return [f"picture {pid} 는 밈이다 — 엄격 모드(완성본·공개용)에는 넣지 않는다. check·build 명령은 밈을 빼고(drop_memes) 검사한다"], None, []
+    verdict, why, warns = PIC.judge(e, draft)
+    ferr = PIC.file_error(e)
+    if ferr:
+        why.append(ferr)
+    warns = [f"picture {pid}: {w}" for w in warns]
+    if why:
+        if draft:
+            return [], pid, warns + [f"picture {pid} 그림 대기({verdict}): {w}" for w in why]
+        return [f"picture {pid}({_s(e.get('kind'))} · 판정 {verdict}): {w}" for w in why], None, warns
+    from ozl.render import build as B
+    try:
+        ims = [im for im in B.plan_slide(sl).imgs if im.kind == "picture" and im.slot == slot]
+    except Exception:  # noqa: BLE001 — 배치가 안 되는 사양은 layout 검사가 실패시킨다
+        ims = []
+    if ims:
+        for p in B.picture_credit_box(ims[0], e, 0.0).problems():
+            why.append(f"그림 밑 표기 {p}")
+    if why:
+        return [f"picture {pid}: {w}" for w in why], None, warns
+    return [], None, warns
 
 
 # ── 각주(화면에 찍히는 글 — 생성과 검사가 같은 함수를 쓴다) ─────────────────
@@ -698,6 +839,9 @@ _REQUIRED = {
     "compare_table": ("title", "table"),
     "quote_line": ("title", "quote"),
     "closing": ("title", "body"),
+    "capture_full": ("title", "capture"),
+    "photo_caption": ("title", "caption"),
+    "image_pair": ("title", "pair"),
 }
 _NESTED = {"number": ("value",), "quote": ("text",), "table": ("header", "rows"), "image": ("what", "source")}
 
@@ -739,6 +883,10 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
         if not str(ps["url"]).startswith(("https://", "http://")):
             r.errors.append(f"press_sources[{k}]: url 이 주소가 아니다")
         press[str(ps["name"])] = ps
+    from ozl.render import pictures as PIC
+    pics, perrs = PIC.ledger(spec)
+    r.errors += perrs
+    used_pics: set[str] = set()
     bare: list[int] = []  # 엄격 모드: 그림이 하나도 없는 image_text 쪽(경고 한 줄로 모은다)
     for i, sl in enumerate(slides, 1):
         tag = f"{i}쪽"
@@ -798,19 +946,25 @@ def check(spec: dict, claims: dict[str, dict], template: dict, card: dict | None
                     r.errors.append(f"{tag}: refs '{ref}' 는 사양 press_sources 에만 있다 — 카드 sources 에 반영되기 전에는 초안 모드(--draft)에서만 쓸 수 있다")
             elif card is not None or press:
                 r.errors.append(f"{tag}: refs '{ref}' 가 카드 sources 와 사양 press_sources 의 name 에 없다")
-        verrs, wait = visual_errors(sl, claims, draft)
+        verrs, waits, vwarns = visual_errors(sl, claims, draft, pics)
         r.errors += [f"{tag}: {e}" for e in verrs]
-        if wait:
+        r.warnings += [f"{tag}: {w}" for w in vwarns]
+        for wait in waits:
             r.pending.setdefault(i, []).append(WAIT_IMAGE + wait)
+        used_pics |= {_s(v.get("picture")).strip() for _, v in slot_views(sl) if _s(v.get("picture")).strip()}
         if not draft and kind == "image_text" and not visual_of(sl):
             bare.append(i)
         if sl.get("seconds") is None:
             r.warnings.append(f"{tag}: 예상 발화 시간(seconds)이 없다")
-        if layout_fn is not None:
+        if layout_fn is not None and not (kind == "image_pair" and not pair_shape_ok(sl)):
+            # pair 의 모양이 틀리면 형식 실패 한 줄로 끝낸다(배치를 부르면 KeyError 같은 잡음이 한 줄 더 붙는다)
             for e in layout_fn(sl):
                 r.errors.append(f"{tag}: {e}")
+    unused = [p for p in pics if p not in used_pics]
+    if unused:
+        r.warnings.append(f"그림 검수 대장에 있지만 어느 쪽에서도 쓰지 않은 그림: {', '.join(unused)}")
     if bare:
-        r.warnings.append(f"그림 자리가 비었다(image_text 인데 chart·capture·image 가 없다): {', '.join(map(str, bare))}쪽 — 글만 있는 장이 의도면 그대로 둔다")
+        r.warnings.append(f"그림 자리가 비었다(image_text 인데 chart·capture·picture·image 가 없다): {', '.join(map(str, bare))}쪽 — 글만 있는 장이 의도면 그대로 둔다")
     errs, warns = stage_errors([str(sl.get("stage")) if isinstance(sl, dict) else "" for sl in slides], template)
     r.errors += errs
     r.warnings += warns

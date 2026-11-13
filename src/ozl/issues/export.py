@@ -101,11 +101,12 @@ def _index_row(b: dict, issue: dict | None, extra: dict | None = None) -> dict:
     return row
 
 
-def _feed_kind(issue: dict, rev) -> str:
+def _feed_kind(issue: dict, rev, first_rev: int | None = None) -> str:
     cs = [c for c in issue.get("corrections") or [] if isinstance(c, dict) and c.get("rev") == rev]
     if any(c.get("kind") == "정정" for c in cs):
         return "정정"
-    vh = [h for c in issue.get("claims") or [] if isinstance(c, dict) for h in c.get("verdict_history") or []
+    # 본문과 같은 규칙 — 게시한 판 뒤에 바뀐 판정만 '판정 변경'이다
+    vh = [h for c in issue.get("claims") or [] if isinstance(c, dict) for h in B.public_history(issue, c, first_rev)
           if isinstance(h, dict) and h.get("rev") == rev]
     return "판정 변경" if vh or any(c.get("kind") == "판정 변경" for c in cs) else "새 판"
 
@@ -139,7 +140,8 @@ def _public_issues(man: dict, now, msgs: list[str]) -> tuple[dict, int]:
                     msgs.append(f"{iid} {e['rev']}판: 싣지 않음({why})")
                 continue
             fi, fe, appr = revisions.load_fixed(iid, e["rev"])
-            b = mask.apply(B.issue_body(fi, fe, rev_at=appr.get("approved_at", "")), now)
+            b = mask.apply(B.issue_body(fi, fe, rev_at=appr.get("approved_at", ""),
+                                        first_rev=revisions.fixed_first_rev(man, iid, e["rev"])), now)
             score_p = revisions.rev_dir(iid, e["rev"]) / "score.json"
             try:                                    # score.json 은 지문 밖이다 — 모양이 맞는 칸만 새로 만들어 싣는다
                 b["trend"] = model.clean_trend(json.loads(score_p.read_text(encoding="utf-8"))) if score_p.is_file() else None
@@ -226,7 +228,7 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
             for rev, b, fi, appr in revs:
                 _dump(tmp, f"issues/{b['slug']}/r/{rev}.json", b)
                 hidden += B.hidden_texts(fi)
-                feed.append({"slug": b["slug"], "rev": rev, "at": appr.get("approved_at"), "kind": _feed_kind(fi, rev),
+                feed.append({"slug": b["slug"], "rev": rev, "at": appr.get("approved_at"), "kind": _feed_kind(fi, rev, revisions.fixed_first_rev(man, iid, rev)),
                              "title": b["title"], "rev_line": b["rev_line"]})
                 approved_dates.setdefault(iid, []).append(str(appr.get("approved_at", ""))[:10])
                 n_revs += 1
@@ -239,10 +241,14 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
     else:
         for iid in model.all_issue_ids():
             issue, evs = model.load_issue(iid), model.load_evidences(iid)
-            b = B.issue_body(issue, evs)
+            h = digest.content_hash(issue, evs)
+            ent = revisions.entry(man, "issue", iid, issue.get("revision"))
+            # 지금 작업본이 바로 승인된 판이면(발행 목록의 같은 판, 같은 내용 해시) 승인된 판의 AI 고지를 쓴다
+            approved = bool(ent) and ent.get("content_hash") == h
+            b = B.issue_body(issue, evs, approved=approved, first_rev=B.first_published(man, iid))
             r = revisions.check_with_manifest(issue, evs, public=False, man=man)
             state = _preview_state(issue, evs, man)
-            b["internal"] = {"publish_state": state, "content_hash": digest.content_hash(issue, evs),
+            b["internal"] = {"publish_state": state, "content_hash": h,
                              "hidden": [f"{lst}.{it.get('id')}" for lst in model.ITEM_LISTS for it in issue.get(lst) or []
                                         if isinstance(it, dict) and not rules.item_public(issue, it)],
                              "errors": r["errors"], "warnings": r["warnings"]}
@@ -322,6 +328,10 @@ def export(mode: str, out, now=None) -> dict:
     """{code, msgs, counts}. 0 성공, 1 출력 검사 실패, 2 연락처 없음·출력 자리 거부, 4 일부 판을 싣지 못함."""
     if mode not in ("preview", "public"):
         return {"code": 2, "msgs": [f"모드가 틀렸다: {mode}"], "counts": {}}
+    if mode == "public" and paths.in_runner():
+        return {"code": 2, "msgs": [paths.MSG_RUNNER], "counts": {}}
+    if mode == "public" and paths.is_alias_of_real_root():   # 시험 표시·시험 승인 검사가 실제 폴더를 시험으로 읽지 않게
+        return {"code": 2, "msgs": [revisions.MSG_ROOT_ALIAS], "counts": {}}
     now = now or cards.now_kst()
     if mask._parse(now) is None:
         return {"code": 2, "msgs": [f"--now 시각을 읽지 못했다: {now} (예: 2099-04-05T10:00:00+09:00)"], "counts": {}}

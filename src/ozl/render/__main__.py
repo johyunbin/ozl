@@ -60,6 +60,11 @@ def main(argv: list[str]) -> int:
         print(f"[{pos[0]}] 사양 최상위가 사전(mapping)이 아니다: {path}", file=sys.stderr)
         return 1
     if pos[0] == "check":
+        if not draft:   # build 와 같게 — 엄격 모드는 밈을 빼고 검사하고, 뺀 것을 알린다
+            from ozl.render import pictures as PIC
+            sp, dropped = PIC.drop_memes(sp)
+            for d in dropped:
+                print("[밈 제외]", d)
         cid = sp.get("card_id")
         card = None
         if cid and C.CARD_ID.match(str(cid)):
@@ -84,7 +89,10 @@ def main(argv: list[str]) -> int:
         print(f"[build] {e}", file=sys.stderr)
         return 1
     for k, v in info.items():
-        print(f"{k}: {v}")
+        if k != "dropped":
+            print(f"{k}: {v}")
+    for d in info.get("dropped") or []:
+        print("[밈 제외]", d)
     cid = str(sp.get("card_id", ""))
     if C.CARD_ID.match(cid):
         from ozl.render import progress as P   # 막지 않고 알리기만 한다(빌드는 한 편에 여러 번 부른다)

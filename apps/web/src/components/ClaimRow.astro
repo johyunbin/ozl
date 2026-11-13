@@ -1,9 +1,10 @@
 ---
 // 주장 한 줄(설계 4-2). '사실과 다름' 은 펼친 채로 둔다.
 import type { Claim } from "../lib/data";
-import { fmtDate } from "../lib/format";
+import { fmtDate, sentences } from "../lib/format";
 import VerdictMark from "./VerdictMark.astro";
 import SourceList from "./SourceList.astro";
+import { docsHead, evidenceLine, PRESS_HEAD } from "../lib/cards";
 interface Props { c: Claim; currentRev: number | null; anchor?: string }
 const { c, currentRev, anchor } = Astro.props;
 const isFalse = c.verdict === "사실과 다름";
@@ -11,8 +12,16 @@ const past = c.history.length ? c.history[c.history.length - 1] : null;
 const showReasons = c.verdict === "확인 못 함" || c.verdict === "일부 맞음";
 const hasMore = c.basis.length || c.parts.some((p) => p.basis.length) || c.parts.length || c.not_found || (showReasons && (c.reasons.length || c.would_decide)) || c.party_position || c.sources.length || c.history.length;
 const shortHide = isFalse ? undefined : "hide";
+// 판정에 쓴 문서와 참고한 보도를 가른다. 보도는 판정의 근거로 세지 않는다(같은 목록에 두면 근거처럼 읽힌다).
+const OFFICIAL = new Set(["공식 원문", "기관 자료"]);
+const docs = c.sources.filter((x) => OFFICIAL.has(x.kind));
+const press = c.sources.filter((x) => !OFFICIAL.has(x.kind));
 // '사실과 다름' 작은 주장은 접어도, 짧게 보기에서도 요지 줄에 꺼내 둔다(계획 4-3).
+const evLine = evidenceLine(c.evidence_label, c.press_label, c.verdict);
 const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과 다름");
+// 범위 문장이 길면 한 덩어리로 읽히지 않는다. 글자는 그대로 두고 문장마다 줄을 나눠 보인다.
+const scopeLines = c.scope && c.scope.length > 180 ? sentences(c.scope) : [];
+const scopeSplit = scopeLines.length >= 3;
 ---
 <li class="claim" id={anchor}>
   {/* "전부" 보기(기본, 스크립트 없을 때 포함)에서는 모두 펼친다. "짧게" 에서만 '사실과 다름' 밖의 것을 접는다. */}
@@ -22,8 +31,13 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
       <span class="meta">
         {past && past.from && <><VerdictMark verdict={past.from} struck /><span class="arrow" aria-hidden="true">→</span></>}
         <VerdictMark verdict={c.verdict} />
-        {c.evidence_label && <span data-short={shortHide}><span class="sep" />근거: {c.evidence_label}</span>}
+        {evLine && <span data-short={shortHide}><span class="sep" />{evLine}</span>}
       </span>
+      {/* 보도는 판정의 근거로 세지 않으므로 근거 줄과 따로, 판정 아래 줄에 둔다. 짧게 보기에서는 근거 줄과 같이 접힌다. */}
+      {c.press_label && <span class="meta press" data-short={shortHide}><span class="muted">{PRESS_HEAD}:</span> {c.press_label}</span>}
+      {/* 확인한 범위는 판정과 떨어지면 판정을 넓게 읽게 되므로 짧게 보기에서도 판정 바로 밑에 둔다. */}
+      {c.scope && !scopeSplit && <span class="meta scope"><span class="muted">확인한 범위:</span> {c.scope}</span>}
+      {c.scope && scopeSplit && <span class="meta scope"><span class="muted">확인한 범위</span>{scopeLines.map((x) => <span class="sline">{x}</span>)}</span>}
       {falseParts.map((p) => <span class="meta false-part">작은 주장 <VerdictMark verdict="사실과 다름" /> {p.gist}</span>)}
       {c.searched && <span class="meta searched" data-short={shortHide}>찾아본 범위: {c.searched}</span>}
     </summary>
@@ -34,6 +48,7 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
           <div><p class="mh">나눠 본 판정</p>
             <ul class="parts">{c.parts.map((p) => <li><VerdictMark verdict={p.verdict} /> {p.core && <span class="tag">핵심</span>}{p.gist}
               {p.reasons.length > 0 && <span class="small muted"> — {p.reasons.join(", ")}</span>}
+              {p.scope && <span class="pscope"><span class="muted">확인한 범위:</span> {p.scope}</span>}
               {p.basis.length > 0 && <ul class="dots pbasis">{p.basis.map((x) => <li>{x}</li>)}</ul>}</li>)}</ul>
           </div>
         )}
@@ -41,7 +56,8 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
         {showReasons && c.reasons.length > 0 && <div><p class="mh">판정하지 못한 까닭</p><ul class="dots">{c.reasons.map((r) => <li>{r}</li>)}</ul></div>}
         {showReasons && c.would_decide && <div><p class="mh">무엇이 나오면 판정할 수 있나</p><p>{c.would_decide}</p></div>}
         {c.party_position && <div><p class="mh">당사자 입장</p><p>{c.party_position}</p></div>}
-        {c.sources.length > 0 && <div><p class="mh">근거 문서</p><SourceList sources={c.sources} short /></div>}
+        {docs.length > 0 && <div><p class="mh">{docsHead(c.verdict)}</p><SourceList sources={docs} short /></div>}
+        {press.length > 0 && <div><p class="mh">참고한 보도</p><p class="xs muted">보도는 판정의 근거로 세지 않는다. 어디서 퍼졌는지 보이려고 적는다.</p><SourceList sources={press} short /></div>}
         {c.history.length > 0 && (
           <div><p class="mh">판정 바뀐 기록</p>
             <ul class="dots">{c.history.map((h) => <li>{h.rev !== null ? `${h.rev}판` : fmtDate(h.at)}에서 <VerdictMark verdict={h.from} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={h.to} />{h.why && <>. 까닭: {h.why}</>}</li>)}</ul>
@@ -61,10 +77,13 @@ const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과
   .gist { display: block; font-size: var(--fs-md); }
   .meta { display: block; font-size: var(--fs-sm); margin-top: var(--sp-1); }
   .searched { color: var(--muted); }
+  .sline { display: block; padding-left: 0.9em; text-indent: -0.9em; margin-top: 2px; }
+  .sline::before { content: "– "; color: var(--muted); }
   .more { background: var(--surface); border: 1px solid var(--rule-strong); border-left-width: 3px; padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: var(--fs-sm); }
   .more > div + div { margin-top: var(--sp-3); }
   .mh { font-weight: 700; }
   .parts li, .dots li { padding: var(--sp-1) 0; }
+  .pscope { display: block; font-size: var(--fs-sm); padding-left: 1.4em; margin-top: var(--sp-1); }
   .pbasis { font-size: var(--fs-sm); padding-left: 1.4em; }
   .dots li::before { content: "– "; color: var(--muted); }
 </style>

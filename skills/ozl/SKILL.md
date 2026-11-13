@@ -7,7 +7,7 @@ description: OZL 이슈 데스크 — 소재 후보 발굴, 통과한 소재의 
 
 > 2026-11-13: 사용자는 소재 후보에 통과/폐기만 한다. 통과한 소재는 §5 의 완성 절차로 시스템이 끝까지 만들고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다. `verify`·`publish` 는 사용자가 원할 때만 쓰는 명령이다(§3). 발굴은 하루 한 번 아침(`am`)이다 — 옛 저녁·토요일 회차의 일은 §1 의 「지난 후보 다시 보기」로 옮겼다. `pm`·`weekly` 인자는 옛 회차를 다시 렌더·발행할 때만 쓴다(새 회차를 만들지 않는다). 예약 실행은 멈춰 있다 — 재가동은 발굴·겹침·완성 경로 시험을 통과한 뒤 사용자에게 물어 정한다.
 
-작업 폴더는 `~/OZL`, 파이썬은 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md`, 검증 규칙의 정본은 `~/OZL/docs/methodology.md` 이고 이 문서는 순서만 정한다. 모든 산문은 한국어.
+작업 폴더는 `~/OZL`, 파이썬은 `~/OZL/.venv/bin/python`(아래 `PY`). 규범은 `~/OZL/CLAUDE.md` 와 `~/OZL/agent/desk.md`(덱은 `agent/deck.md`), 검증 규칙의 정본은 `~/OZL/docs/methodology.md` 이고 이 문서는 순서만 정한다. 모든 산문은 한국어.
 
 인자: `am` · `pick <card_id>`(통과 — 사용자 명령의 중심) · `build <card_id>`(완성 절차 · 이어 하기) · `status`. 사용자가 원할 때만: `verify <claim_id…>` · `publish <card_id…>`. 옛 회차용: `pm` · `weekly`. 날짜는 오늘(KST).
 
@@ -43,7 +43,7 @@ description: OZL 이슈 데스크 — 소재 후보 발굴, 통과한 소재의 
    - ⑧ 예상 구성은 `tracks/syuka/style/composition_template_v0.md` 의 단계 이름(여는 장·배경·전개·반전·근거 수치·비교·시사점·닫는 장 …)으로 5단계 이상, 반전을 반드시 넣는다.
    - 클레임의 `status` 는 `pending`, `human_verified: false` 로 쓴다. 원문을 열어 맞춰 본 것은 `verifiers.claude` 에 무엇을 봤는지 적는다. `counter`(가장 강한 반례·분모·남는 불확실성)를 빈칸으로 두지 않는다.
    - 보도만 있고 공식 발표가 없는 사건은 "보도에 따르면"으로 쓰고 수치 클레임으로 만들지 않는다.
-   - 문장은 한 일과 사실을 평서문으로 적는다. 구호, 이모지, 가운뎃점으로 명사를 길게 잇는 나열, 근거 없는 형용사를 쓰지 않는다(`CLAUDE.md` 의 「공개 문서 문체」).
+   - 문장은 한 일과 사실을 평서문으로 적는다. 구호, 이모지, 가운뎃점으로 명사를 길게 잇는 나열, 근거 없는 형용사를 쓰지 않는다(`agent/publish.md` 의 「공개 문서 문체」).
 6. **검사** — `PY -m ozl.research validate --slot am` 이 오류 0건이어야 한다.
 7. **독립 검증** — 새 서브에이전트(`Explore`·Opus)에게 카드 문장이 아니라 **클레임 표(주장·원문 표기·URL·원문 위치)만** 주고, 원문을 다시 열어 일치·불일치·열지 못함으로 판정하게 한다. 불일치는 고치고, 열지 못한 클레임은 `verifiers` 에 그 사실을 적는다. 작성한 세션이 스스로 채점하지 않는다. Gemini·ChatGPT 교차는 여력이 있을 때 `multimodel_request` 로 한 번 시도하고, 실패해도 이 단계를 대신하지 않는다.
 8. **렌더** — `PY -m ozl.research render --slot am` → 전체본·검증 시트(`private/daily/…`)와 색인 `daily/index.json`. 발행본(`daily/…`)은 공개 이력(승인·철회)이 있는 카드가 있는 회차에만 쓰인다 — 승인 전 후보만 있는 회차는 쓰지 않고, 남아 있던 파일은 렌더가 지운다(`report.keeps_public_page` · 명령 출력의 `public_page`). 검증 시트는 사용자의 할 일이 아니라 기록이다. 전체본은 `python3 ~/Claude/tools/md2pdf.py <전체본.md> --theme doc --footer-title` 로 PDF 를 만들고 첫 쪽을 눈으로 확인한다.

@@ -80,3 +80,27 @@ export function num(n: number): string {
 }
 
 export const WEEKDAYS = WEEK;
+
+/** 긴 글을 문장으로 가른다(화면에서 줄을 나눠 보일 때만 쓴다. 글자는 바꾸지 않는다).
+ *  따옴표와 괄호 안에서는 가르지 않고, 숫자 바로 뒤의 마침표("2026. 11.")에서도 가르지 않는다. */
+export function sentences(text: string): string[] {
+  const open = "(\u2018\u201c\u300c\u300e[";
+  const close = ")\u2019\u201d\u300d\u300f]";
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (open.includes(ch)) depth++;
+    else if (close.includes(ch)) depth = Math.max(0, depth - 1);
+    else if (depth === 0 && (ch === "." || ch === "?" || ch === "!") && (i + 1 === text.length || text[i + 1] === " ")) {
+      if (ch === "." && i > 0 && /\d/.test(text[i - 1])) continue;
+      const one = text.slice(start, i + 1).trim();
+      if (one) out.push(one);
+      start = i + 1;
+    }
+  }
+  const rest = text.slice(start).trim();
+  if (rest) out.push(rest);
+  return out;
+}

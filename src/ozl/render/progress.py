@@ -17,6 +17,11 @@
   단계를 적으려면 먼저 --resume 한다 — 죽은 줄 알았던 세션과 새 세션이 같은 카드를 함께 고치지 않게(2026-11-13 점검).
 - --done 은 산출 앞의 단계(명제 … 재확인)를 이번 회차에 모두 지났을 때만 받는다(--force 로만 예외).
 - 덱 빌드(`python -m ozl.render build`)는 한 편에 여러 번 부르므로 막지 않는다 — 진행 기록은 절차 단위의 상태다.
+- 판 상한(설계 5-7절): 검토는 3판(MAX_ROUNDS)까지다. '검토' 단계 기록에 큰 오류(major — 숫자 검사 실패, 근거 없는 사실 문장으로 기록된
+  지적, 넘침이나 빈칸)를 남긴다. `--mark 검토 --spec 사양.yaml` 이면 그 사양을 엄격 모드로 검사한 실패를 큰 오류로 함께 적고(spec_major),
+  문장 대조가 찾은 근거 없는 사실 문장은 `--major "글"`(여러 번)로 적는다. 판 = 이번 회차 '검토' 기록의 서로 다른 사양 sha256 수.
+  3판째 검토 뒤에도 큰 오류가 남으면 상태가 '미완성'이 된다(임대를 풀고 '미완성' 단계를 남긴다). 큰 오류가 남은 동안 --done 은 거부한다.
+  미완성에서 다시 하려면 --start --force. 옛 기록(major 칸 없음)은 큰 오류 없음으로 읽는다.
 """
 from __future__ import annotations
 
@@ -37,6 +42,10 @@ KST = timezone(timedelta(hours=9))
 LEASE_HOURS = 6
 STEPS = ("명제", "원문", "기록", "재대조", "등급", "사양", "검토", "빌드", "게이트", "재확인", "산출")
 IN_PROGRESS, DONE, ABANDONED = "진행 중", "완성", "접음"
+INCOMPLETE = "미완성"
+MAX_ROUNDS = 3                 # 검토 판 상한
+ROUND_STEP = "검토"            # 판을 세는 단계
+MAJOR_STEPS = ("검토", "게이트")  # 큰 오류(major)를 남기는 단계
 
 
 def now() -> datetime:
@@ -125,6 +134,8 @@ def start(card_id: str, by: str = "", force: bool = False, at: datetime | None =
             raise ValueError(f"{card_id} 는 진행 중이다({st.get('by', '')} · {st['lease_until']} 까지) — 이어 받으려면 --resume")
         if st.get("status") == DONE and not force:
             raise ValueError(f"{card_id} 는 이미 완성본이 있다({st.get('final', '')}) — 다시 만들려면 --force")
+        if st.get("status") == INCOMPLETE and not force:
+            raise ValueError(f"{card_id} 는 {MAX_ROUNDS}판 검토 뒤에도 큰 오류가 남아 미완성이다 — 다시 하려면 --force")
         prev = st.get("status", "")
         st = {"card_id": card_id, "status": IN_PROGRESS, "by": by, "started_at": _iso(at), "steps": list(st.get("steps") or []),
               "final": st.get("final", "") if prev == DONE else ""}
@@ -163,7 +174,44 @@ def resume(card_id: str, by: str = "", at: datetime | None = None, force: bool =
     return st, summary(st, card_id)
 
 
-def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime, by: str = "", force: bool = False) -> dict:
+def rounds(st: dict) -> int:
+    """이번 회차의 검토 판 수 — '검토' 기록의 서로 다른 사양 sha256 수(사양 없이 적은 검토는 한 판씩)."""
+    shas, bare = set(), 0
+    for s in run_steps(st):
+        if s.get("step") == ROUND_STEP:
+            if s.get("spec_sha256"):
+                shas.add(s["spec_sha256"])
+            else:
+                bare += 1
+    return len(shas) + bare
+
+
+def major_left(st: dict) -> list[str]:
+    """지금 남은 큰 오류 — 이번 회차에서 major 칸을 남긴 마지막 단계의 것. 옛 기록(칸 없음)은 빈 목록."""
+    for s in reversed(run_steps(st)):
+        if "major" in s:
+            return [str(x) for x in s.get("major") or []]
+    return []
+
+
+def spec_major(spec_path: str) -> list[str]:
+    """사양을 엄격 모드로 검사한 실패(숫자 검사 실패 · 넘침 · 빈칸 등) — 큰 오류로 적는다. 검사를 돌리지 못하면 그 사유 한 줄."""
+    try:
+        from ozl.render import build as B
+        from ozl.render import pictures as PIC
+        from ozl.render import spec as S
+        sp, _ = PIC.drop_memes(S.load_spec(pathlib.Path(spec_path)))
+        cid = str(sp.get("card_id") or "")
+        card = C.load_card(cid) if C.CARD_ID.match(cid) and C.card_path(cid).exists() else None
+        claims, staged = S.load_claims(S.cited_ids(sp))
+        rep = S.check(sp, claims, S.load_template(), card, B.layout_problems, staged=staged, appendix_fn=B.appendix_problems)
+        return [f"검사: {e}" for e in rep.errors]
+    except Exception as e:  # noqa: BLE001 — 검사를 못 돌린 것도 큰 오류로 남긴다(통과로 치지 않는다)
+        return [f"검사를 돌리지 못했다({type(e).__name__}): {e}"]
+
+
+def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime, by: str = "", force: bool = False,
+                   major: list[str] | None = None) -> dict:
     if step not in STEPS:
         raise ValueError(f"단계 이름은 {', '.join(STEPS)} 가운데 하나다: {step!r}")
     st = load(card_id)
@@ -181,15 +229,24 @@ def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: dat
             raise ValueError(f"사양 파일이 없다: {spec}")
         rec["spec"] = sp.name
         rec["spec_sha256"] = hashlib.sha256(sp.read_bytes()).hexdigest()
+    if step in MAJOR_STEPS and (spec or major is not None):
+        rec["major"] = (spec_major(spec) if spec else []) + [str(x) for x in major or []]
     st.setdefault("steps", []).append(rec)
     _renew(st, at)
+    n = rounds(st)
+    left = major_left(st)
+    if step == ROUND_STEP and n >= MAX_ROUNDS and left:
+        st["steps"].append({"step": INCOMPLETE, "at": _iso(at), "note": f"{n}판 검토 뒤에도 큰 오류 {len(left)}건이 남았다(상한 {MAX_ROUNDS}판)",
+                            "digest": rec["digest"]})
+        st.update({"status": INCOMPLETE, "lease_until": "", "updated_at": _iso(at)})
     return st
 
 
 def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None, by: str = "",
-         force: bool = False) -> dict:
+         force: bool = False, major: list[str] | None = None) -> dict:
+    """major = 이 단계가 찾은 큰 오류(검토 · 게이트). spec 을 주면 그 사양의 엄격 검사 실패를 더해 적는다."""
     with _locked(card_id):
-        st = _mark_unlocked(card_id, step, note, spec, at or now(), by, force)
+        st = _mark_unlocked(card_id, step, note, spec, at or now(), by, force, major)
         save(card_id, st)
         return st
 
@@ -199,10 +256,14 @@ def done(card_id: str, final: str, note: str = "", at: datetime | None = None, b
         raise ValueError(f"완성본 폴더가 없다: {final}")
     with _locked(card_id):   # 단계 기록과 상태 바꿈을 한 번에 저장한다
         if not force:
-            passed = {s["step"] for s in run_steps(load(card_id))}
+            cur = load(card_id)
+            passed = {s["step"] for s in run_steps(cur)}
             missing = [s for s in STEPS[:-1] if s not in passed]
             if missing:
                 raise ValueError(f"{card_id}: 아직 지나지 않은 단계가 있다({' → '.join(missing)}) — 완성으로 적지 않는다(--force 로만)")
+            left = major_left(cur)
+            if left:
+                raise ValueError(f"{card_id}: 큰 오류 {len(left)}건이 남았다(첫째: {left[0]}) — 완성으로 적지 않는다(--force 로만)")
         st = _mark_unlocked(card_id, "산출", note or "완성본", None, at or now(), by, force)
         st.update({"status": DONE, "final": str(final), "lease_until": ""})
         save(card_id, st)
@@ -236,6 +297,10 @@ def summary(st: dict, card_id: str) -> str:
         now_d = digest(card_id)
         if last.get("digest") and now_d and last["digest"] != now_d:
             lines.append("주의: 마지막 단계 뒤에 카드나 기록이 바뀌었다 — 바뀐 기록이 걸린 단계부터 다시 한다")
+    n = rounds(st)
+    left = major_left(st)
+    if n or left:
+        lines.append(f"검토 {n}판/{MAX_ROUNDS}판 · 남은 큰 오류 {len(left)}건" + (f" — {left[0]}" if left else ""))
     passed = [s["step"] for s in steps]
     rest = [s for s in STEPS if s not in passed]
     if st.get("status") == IN_PROGRESS and rest:
@@ -258,6 +323,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--spec")
     ap.add_argument("--final")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--major", action="append", default=None, help="검토·게이트가 찾은 큰 오류(여러 번). --spec 을 주면 그 사양의 엄격 검사 실패도 더해 적는다")
     a = ap.parse_args(argv)
     try:
         if a.start:
@@ -267,7 +333,7 @@ def main(argv: list[str]) -> int:
             print(text)
             return 0
         elif a.mark:
-            st = mark(a.card_id, a.mark, a.note, a.spec, by=a.by, force=a.force)
+            st = mark(a.card_id, a.mark, a.note, a.spec, by=a.by, force=a.force, major=a.major)
         elif a.done:
             if not a.final:
                 raise ValueError("--done 에는 --final <완성본 폴더> 가 있어야 한다")

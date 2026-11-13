@@ -35,7 +35,7 @@ struct ContentView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("OZL Pulse")
+            .navigationTitle("OZL")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(for: Topic.self) { TopicDetailView(topic: $0, server: server) }
             .safeAreaInset(edge: .top) {
@@ -65,6 +65,9 @@ struct ContentView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView(server: $server) { Task { await store.load(server: server) } }
             }
+            .onChange(of: server) { _, new in   // 이슈 탭의 설정에서 주소를 바꿨을 때도 다시 읽는다
+                if !showSettings { Task { await store.load(server: new) } }
+            }
             .overlay {
                 if store.data == nil {
                     if store.loading {
@@ -73,7 +76,7 @@ struct ContentView: View {
                         ContentUnavailableView {
                             Label("서버 주소가 없습니다", systemImage: "network")
                         } description: {
-                            Text("설정에서 Pulse 서버 주소를 넣어 주세요.")
+                            Text("설정에서 OZL 서버 주소를 넣어 주세요.")
                         } actions: {
                             Button("설정 열기") { showSettings = true }
                         }

@@ -18,11 +18,11 @@ from ozl.research import cards
 from . import body as B
 from . import check, digest, model, paths, rules
 from . import evidence as EV
-from .manifest import (EMPTY, MSG_REAL_IN_TEST, MSG_REQUEST_ID, MSG_SLUG_TAKEN, MSG_TEST_IN_REAL, MSG_TEST_NOT_PUBLIC,  # noqa: F401
+from .manifest import (EMPTY, MSG_REAL_IN_TEST, MSG_ROOT_ALIAS, MSG_REQUEST_ID, MSG_SLUG_TAKEN, MSG_TEST_IN_REAL, MSG_TEST_NOT_PUBLIC,  # noqa: F401
                        MSG_WITHDRAWN, TEST_BY, approver_error, entries, entry, entry_error, is_withdrawn, load_manifest,
                        prior_approval, save_manifest, slug_conflicts)
-from .reviews import (_findings, _full, _notes_ok, _same, add_review, notes_dir, review_state,  # noqa: F401
-                      snapshot_file)
+from .reviews import (_findings, _full, _notes_ok, _same, add_review, missing_reviews, notes_dir, review_state,  # noqa: F401
+                      save_snapshot, snapshot_file)
 
 REASON_BODY = "다시 만든 본문이 승인 때와 다르다"
 MSG_SAME_REV = "승인된 판과 내용이 다른데 판 번호가 같다 — 판 번호를 올린다"
@@ -128,7 +128,8 @@ def approve(issue_id: str, rev: int, content_hash: str, by: str, request_id=None
         if why:
             return {"code": 1, "msg": "\n".join(dict.fromkeys(why)), "entry": None}
         at = now or cards.now_kst()
-        body = B.issue_body(issue, evs, rev_at=at)
+        first = B.first_published(man, issue_id)       # 승인 전의 발행 목록 — 처음 게시하는 판이면 None
+        body = B.issue_body(issue, evs, rev_at=at, first_rev=first)
         cited = [e for e in digest.cited(issue, evs) if e in evs]
         final = rev_dir(issue_id, rev)
         if final.exists():
@@ -156,7 +157,7 @@ def approve(issue_id: str, rev: int, content_hash: str, by: str, request_id=None
             shutil.rmtree(tmp, ignore_errors=True)
             raise
         fi, fe, _ = load_fixed(issue_id, rev)
-        if digest.body_hash(B.issue_body(fi, fe, rev_at=at)) != ent["body_hash"]:
+        if digest.body_hash(B.issue_body(fi, fe, rev_at=at, first_rev=first)) != ent["body_hash"]:
             shutil.rmtree(final, ignore_errors=True)
             return {"code": 1, "msg": f"{issue_id} {rev}판: 고정 사본으로 다시 만든 본문이 작업본과 다르다 — 승인하지 않았다", "entry": None}
         man["entries"].append(ent)
@@ -201,12 +202,20 @@ def revision_publishable(issue_id: str, rev: int, man: dict | None = None) -> tu
         return False, f"고정 사본이 검사를 통과하지 못한다 — {errs[0]}"
     if review_state(fi, fe) != "검토 완료":
         return False, "고정 사본의 검토 조건이 채워지지 않았다"
-    if e.get("export_version") != B.EXPORT_VERSION or digest.body_hash(B.issue_body(fi, fe, rev_at=appr.get("approved_at", ""))) != e.get("body_hash"):
+    if e.get("export_version") != B.EXPORT_VERSION or digest.body_hash(B.issue_body(fi, fe, rev_at=appr.get("approved_at", ""),
+                                                                          first_rev=fixed_first_rev(man, issue_id, rev))) != e.get("body_hash"):
         return False, REASON_BODY
     keys = ("slug", "rev", "content_hash", "evidence_hash", "body_hash", "export_version", "approved_at", "approved_by", "request_id")
     if any(appr.get(k) != e.get(k) for k in keys) or appr.get("issue_id") != issue_id or appr.get("rev") != rev:
         return False, "승인 기록(approval.json)이 발행 목록과 다르다"
     return True, ""
+
+
+def fixed_first_rev(man: dict, issue_id: str, rev: int) -> int | None:
+    """고정 사본에서 본문을 다시 만들 때의 '처음 게시한 판' — 그 판을 승인할 때 발행 목록에 있던 판(그 판보다 앞의 판)만 본다.
+    처음 게시한 판이면 None 이라 승인 때 만든 본문과 같다(그 판의 판정 변경 기록은 어차피 싣지 않는다)."""
+    first = B.first_published(man, issue_id)
+    return first if first is not None and first < rev else None
 
 
 def latest_public(issue_id: str, man: dict | None = None) -> int | None:
@@ -220,6 +229,10 @@ def latest_public(issue_id: str, man: dict | None = None) -> int | None:
 # ── 내림 ──────────────────────────────────────────────────────────────
 def withdraw(target: str, rev: int | None, by: str, reason: str, now=None) -> dict:
     """{code, msg}. target = 이슈 번호 | day:<날짜> | restored:<날짜>. 지우지 않고 withdrawn 에 더한다."""
+    if paths.in_runner():
+        return {"code": 2, "msg": paths.MSG_RUNNER}
+    if paths.is_alias_of_real_root():               # 시험 루트로 보이는 실제 폴더의 다른 이름 — 실제 발행 목록에 내림이 적히지 않게
+        return {"code": 2, "msg": MSG_ROOT_ALIAS}
     if cards._blank(by) or cards._blank(reason):
         return {"code": 2, "msg": "내린 쪽(--by)과 까닭(--reason)을 적는다"}
     unit, uid = ("issue", target) if ":" not in target else tuple(target.split(":", 1))

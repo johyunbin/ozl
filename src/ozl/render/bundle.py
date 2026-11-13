@@ -29,12 +29,13 @@ def all_cited(sp: dict) -> list[str]:
     for sl in sp.get("slides") or []:
         if not isinstance(sl, dict):
             continue
-        ch = sl.get("chart")
-        if isinstance(ch, dict):
-            for c in ch.get("claims") or []:
-                seen.setdefault(str(c), None)
-        if sl.get("capture"):
-            seen.setdefault(str(sl["capture"]).strip(), None)
+        for _, v in S.slot_views(sl):   # image_pair 는 두 자리 각각
+            ch = v.get("chart")
+            if isinstance(ch, dict):
+                for c in ch.get("claims") or []:
+                    seen.setdefault(str(c), None)
+            if v.get("capture"):
+                seen.setdefault(str(v["capture"]).strip(), None)
     return list(seen)
 
 
@@ -54,16 +55,20 @@ def slide_block(i: int, sl: dict, claims: dict, card: dict | None, labels: dict)
     L = [f"### {i}쪽 · {sl.get('stage', '')} · {sl.get('kind', '')}", f"제목: {sl.get('title', '')}"]
     vt = S.visible_text(sl)
     screen = vt[1:] if vt and vt[0] == S._s(sl.get("title")) else vt
-    ch = sl.get("chart")
-    if isinstance(ch, dict):
-        screen.append(_chart_line(ch))
-        q = S.chart_screen_text(sl)
-        if q:
-            screen.append("차트에 찍히는 수량: " + " · ".join(q))
-    if sl.get("capture"):
-        focus = sl.get("capture_focus")
-        focus = focus if isinstance(focus, list) else ([focus] if focus else [])
-        screen.append(f"[원문 캡처] 기록 {_short(sl['capture'])}" + (" · 형광: " + " | ".join(map(str, focus)) if focus else ""))
+    for j, v in S.slot_views(sl):
+        where = f"({S.SLOT_NAME[j]}) " if j >= 0 else ""
+        ch = v.get("chart")
+        if isinstance(ch, dict):
+            screen.append(where + _chart_line(ch))
+        if v.get("capture"):
+            focus = v.get("capture_focus")
+            focus = focus if isinstance(focus, list) else ([focus] if focus else [])
+            screen.append(f"{where}[원문 캡처] 기록 {_short(v['capture'])}" + (" · 형광: " + " | ".join(map(str, focus)) if focus else ""))
+        if v.get("picture"):
+            screen.append(f"{where}[그림 파일] {v['picture']}(검수 대장 pictures)")
+    q = S.chart_screen_text(sl)
+    if q:
+        screen.append("차트에 찍히는 수량: " + " · ".join(q))
     L.append("화면: " + ("\n  ".join(screen) if screen else "—"))
     for k, name in (("spoken", "말"), ("transition", "넘김")):
         L.append(f"{name}: {sl.get(k, '') or '—'}")

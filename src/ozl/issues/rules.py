@@ -351,8 +351,8 @@ def verdict_errors(claim: dict, evidences: dict, copy_errs: dict | None = None, 
     return errs
 
 
-def evidence_label(claim: dict, evidences: dict, copy_errs: dict | None = None) -> str:
-    """판정 옆 근거 종류 표시: 공식 원문 · 당사자 발표 · 원자료 대조 · 보도 n곳(맨 처음 매체, 근거: 종류) + basis_label."""
+def _evidence_kinds(claim: dict, evidences: dict, copy_errs: dict | None = None) -> tuple[list[str], dict[str, dict]]:
+    """([공식 근거의 종류], {보도 근거 번호: 근거 기록}) — 주장과 작은 주장을 다 본다."""
     views = [claim] + [part_view(claim, p) for p in claim.get("parts") or [] if isinstance(p, dict)]
     labels: list[str] = []
     reports: dict[str, dict] = {}
@@ -367,16 +367,29 @@ def evidence_label(claim: dict, evidences: dict, copy_errs: dict | None = None) 
                 labels.append("원자료 대조")
             elif i["counted"]:
                 labels.append("공식 원문")
-    if reports:
-        evs = sorted(reports.values(), key=lambda e: (not (e.get("report") or {}).get("first_report"), str((e.get("report") or {}).get("read_at"))))
-        first = evs[0].get("report") or {}
-        kinds = list(dict.fromkeys(k for e in evs for k in (e.get("report") or {}).get("basis_kinds") or []))
-        tail = f", 근거: {', '.join(kinds)}" if kinds else ""
-        labels.append(f"보도 {len(evs)}곳(맨 처음 {first.get('outlet')}{tail})")
+    return labels, reports
+
+
+def evidence_label(claim: dict, evidences: dict, copy_errs: dict | None = None) -> str:
+    """판정 옆 근거 종류 표시: 공식 원문 · 당사자 발표 · 원자료 대조 + basis_label. 보도는 넣지 않는다(press_label).
+    판정에 쓴 공식 근거가 없으면 빈 글이다."""
+    labels, _ = _evidence_kinds(claim, evidences, copy_errs)
     out = ", ".join(dict.fromkeys(labels))
     if not cards._blank(claim.get("basis_label")):
         out = f"{out}, {claim['basis_label']}" if out else claim["basis_label"]
     return out
+
+
+def press_label(claim: dict, evidences: dict, copy_errs: dict | None = None) -> str:
+    """주장을 실은 보도의 요약: '보도 n곳(맨 처음 매체. 기사가 든 근거: 종류)'. 보도는 판정의 근거로 세지 않는다. 없으면 빈 글."""
+    _, reports = _evidence_kinds(claim, evidences, copy_errs)
+    if not reports:
+        return ""
+    evs = sorted(reports.values(), key=lambda e: (not (e.get("report") or {}).get("first_report"), str((e.get("report") or {}).get("read_at"))))
+    first = evs[0].get("report") or {}
+    kinds = list(dict.fromkeys(k for e in evs for k in (e.get("report") or {}).get("basis_kinds") or []))
+    tail = f". 기사가 든 근거: {', '.join(kinds)}" if kinds else ""
+    return f"보도 {len(evs)}곳(맨 처음 {first.get('outlet')}{tail})"
 
 
 # 게시 가부(item_public, hidden_claims, publish_errors)는 publish 모듈에 있고 여기서 다시 내보낸다.

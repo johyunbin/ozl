@@ -15,7 +15,7 @@ RULE_VERSION = 1
 MASKED_TEXT = "선거법상 가린 내용"
 KST = timezone(timedelta(hours=9))
 TEXT_KEYS = ("text", "gist", "what", "summary", "caption", "alt", "searched", "not_found", "would_decide", "party_position",
-             "evidence_label")
+             "evidence_label", "press_label", "scope")
 ITEM_LISTS = ("facts", "flow", "stances", "open_questions", "figures")
 SOURCE_TEXT_KEYS = ("title", "by", "url")
 
@@ -52,10 +52,10 @@ def active(election, now) -> bool:
 
 
 def _texts(item: dict) -> list[str]:
-    out = [str(item.get(k) or "") for k in TEXT_KEYS]
+    out = [str(item.get(k) or "") for k in TEXT_KEYS] + [str(x) for x in item.get("basis") or []]
     for p in item.get("parts") or []:
         if isinstance(p, dict):
-            out += [str(p.get(k) or "") for k in ("gist", "would_decide")]
+            out += [str(p.get(k) or "") for k in ("gist", "would_decide", "scope")] + [str(x) for x in p.get("basis") or []]
     for h in item.get("history") or []:
         if isinstance(h, dict):
             out += [str(v) for v in h.values() if isinstance(v, str)]
@@ -104,12 +104,14 @@ def apply(body: dict, now) -> dict:
     out = copy.deepcopy(body)
     if "선거" not in (out.get("sensitive") or []) or not active(out.get("election"), now):
         return out
-    hits, gone, kept_items, prefixes = 0, set(), [], []
+    hits, gone, kept_items, prefixes, gone_texts = 0, set(), [], [], set()
     for lst in ITEM_LISTS:
         new = []
         for it in out.get(lst) or []:
             if isinstance(it, dict) and _hit(it):
                 hits += 1
+                if lst == "facts":                  # 가린 사실의 문장은 주장의 '판정을 받치는 사실'(basis)에서도 뺀다
+                    gone_texts.add(str(it.get("text") or ""))
                 gone |= _src_ids([it])
                 prefixes.append(f"{lst}.{it.get('id')}.")
                 new.append(_masked(it))
@@ -132,6 +134,11 @@ def apply(body: dict, now) -> dict:
                 kept_items.append(c)
         if keep:
             groups.append(dict(g, claims=keep))
+    for g in groups if n_masked else vd.get("groups") or []:
+        for c in g.get("claims") or []:
+            for x in [c] + [p for p in c.get("parts") or [] if isinstance(p, dict)]:
+                if isinstance(x.get("basis"), list):
+                    x["basis"] = [b for b in x["basis"] if b not in gone_texts]
     if n_masked:
         vd["groups"] = groups
         vd["masked_claims"] = n_masked

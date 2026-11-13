@@ -3,7 +3,7 @@
 // 카드 안의 크기는 모두 --b(카드 폭의 1/22.5, 화면에서는 1rem 이상) 의 배수다. 그래서 폭 358 의 화면 카드와
 // 폭 1080 의 그림 카드가 같은 자리에서 줄을 바꾼다. 화면 카드는 4:5 를 최소 높이로 두고 글이 길면 늘어난다.
 // 그림 카드(print)는 1080×1350 에 고정하고 본문 상자를 넘치면 잘리게 둔다 — 찍는 스크립트가 넘침을 잰다.
-import type { Block, Card, Deck } from "../lib/cards";
+import { evidenceLine, PRESS_HEAD, scopeHead, TITLE_SIZES, type Block, type Card, type Deck } from "../lib/cards";
 import VerdictMark from "./VerdictMark.astro";
 import { VERDICTS } from "../lib/verdicts";
 interface Props { card: Card; deck: Deck; n: number; total: number; print?: boolean }
@@ -31,7 +31,7 @@ const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filte
               {r.items.map((b) => (
                 b.t === "part" ? <li class="c-part"><VerdictMark verdict={b.verdict} /> {b.core && <span class="tag">핵심</span>}<span>{b.text}</span></li>
                 : b.t === "src" ? <li class="c-src"><strong>{b.by}</strong>{b.by && b.title && <span class="sep" />}<span>{b.title}</span>{b.host && <span class="c-host">{b.host}</span>}</li>
-                : b.t === "li" ? <li class="c-li">{b.text}</li>
+                : b.t === "li" ? <li class:list={["c-li", { cont: b.cont }]}>{b.text}</li>
                 : null
               ))}
             </ul>
@@ -39,7 +39,7 @@ const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filte
         }
         const b = r.b;
         switch (b.t) {
-          case "title": return <p class="c-title">{b.example && <span class="tag">예시</span>}{b.text}</p>;
+          case "title": return <p class={`c-title s${Math.max(0, TITLE_SIZES.indexOf(b.size as (typeof TITLE_SIZES)[number]))}`}>{b.example && <span class="tag">예시</span>}{b.text}</p>;
           case "meta": return <p class="c-meta num">{b.text}</p>;
           case "summary": return (
             <ul class="c-summary" aria-label={`주장 ${b.total}건의 판정`}>
@@ -48,11 +48,13 @@ const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filte
           );
           case "h": return <h3 class="c-h">{b.text}</h3>;
           case "p": return <p class:list={["c-p", { small: b.small }]}>{b.text}</p>;
+          case "scope": return <p class:list={["c-scope", { "in-part": b.inPart }]}><span class="c-scope-h">{scopeHead(b)}:</span> {b.text}</p>;
           case "gist": return <p class="c-gist">{b.kind && <span class="tag">{b.kind}</span>}{b.text}</p>;
           case "verdict": return (
             <div class="c-verdict">
               <p class="c-vline">{b.past && <><VerdictMark verdict={b.past} struck /><span class="arrow" aria-hidden="true">→</span></>}<VerdictMark verdict={b.verdict} /></p>
-              {b.evidence && <p class="c-ev">근거: {b.evidence}</p>}
+              {evidenceLine(b.evidence, b.press, b.verdict) && <p class="c-ev">{evidenceLine(b.evidence, b.press, b.verdict)}</p>}
+              {b.press && <p class="c-press"><span class="c-press-h">{PRESS_HEAD}:</span> {b.press}</p>}
             </div>
           );
           case "link": return (
@@ -85,7 +87,11 @@ const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filte
   .card :global(.verdict.sm), .card :global(.verdict.md) { font-size: inherit; }
   .card .tag { font-size: calc(var(--b) * 0.8125); padding: 0 0.4em; margin-right: 0.5em; vertical-align: 0.15em; }
 
+  /* 제목 글자 크기는 표지가 넘치지 않을 때까지 한 단계씩 줄인다(cards.ts 의 TITLE_SIZES 와 같은 차례). */
   .c-title { font-size: calc(var(--b) * 1.625); line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; }
+  .c-title.s1 { font-size: calc(var(--b) * 1.375); }
+  .c-title.s2 { font-size: calc(var(--b) * 1.25); }
+  .c-title.s3 { font-size: calc(var(--b) * 1.125); }
   .c-meta { font-size: calc(var(--b) * 0.875); line-height: 1.5; color: var(--muted); margin-top: calc(var(--b) * 0.5); }
   .c-summary { margin-top: calc(var(--b) * 0.5); font-size: var(--b); line-height: 1.5; display: grid; gap: calc(var(--b) * 0.5); }
   .c-summary .zero { color: var(--muted); }
@@ -96,11 +102,18 @@ const foot = ["OZL", deck.date, deck.rev !== null ? `${deck.rev}판` : ""].filte
   .c-verdict { margin-top: calc(var(--b) * 0.75); font-size: var(--b); line-height: 1.5; }
   .c-vline { min-height: calc(var(--b) * 1.6); display: flex; flex-wrap: wrap; align-items: center; }
   .c-ev { color: var(--text); }
+  .c-press-h { color: var(--muted); }
+  .c-scope { font-size: calc(var(--b) * 0.9375); line-height: 1.5; margin-top: calc(var(--b) * 0.375); }
+  .c-scope.in-part { padding-left: 1em; }
+  .c-scope-h { color: var(--muted); }
   .c-list { margin: 0; padding: 0; }
   .c-part, .c-li { font-size: calc(var(--b) * 0.9375); line-height: 1.5; margin-top: calc(var(--b) * 0.375); }
   .c-part { padding-left: 0; }
   .c-li { padding-left: 1em; text-indent: -1em; }
   .c-li::before { content: "– "; color: var(--muted); }
+  /* 앞 장에서 넘어와 이어지는 문장: 줄표 없이 같은 들여쓰기로 잇는다. */
+  .c-li.cont { text-indent: 0; }
+  .c-li.cont::before { content: none; }
   .c-src { font-size: calc(var(--b) * 0.875); line-height: 1.45; margin-top: calc(var(--b) * 0.5); }
   .c-host { display: block; font-size: 0.93em; color: var(--muted); }
   .c-link { font-size: calc(var(--b) * 0.9375); line-height: 1.5; margin-top: calc(var(--b) * 0.5); }

@@ -21,7 +21,7 @@ SYUKA_DECK = ("가능", "불가", "미정")
 ANGLES = ("판정", "규모", "선후", "이해관계", "절차", "남은 질문", "비교")
 FACT_TYPES = ("사실", "해석")
 FACT_KINDS = ("발표와 조치", "사실")
-FLOW_KINDS = ("계기", "대응", "반박", "결정", "예정")
+FLOW_KINDS = ("계기", "대응", "반박", "결정", "시행", "예정")   # 시행 = 발표와 다른 날 시행된 조치(구현에서 더함)
 STANCE_KINDS = ("발표", "인정", "부인", "평가", "전망")
 FIGURE_KINDS = ("직접 그린 도표", "공식 문서 캡처", "검수 대장 그림")
 CORRECTION_KINDS = ("정정", "판정 변경", "새 사건")
@@ -40,7 +40,10 @@ NA = "해당 없음"
 ISSUE_FIELDS = ("issue_id", "slug", "aliases", "revision", "split_from", "merged_into", "category", "keywords", "example",
                 "reason", "publish", "sensitive", "election", "syuka_deck", "event_check", "titles", "rev_line", "what_new",
                 "why_matters", "so_far", "so_far_refs", "numbers", "facts", "claims", "flow", "stances", "open_questions",
-                "spillover", "figures", "reviews", "corrections", "production", "topic_state", "trend", "work_state", "history")
+                "spillover", "figures", "reviews", "corrections", "production", "topic_state", "trend", "work_state", "history",
+                "identifiers")
+# identifiers(구현에서 더함) = 이름 속 숫자 표기(KTX-1, 제2형)의 목록. 덱 사양의 identifiers 와 같은 뜻(numbers.identifier_error).
+# 비어 있거나 없으면 지문에서 빠진다(digest.issue_view) — 이 칸이 생기기 전의 이슈의 내용 해시가 바뀌지 않게.
 REQUIRED = ("issue_id", "slug", "revision", "category", "keywords", "example", "publish", "sensitive", "syuka_deck",
             "event_check", "titles", "production", "work_state")
 POST_REQUIRED = ("reason", "what_new", "why_matters", "so_far", "facts")   # 게시 가능일 때(또는 --public) 필수
@@ -120,7 +123,7 @@ def skeleton(issue_id: str, slug: str, example: bool = False, title: str = "", n
 TOP_TEXT = ("rev_line", "what_new", "why_matters", "reason")
 ITEM_TEXT = {"facts": ("text",), "flow": ("what",), "stances": ("who", "summary"), "open_questions": ("text",),
              "figures": ("caption", "alt"), "corrections": ("before", "after", "why")}
-CLAIM_TEXT = ("gist", "searched", "not_found", "would_decide")
+CLAIM_TEXT = ("gist", "scope", "searched", "not_found", "would_decide")   # scope 는 본문에 '확인한 범위'로 실린다
 
 
 def _s(v) -> str:
@@ -159,7 +162,7 @@ def reader_items(issue: dict) -> list[tuple[str, str, list, dict | None]]:
             add(f"{base}.party_position.text", pp.get("text"), c.get("numbers"), c)
         for p in c.get("parts") or []:
             if isinstance(p, dict):
-                for k in ("gist", "would_decide"):
+                for k in ("gist", "scope", "would_decide"):
                     add(f"{base}.parts.{p.get('id')}.{k}", p.get(k), c.get("numbers"), c)
         add(f"{base}.basis_label", c.get("basis_label"), c.get("numbers"), c)
         for j, h in enumerate(c.get("verdict_history") or []):

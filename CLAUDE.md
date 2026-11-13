@@ -1,91 +1,60 @@
-# OZL — 작업영역 SOP (규범만 · 전역 지침 `~/.claude/CLAUDE.md`는 자동 로드)
+# OZL 작업영역 지침 (길 안내와 공통 규칙 · 전역 지침 `~/.claude/CLAUDE.md` 는 자동으로 읽힌다)
 
 이름은 **OZL — 오늘의 즐길거리**. 문서 첫머리에 구호를 붙이지 않고, 무엇을 하는 곳인지 한두 문장으로 적는다(README 첫 문단이 기준).
 
+이 문서는 길 안내와 어느 일에서든 지킬 규칙만 둔다. 일마다의 세부 규칙은 `agent/` 에 있다. **`agent/` 파일은 자동으로 읽히지 않는다. 아래 표에서 해당하는 일을 하기 전에 그 파일을 읽는다.** 어느 일에서든 지킬 무거운 규칙은 요지를 이 문서에 두고 세부는 `agent/` 에 둔다. 두 곳의 문장이 어긋나면 이 문서를 따르고 `agent/` 쪽을 고친다.
+
 ## 진입 순서
-1. 이 문서 → `README.md` → `docs/how-it-works.md`(일의 흐름, 자동과 사람의 경계) → `docs/methodology.md`(검증 규칙 정본)
-2. 계획·결정 이력: `private/plan/`(비공개 사본) · 원본 `~/.claude/plans/ozl_plan_20261109_164333.md` · 정리 계획 `~/.claude/plans/ozl_tidy_plan_20261110_164038.md` · 재설계 계획(사용자는 통과/폐기만) `~/.claude/plans/ozl_redesign_plan_20261113_014132.md`
-3. 오늘 할 일: 최신 전체본 `private/daily/YYYY/MM/<날짜>_<회차>.md` 의 "채택 대기"(또는 `.venv/bin/python -m ozl.research status`) + Notion DB 「OZL 소재 카드」
+1. 이 문서 → `README.md` → `docs/how-it-works.md`(일의 흐름, 자동과 사람의 경계) → 하려는 일의 `agent/` 파일 → 그 일의 정본 문서(표의 끝 칸).
+2. 계획과 결정 이력은 `private/plan/`(비공개 사본)에 있다. 원본은 `~/.claude/plans/` 의 `ozl_plan_20261109_164333.md`(원본), `ozl_tidy_plan_20261110_164038.md`(정리 계획), `ozl_redesign_plan_20261113_014132.md`(재설계 계획, 사용자는 통과/폐기만), `ozl_service_plan_20261114_022800.md`(서비스 기획안).
+3. 지금 쌓인 일: `.venv/bin/python -m ozl.ops queue list`(만들기 대기열), `.venv/bin/python -m ozl.issues status`(이슈 기록), `.venv/bin/python -m ozl.research status`(옛 소재 카드의 채택 대기와 검증 대기).
 
-## 공개/비공개 경계 (사용자 결정 2026-11-09)
-- **공개**: 방법론·일일 보고서·클레임 레코드·사례 연구·코드·주제 분포 집계·스타일 가이드·템플릿 덱·**사용자 승인된** 제출 PPT.
-- **비공개(`private/` · gitignore)**: 원본 영상·오디오·전사 전문·추출 프레임·**슬라이드 문구(문자 인식 결과)**·원시 메타(API 정책)·PPT 초안·계획/검토 원문. 전사 전문·슬라이드 문구는 어떤 형태로도 외부 공유 금지(집계만). 코드·테스트의 예시 문장도 지어낸 것만 쓴다.
-- 공개 산출물은 **공개본 추출 게이트**(`scripts/publish_gate.py` — 발표자 노트·숨김 슬라이드 제거, 전사 연속 20자·슬라이드 문구 연속 15자 인용 차단 · md 뿐 아니라 `src/`·`tests/`·json 도 검사)를 통과한 것만 커밋. 게이트를 고치면 양성 반례(비공개 문구 한 줄 삽입)로 발화를 확인한다.
+| 하려는 일 | 먼저 읽을 파일 | 정본 |
+|---|---|---|
+| 이슈 기록 만들기(`/ozl make`) | `agent/issues.md` | `docs/issue-brief.md`, `.claude/skills/ozl/SKILL.md`, `src/ozl/issues/` |
+| 운영 화면, 화제 엔진, 매시 수집 | `agent/ops.md` | `src/ozl/ops/`, `src/ozl/signals/`, `src/ozl/pulse/` |
+| 웹(`apps/web`)과 iOS 앱(`apps/ios`) | `agent/web.md` | `apps/web/README.md`, `apps/web/DESIGN.md` |
+| 슈카 자료(영상 받기, 다글로 전사, Whisper, 슬라이드 분석)와 덱 | `agent/deck.md` | `skills/ozl/SKILL.md` §5, `src/ozl/render/` |
+| 일일 데스크(옛 소재 카드와 클레임) | `agent/desk.md` | `skills/ozl/SKILL.md`, `docs/methodology.md` |
+| 공개, 커밋, 푸시, 백업 | `agent/publish.md` | `scripts/publish_gate.py`, `scripts/push_delegated.sh` |
+| 공개 문서 쓰기(README, `docs/`, 웹 글) | `agent/publish.md` 의 「공개 문서 문체」 | `scripts/style_check.py` |
 
-## 슬라이드 분석 파이프라인 (Phase 2A 정본 · 2026-11-10)
-- 장수·구성: `slide_dense`(3초 표본 + 문자 인식 + 제목 묶음) → `slide_dense rebuild` → `slide_structure` → `compose_aggregate holdout`. `collect/frames.py`(장면 전환 + pHash) 프레임으로 장수를 세지 않는다 — 슬라이드의 44%를 놓친다(색·폰트 측정에만 유효).
-- 구성 라벨의 번호는 `private/slides_label_r2/`(고정본)와 맞는다. `slide_structure` 가 다시 쓰는 `slides_label/` 은 번호가 달라질 수 있다.
-- 렌더 검증의 정본 = 파워포인트 내보내기(`src/ozl/render/ppt_export.py`). LibreOffice 는 맑은 고딕·줄 간격이 달라 대체 경로로만.
+## 어느 일에서든 지키는 규칙
 
-## 덱 초안 생성기 (Phase 4 · 2026-11-10)
-- 두 단계다. 카드와 검증 기록을 읽고 덱 사양(`private/decks/specs/<card_id>_<타임코드>.yaml`)을 쓰는 일은 세션(에이전트)이 하고, `python -m ozl.render check|build <사양>` 은 그 사양을 검사해 `pptx` 로 만든다. 코드는 문장을 짓지 않는다. 통과한 소재를 완성본까지 만드는 순서는 `skills/ozl/SKILL.md` §5 가 정본이다.
-- 숫자 규칙: 화면 글과 말로 할 문장의 수량은 인용한 검증 기록의 `observed`·`text` 에 같은 표기로 있어야 한다(환산해 적었으면 `conversions` 에 원문 표기). 엄격 모드는 '확인'(사람 대조로 `verified` 가 된 기록) 또는 「원문 일치」(기계 대조 — 쓸 때마다 사본 재해시·문구와 자리 재대조) 기록만 받는다(`spec.acceptance_error`). 판독 규칙과 못 잡는 것은 `src/ozl/render/numbers.py` 머리말에 있다.
-- 초안 모드(`build --draft --claims-dir private/desk/staging/<card_id>/`)는 아직 받아들여지지 않은 기록(사람 대조도 「원문 일치」도 아닌 것)과 대기 폴더 기록으로 미리 만들어 보는 용도다. 해당 쪽에 [검증 대기] 가 찍히고 산출물 이름에 `_draft` 가 붙는다. 완성본·공개에 쓰는 판은 엄격 모드로만 만든다.
-- 보도 기사(T3)는 숫자의 근거가 되지 않는다(기계 대조는 T1·T2 원문만). 덱에서는 카드 `sources` 와 사양 `refs` 로 숫자 없이 기사로만 인용한다 — 각주에는 숫자 근거로 인용한 기록의 문서가 '출처:', refs 로만 인용한 회사·기관 문서(카드 `sources` 의 T1·T2)가 '자료:', 그 밖의 refs 가 '보도:'로 찍힌다.
-- 그림 자리(`image_text`·`number`)에는 `image`(회색 자리)·`chart`·`capture` 가운데 하나만 쓴다. 둘 이상이거나 그림 자리가 없는 종류에 쓰면 실패다.
-- `chart:` 는 `src/ozl/render/charts.py` 의 입력 그대로다(`kind`·`title`·`unit`·`period`·`series`·`source`·`claims`…). `chart.claims` 는 그 쪽 `claim_ids` 안이어야 하고, 그림에 찍히는 수량(제목·꼬리표 등)은 위 숫자 규칙을 그대로 받는다.
-- 차트의 모든 점 값(꼬리표 없는 점 포함)은 `chart.claims` 가운데 한 기록의 원문 사본 글에서 공백으로 나뉜 낱말 하나와 글자 그대로 같아야 한다(표시 문자열이 있으면 그것 · `capture.find_value`). 차트 자료는 표의 칸에서 온다 — `-0.8%` 안의 `0.8%`, `3%~5%` 안의 `5%`, `11,234` 안의 `1,234`, `4명이다.` 안의 `4명` 은 찾은 것이 아니고, 같은 칸에서 바로 앞이 부호·범위 이음 낱말이거나 바로 뒤가 범위 이음 낱말인 자리도 세지 않는다. 사본이 없는 옛 기록은 `observed`·`text` 에서 찾는다.
-- 프로그램은 값이 사본에 있는지만 본다. 어느 칸(어느 달·항목)의 값인지는 문장 대조에서 본다. 세로축 눈금은 대조하지 않고, `y_from_zero: false` 는 러닝시트 차트 줄에 적힌다.
-- 기계 대조 기록의 `observed`·`author.located`·`recheck.located` 는 문장(마침표까지)·줄·표의 칸을 **통째로** 따온다. 문장 중간에서 끊지 않는다(`capture.passage_bounds_error` — 등급을 올릴 때와 덱 엄격 모드·발행 판정의 재검사 모두). PDF 표는 줄 전체만 받는다.
-- `capture: <claim_id>` 는 빌드 때 해시가 확인된 원문 사본에서 대조한 자리(`match.target`)의 그림을 새로 그려 넣는다(PDF 는 그 쪽에 문구가 한 번만 나오면 해당 줄 둘레 띠, 두 번 이상이면 쪽 전체 · 그 밖은 사본 글의 대목 — 원래 화면 모양 아님 · 대조한 문구가 그림 자리에 다 들어가지 않으면 엄격 모드 실패). 기록의 `verification.image` 는 미리 보기일 뿐 덱은 쓰지 않는다. 그림 밑에는 원문 주소의 호스트만 적는다(받은 시각은 부록 「시각물 출처·검증표」가 맡는다). 그 기록은 `claim_ids` 안이어야 하고, 엄격 모드는 받는 기록(`acceptance_error` 빈 문자열)이며 사본에서 그릴 수 있어야 한다. 초안 모드는 기록이 아직 받아들여지지 않으면 그 쪽에 [그림 대기]를 찍는다.
-- `capture_focus: "<구절>"`(또는 구절 목록)을 쓰면 원문 캡처에서 그 구절만 형광으로 칠한다(PDF 띠는 그 낱말 자리만). 구절은 대조한 대목(`observed`) 안에 글자 그대로(공백만 정리) 있어야 하고, 아니면 검사 실패다. 안 쓰면 대목 전체가 형광이다. 대목을 옮겨 그린 그림에는 대목 글과 맨 아래 표기 한 줄만 두고, 기록 번호·주소·받은 시각·사본 해시는 부록 「시각물 출처·검증표(차트·원문 캡처)」가 맡는다.
-- 엄격 모드에서 그림이 없는 `image_text` 쪽은 경고만 낸다. 렌더한 차트 PNG 는 산출 폴더의 `visuals/` 에, 러닝시트 장별 표 끝 칸에 그림 종류(차트·원문 캡처·그림 자리·없음)가 적힌다.
-- 발행한 카드에 기록을 더하거나 문구를 고칠 때는 `private/desk/staging/<card_id>/` 에 모아 둔다(기록 초안과 반영 스크립트). 새 기록이 받을 수 있는 등급(「원문 일치」 — `machine-verify --claims-dir`)이 된 뒤에 한 번에 옮기고, 반영 스크립트는 그 전에 임시 사본에서 끝까지 돌려 본다. 옮기면 그 카드의 승인이 풀리므로 다시 공개하려면 사용자의 승인이 있어야 한다. 사용자에게 눈 대조를 요청하지 않는다.
-- 검사기가 통과시켜도 문장은 따로 본다. 인과, 선후, 범위, 주체는 숫자 검사로 잡히지 않는다. 사양을 쓴 쪽과 다른 에이전트의 문장 대조, 다른 모델 계열의 해석 점검, 구성·화면 평가를 판마다 거친다(`skills/ozl/SKILL.md` §5).
-- 문장 대조의 기준: 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 `text`·`observed` 로 받쳐져야 한다. 반론 칸(`counter`)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다. 대조를 맡길 때 이 기준을 프롬프트에 그대로 적는다(적지 않은 대조는 반론 칸을 근거로 인정하고 넘어갔다).
-- 산출물은 비공개다: 초안 `private/decks/drafts/`, 완성본 `private/decks/final/<card_id>_<타임코드>/`(pptx·PDF·러닝시트·사양 사본·`검증_요약.md`). `tracks/syuka/decks/` 로 옮겨 공개하는 것은 사용자가 "올려"라고 한 뒤다.
+**공개와 비공개의 경계** (사용자 결정 2026-11-09, 세부는 `agent/publish.md`)
+- 비공개(`private/`, gitignore): 원본 영상, 오디오, 전사 전문, 추출 프레임, **슬라이드 문구(문자 인식 결과)**, 원시 메타(API 정책), PPT 초안, 계획과 검토 원문, 실제 이슈 기록(`private/desk/issues/`). 전사 전문과 슬라이드 문구는 어떤 형태로도 외부 공유 금지(집계만). 코드와 테스트의 예시 문장도 지어낸 것만 쓴다.
+- 공개 산출물은 **공개본 추출 게이트**(`scripts/publish_gate.py`)를 통과한 것만 커밋한다.
+- 옛 소재 카드의 공개 여부를 묻는 코드는 `cards.publishable()` 하나만 쓴다(세부 `agent/desk.md`).
+- `private/` 는 `scripts/backup_private.sh` 로만 비공개 원격에 올린다. 원문 사본(`private/desk/captures/` 와 이슈의 `captures/`)은 백업 밖이다(세부 `agent/publish.md`).
 
-## 검증 규칙 (정본 = docs/methodology.md)
-- 모든 수치·주장은 `claims/` YAML 레코드(출처 티어·checks·counter·human_verified, 새 기록은 기계 대조 묶음 `verification`).
-- `verified` 의 표시는 둘이다(`cards.grade_label`·`badge_ko` 만 쓴다). **'확인'**(`GRADE_HUMAN`) = 원본성·정확성·해석 3차원 통과 + 사람이 원문과 눈으로 대조(`human_verified`). **「원문 일치」**(`GRADE_MACHINE`) = 사람 대조 없이 `machine_verify` 가 통과시킨 기록 — T1·T2 원문 사본을 프로그램이 받아 해시했고, `observed` 가 사본에 통째 대목으로 있으며, 쓴 쪽과 다른 재대조 에이전트가 같은 자리를 독립으로 찾았고, 맥락 칸이 맞는다. 카드 배지는 기록이 전부 사람 대조면 '확인', 기계 대조가 섞이면 「원문 일치」. 모델의 합의나 "맞다"는 서술은 등급을 올리지 않는다.
-- 이미지·로고·지도는 공식 프레스킷·기관 CI·라이선스 스톡만. 역검색 + 400% 확대 검수. 지도는 동해·독도 표기 확인란.
-- 민감 소재: 전수 분석 전까지 임시 기준(국내 정당·선거·정치인 평가 제외 / 정책은 통계·해외 비교로만 / 젠더·종교·지역 비하·피해자 소재 제외 / 해외 정치·지정학 허용).
+**사람이 하는 일과 하지 않는 일**
+- 사용자의 일은 고르기(옛 소재 카드의 통과와 폐기, 운영 화면의 [만들기]와 [버리기])와 공개 승인뿐이다. 그 사이의 검증과 완성은 시스템이 하고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다.
+- 옛 소재 카드의 발행 승인(`python -m ozl.research publish`)과 사람 대조 기록(`python -m ozl.research human-verify`)은 **사용자가 그렇게 말했을 때만** 실행한다. 예약 루틴과 모델이 스스로 하지 않는다. `human-verify` 는 사용자가 스스로 대조했다고 말한 기록에만 쓴다.
+- 이슈 기록의 승인(`python -m ozl.issues approve`), 내림(`withdraw`), 공개용 내보내기(`export --public`)는 **모델이 실행하지 않는다.** 사용자가 운영 화면 `/approve` 에서 한다(실행기 세션에서는 명령 자체가 막혀 있다). 시험 자료 루트의 지어낸 이슈로 하는 시험만 예외다.
+- 모델 여럿이 합의했다거나 "맞다"고 서술한 것은 등급이나 판정을 올리지 않는다.
 
-## 루틴·자동화
-- 예약 루틴(`ozl-am`·`ozl-pm`·`ozl-weekly`)은 2026-11-13 부터 꺼져 있다. 재가동은 발굴·겹침·완성 경로 시험을 통과한 뒤 사용자에게 물어 정한다(문서에 실행 시각을 약속하지 않는다). 루틴을 돌릴 때는 **Claude Opus 고정**(Fable 자동화 금지 · picker sticky 주의). 루틴 프롬프트에서 **Codex 호출 금지**(사용자 지시 세션에서만).
-- 루틴의 자동 `git commit` + `push`는 **`daily/`·`docs/`·`claims/` 한정 사전 위임**(사용자 결정). 코드·설정·`tracks/`·`src/`는 수동 승인.
-- 루틴과 위임 범위의 push 는 **`scripts/push_delegated.sh` 로만** 한다 — 위임 범위만 건드린 커밋을 골라 올리고, 코드 커밋이 로컬에 쌓여 있어도 딸려 보내지 않는다(병합 커밋·범위가 섞인 커밋은 보류). 코드·설정 커밋은 **사용자가 푸시하라고 말한 뒤에만** `git push origin main` 으로 올린다(올리기 전: 원격 대비 앞뒤 커밋 수·gitleaks·공개본 게이트·테스트).
-- 다글로 제출: 동시 1건·완료 후 다음·간격 ≥ 60초·일일 상한(초기 100)·402/429 즉시 중단. Trading 데몬 우선(계정 락 `~/.cache/daglo_submit.lock`).
-- Whisper: `nice -n 19`·1프로세스·메모리 상한. yt-dlp: sleep 간격·프레임용 영상은 추출 후 삭제.
+**문장 대조의 기준** (덱과 이슈 기록 공통. 이슈 기록의 판정과 문장 원칙은 `.claude/skills/ozl/make/principles.md`)
+- 화면 글과 말로 할 문장의 사실 주장은 그 쪽이 인용한 기록의 `text`·`observed` 로 받쳐져야 한다. 반론 칸(`counter`)에만 있는 내용은 화면에 쓰지 않고 노트에 둔다. "보도에 없다" 같은 부재 주장은 "읽은 보도(매체 이름)에서 찾지 못했다"로 범위를 밝힌다. 대조를 맡길 때 이 기준을 프롬프트에 그대로 적는다(적지 않은 대조는 반론 칸을 근거로 인정하고 넘어갔다).
 
-## 일일 데스크 (Phase 3 정본 · 2026-11-10)
-- 절차의 정본 = `skills/ozl/SKILL.md`(`/ozl am|pick|build|status` · `verify`·`publish` 는 사용자가 원할 때만 · `pm`·`weekly` 는 옛 회차 렌더용 — 발굴은 하루 한 번 아침). 결정적 단계는 `python -m ozl.research …`(수집·커버리지 대조·ID 발급·검사·렌더·Notion 속성·원문 확보 `capture`·기계 대조 `machine-verify`)와 `python -m ozl.render …`(덱 검사·빌드·검토 묶음 `bundle`·진행 기록 `progress`)가 한다.
-- **사용자의 일은 후보의 통과/폐기(`pick` 또는 Notion 상태)와 공개 승인뿐이다.** 통과 뒤의 검증과 완성은 시스템이 하고, 어느 단계도 사용자에게 원문 대조나 확인을 요청하지 않는다(검증 시트는 할 일 목록이 아니라 기록이다).
-- 카드·클레임의 정본 = `private/desk/cards/<card_id>.yaml` · `private/desk/claims/<날짜>/…`(비공개). 보고서는 두 벌 — **전체본** `private/daily/…`(모든 카드 · PDF 쌍)과 **발행본** `daily/…`(공개 · 공개 이력(승인·철회)이 있는 회차에만 쓴다 — `report.keeps_public_page`. 승인된 카드만 전문, 승인 전 카드는 번호·상태만).
-- **공개 여부를 묻는 코드는 `cards.publishable()` 하나만 쓴다**: 승인이 참이고, 지금 클레임으로 다시 계산한 배지가 verified('확인'·「원문 일치」)·추정이며, 승인 때의 내용 지문이 지금과 같고, 「원문 일치」 기록은 저장한 사본으로 증거를 다시 검사해 맞을 때만 참. 승인 뒤에 카드나 클레임을 고치면 승인은 무효가 된다(다시 승인하거나 `withdraw`).
-- `human-verify`(사람 육안 대조 기록)와 `publish`(발행 승인)는 **사용자가 그렇게 말했을 때만** 실행한다. 예약 루틴·모델이 스스로 올리지 않는다. 그렇다고 사용자에게 대조를 요청하지도 않는다 — `human-verify` 는 사용자가 스스로 대조했다고 말한 기록에만 쓴다.
-- 카드 ID 는 `ids` 명령으로만 받는다(발급 대장 `private/desk/issued_ids.json` — 지운 번호도 재사용하지 않는다).
-- 피드 = `src/ozl/research/feeds.yaml`, 발표 일정 = `calendar.yaml`. 일정은 **공식 일정 페이지를 직접 열어 확인한 날짜만** 적는다(35일 지나면 재확인 표시가 뜬다).
-- 수치는 1차 출처를 직접 열어 본 것만 클레임으로 만들고, 작성한 세션과 다른 에이전트가 원문을 다시 열어 대조한다. 검색 요약만 본 값은 "확인 필요"로 리스크에 적는다.
+**커밋과 푸시** (세부는 `agent/publish.md`)
+- 루틴의 자동 `git commit` + `push` 는 **`daily/`, `docs/`, `claims/` 한정 사전 위임**(사용자 결정)이다. 코드, 설정, `tracks/`, `src/` 는 수동 승인.
+- 루틴과 위임 범위의 push 는 **`scripts/push_delegated.sh` 로만** 한다. 코드와 설정 커밋은 **사용자가 푸시하라고 말한 뒤에만** `git push origin main` 으로 올린다.
 
-## 이슈 브리핑 트랙 (실험 · 2026-11-11)
-- 일일 데스크(카드·클레임)와 별개다. 화제 이슈의 떠도는 주장마다 판정(확인·일부 맞음·사실과 다름·근거 없음·확인 못 함)을 붙인 스와이프 덱을 만든다. 절차 정본 `skills/ozl-news/SKILL.md`, 형식 정본 `skills/ozl-news/deck_example.yaml`, 공개 설명 `docs/issue-brief.md`.
-- 실제 덱은 `private/briefs/`(비공개)에만 둔다. 공개 발행은 증거 경로(일일 데스크의 원문 사본 대조 같은 검증 기준)와 사용자 승인 절차를 정한 뒤에만 한다. 공개 저장소에는 지어낸 예시만.
-- 커뮤니티 글은 단서 전용: 목록의 제목·링크·수치만 받고 본문·댓글은 열지도 받지도 않는다. 근거(sources)로 쓰지 않는다(검사기가 막는다). robots.txt 가 AI 수집기를 막거나 약관이 수집을 금지한 사이트는 쓰지 않는다(`src/ozl/pulse/community.py` 의 SOURCES).
-- 민감 소재는 수집 단계에서 거르지 않고 표시만 한다(사용자 결정). 대신 개인을 특정하는 정보는 덱에 쓰지 않고, 개인을 겨눈 의혹은 '근거 없음'·'확인 못 함'을 보수적으로 쓴다.
-- 예약 루틴을 붙일 때도 Opus 고정·Codex 호출 금지·쓰기 범위 `private/briefs/`·`private/pulse/` 로 한다.
-- 수익화(SNS·영상·광고)는 슈카 지원 맥락과 겹치므로 지원이 끝날 때까지 다루지 않는다.
+**모델과 자동 실행**
+- 예약 루틴(`ozl-am`, `ozl-pm`, `ozl-weekly`)은 2026-11-13 부터 꺼져 있고, [만들기] 실행기(`python -m ozl.ops runner`)도 꺼져 있다. 루틴 재가동은 발굴, 겹침, 완성 경로 시험을 통과한 뒤 사용자에게 물어 정한다(문서에 실행 시각을 약속하지 않는다).
+- 루틴을 돌릴 때는 **Claude Opus 고정**(Fable 자동화 금지 · picker sticky 주의). 루틴 프롬프트와 실행기에서 **Codex 호출 금지**(Codex 는 사용자가 지시한 대화 세션에서만 쓴다).
+- 다글로 제출(동시 1건, 간격 60초 이상, 일일 상한, 402와 429 에서 바로 중단), Whisper(`nice -n 19`, 1프로세스), yt-dlp(sleep 간격) 규칙은 `agent/deck.md` 의 「영상 자료 받기」에 있다. 전사나 영상을 받는 일이면 어느 작업에서든 먼저 읽는다.
+- 외부 모델에 보내지 않는 것: 전사, 슬라이드 문구, 원문 사본 전체, 계정 정보, 일반인을 알아볼 수 있는 정보, 공개 제외로 정한 내용, 인증과 수집(스크래핑) 코드(다글로 인증은 `~/Trading` 모듈이 관리 — 호출만).
 
-## 공개 문서 문체 (2026-11-10)
+**파일**
+- 매시 :03 ~ :08 에는 매시 수집(launchd `com.hyunbin.ozl-pulse`, 매시 5분)이 읽는 파일을 저장하지 않는다. 목록은 `agent/ops.md`.
+- 카드 ID(`python -m ozl.research ids`)와 이슈, 근거, 주장의 번호(`python -m ozl.issues ids`)는 명령으로만 받는다. 발급 대장은 지운 번호도 다시 쓰지 않는다.
+- 카드 YAML 에 새 칸을 더하지 않는다. 승인이 카드 내용 전체의 지문에 묶여 있어서 칸 하나만 더해도 발행한 카드의 승인이 풀린다. 필요한 값은 이미 있는 `topic`, `category`, `history` 에서 꺼낸다.
+- 산출물 이름에는 타임코드 `_YYYYMMDD_HHMMSS` 를 붙이고 버전 넘버를 쓰지 않는다. 사용자 열람용 md 는 PDF 쌍(전역 규칙).
+
+**공개 문서 문체의 요지** (전문은 `agent/publish.md`)
 - 한 일을 적고 꾸미는 말을 뺀다. 구호, 이모지, 가운뎃점으로 명사를 길게 잇는 나열, 근거 없는 형용사를 쓰지 않는다.
-- 구현된 것만 현재형으로 쓴다. 아직 손으로 하는 일은 손으로 한다고 적는다. 쓰지 않는 도구와 소스는 적지 않는다(`docs/sources.md` 는 `scripts/build_sources.py` 로 만든다. 피드나 일정을 고치면 다시 돌린다).
-- 규모 숫자(피드 수, 모델 수)를 앞세우지 않는다. 첫 화면에는 결과물 하나와 그 검증 기록을 둔다.
-- 자동으로 한 일과 사람이 한 일을 섞어 쓰지 않는다. 모델을 쓴 사실은 숨기지 않는다.
-- 승인 전 카드의 제목이나 소재를 공개 문서에 적지 않는다(번호와 분야까지만).
+- 구현된 것만 현재형으로 쓰고, 자동으로 한 일과 사람이 한 일을 섞지 않는다. 모델을 쓴 사실은 숨기지 않는다.
+- 승인 전 카드나 이슈의 제목과 소재를 공개 문서에 적지 않는다(번호와 분야까지만).
 
-## 비공개 기록 백업 (2026-11-10)
-- `private/` 는 별도 git 저장소이고 비공개 원격 `ozl-private` 로 올린다. 무엇이 올라가는지는 `private/.gitignore` 의 허용 목록이 정한다(카드·클레임 정본, 수집 원본, 전체본·검증 시트, 계획, 설명서, 태그 파일). 영상·전사·프레임은 올라가지 않는다.
-- 올릴 때는 `scripts/backup_private.sh` 만 쓴다(원격이 비공개인지 확인한 뒤 올린다). 회차가 끝날 때마다 돌린다.
-- 원문 사본(`private/desk/captures/`)은 백업 대상이 아니다. 그런데 「원문 일치」 기록은 덱 엄격 검사와 공개 판정(`publishable`)이 쓸 때마다 사본을 다시 해시하므로, 사본이 없는 기기에서는 그 기록을 받지 않고 그 카드도 공개되지 않는다. 「원문 일치」 카드를 공개하기 전에 사본 보관 방법을 정한다. 완성 절차의 진행 기록·검토 원문(`private/desk/builds/`)은 `desk/` 아래라 백업된다.
-- 정본은 `private/desk/` 의 카드·클레임 파일 하나뿐이다. 공개 저장소, 사이트, Notion 은 거기서 한 방향으로 만든다. Notion 에서 거꾸로 받는 것은 `상태`뿐이다.
-
-## Notion 미러
-- Notion 미러: 페이지 「OZL — 오늘의 즐길거리」 아래 DB 「OZL 소재 카드」(식별자·속성 목록 = `private/notion.json`, 비공개). 루틴은 MCP(Notion 커넥터)로 upsert·상태 읽기 — 토큰 파일 없음. Notion은 `card_id`+`revision` 이벤트만 전달한다 — 카드의 정본은 `private/desk/cards/`, 공개분의 정본은 git 의 `daily/`·`claims/` 다. Notion 에서 사용자가 `상태`를 바꾸면 그것이 채택·보류·반려 결정이다.
-
-## 파일 규약
-- 일일 보고서 = 발행본 `daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(공개 · 공개 이력이 있는 회차만 — 없는 회차는 렌더가 쓰지 않고 남은 파일을 지운다) + 전체본 `private/daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(비공개) · 주간 `daily/YYYY/weekly_YYYY-Www.md` · 카드 ID `YYYY-MM-DD-{am|pm|wk}-NN`(불변).
-- 클레임 `claims/YYYY-MM-DD/<card_id>-cN.yaml` · 공개 덱 `tracks/syuka/decks/YYYYMMDD_<slug>.pptx|pdf` + `sources.md` · 완성본(비공개) `private/decks/final/<card_id>_<타임코드>/` · 완성 절차 진행 기록 `private/desk/builds/<card_id>/state.yaml`(검토 원문은 같은 폴더 `reviews/`).
-- 지난 카드를 찾는 길: 카드 원장 `private/desk/ledger.csv`(비공개 · `python -m ozl.research ledger` · 채택·발행 시각은 카드의 `history` 에서 뽑는다)와 발행 카드 색인 `daily/index.json`(공개 · 렌더가 함께 쓴다 · `publishable()` 통과분만). `scripts/build_site.py` 가 색인으로 사이트 「기록」 쪽을 만들고, 색인이 가리키는 카드 자리표가 발행본에 없으면 빌드를 실패시킨다. 카드 원본이 없는 기기에서는 색인을 다시 쓰지 않는다(예외로 멈춘다).
-- 카드 YAML 에 새 칸을 더하지 않는다. 승인이 카드 내용 전체의 지문에 묶여 있어서 칸 하나만 더해도 발행한 카드의 승인이 풀린다. 필요한 값은 이미 있는 `topic`·`category`·`history` 에서 꺼낸다.
-- 산출물 타임코드 `_YYYYMMDD_HHMMSS`, 버전 넘버 금지. 사용자 열람용 md는 PDF 쌍(전역 규칙).
-- 외부 모델 디스패치 컨텍스트에 인증·스크래핑 코드 투입 금지(다글로 인증은 `~/Trading` 모듈이 관리 — 호출만).
+**수익화**: SNS, 영상, 광고 수익화는 슈카 지원 맥락과 겹치므로 지원이 끝날 때까지 다루지 않는다.

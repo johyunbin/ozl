@@ -4,7 +4,10 @@ import SwiftUI
 struct OZLPulseApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+                Tab("화제", systemImage: "chart.bar.xaxis") { ContentView() }
+                Tab("이슈", systemImage: "doc.text.magnifyingglass") { IssuesView() }
+            }
         }
     }
 }

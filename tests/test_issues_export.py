@@ -102,7 +102,7 @@ def test_rerendered_body_mismatch_skipped(real, contact, tmp_path, monkeypatch):
     assert any("1판: 다시 만든 본문이 승인 때와 다르다" in m for m in r["msgs"])
     monkeypatch.setattr(B, "EXPORT_VERSION", B.EXPORT_VERSION - 1)
     orig = B.issue_body
-    monkeypatch.setattr(B, "issue_body", lambda i, e, rev_at="", copy_errs=None: dict(orig(i, e, rev_at, copy_errs), extra="모양 바뀜"))
+    monkeypatch.setattr(B, "issue_body", lambda i, e, rev_at="", copy_errs=None, **kw: dict(orig(i, e, rev_at, copy_errs, **kw), extra="모양 바뀜"))
     assert run(tmp_path / "b")["code"] == 4
 
 

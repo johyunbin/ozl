@@ -109,11 +109,12 @@
       "kind": "수치",
       "verdict": "확인",
       "evidence_label": "공식 원문",
+      "press_label": "",
       "searched": "시 보도자료 원문",
       "not_found": "",
       "reasons": [],
       "would_decide": "",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [],
       "sources": [
        {
@@ -146,11 +147,12 @@
       "kind": "사실",
       "verdict": "일부 맞음",
       "evidence_label": "공식 원문",
+      "press_label": "",
       "searched": "시 보도자료 원문, 한빛통계원 연료 가격 통계",
       "not_found": "",
       "reasons": [],
       "would_decide": "",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [
        {
         "id": "p1",
@@ -228,11 +230,12 @@
       "kind": "사실",
       "verdict": "사실과 다름",
       "evidence_label": "공식 원문",
+      "press_label": "",
       "searched": "시 보도자료 원문, 2095년 결산서",
       "not_found": "",
       "reasons": [],
       "would_decide": "",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [],
       "sources": [
        {
@@ -260,13 +263,14 @@
       "kind": "수치",
       "verdict": "확인 못 함",
       "evidence_label": "",
+      "press_label": "",
       "searched": "시 결산서 2098년, 시 보도자료, 시의회 회의록",
       "not_found": "",
       "reasons": [
        "핵심 근거를 구하지 못함"
       ],
       "would_decide": "시 결산서 원문이나 결산 검사 보고서",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [],
       "sources": [],
       "history": [],

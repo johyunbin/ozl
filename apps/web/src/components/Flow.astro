@@ -18,6 +18,8 @@ const label = (f: Body["flow"][number]) => {
   if (f.event_date && f.report_date && f.event_date.slice(0, 10) !== f.report_date.slice(0, 10)) {
     return `${fmtDate(f.event_date)} 일어남 · ${fmtDate(f.report_date)} 보도`;
   }
+  // 일어난 날을 확인하지 못한 항목은 보도된 날만 안다. 보도된 날을 일어난 날처럼 보이지 않게 밝혀 적는다.
+  if (!f.event_date && f.report_date) return `${fmtDate(f.report_date)} 보도 · 일어난 날은 확인하지 못함`;
   return fmtDate(f.event_date || f.report_date);
 };
 ---

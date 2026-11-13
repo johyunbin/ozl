@@ -95,7 +95,7 @@ OZL_DESK_ROOT="$T/desk" .venv/bin/python -m ozl.issues export --preview --out "$
 ```
 
 - `issues/nuri-battery-recall.json` 과 `index.json` 의 그 줄은 내보낸 것 그대로다.
-- 주장과 작은 주장의 `basis`(판정을 받치는 확인된 사실 문장)는 내보내기가 아직 싣지 않는다. 화면 시험을 위해 `hanbit-bus-fare-400`(최신판과 `r/3`)과 `garam-reservoir-levee` 의 몇 건에 지어 넣었다.
+- 주장과 작은 주장의 `basis`(판정을 받치는 확인된 사실 문장)와 `scope`(확인한 범위)는 내보내기 2판부터 싣는다. 예시 자료에는 `basis` 를 `hanbit-bus-fare-400`(최신판과 `r/3`)과 `garam-reservoir-levee` 의 몇 건에, `scope` 를 `hanbit-bus-fare-400`(최신판과 `r/3`)의 '확인' 주장 1건과 작은 주장 1건에 지어 넣었다. `meta.json` 의 `export_version` 은 2다.
 - `hanbit-bus-fare-400` 은 내보낸 본문을 틀로 판을 셋으로 늘렸다(1·2판은 '적자 200억' 이 확인 못 함, 2판에 정정, 3판에 판정 변경). 최신판 파일과 `r/1~3.json` 은 손으로 고친 것이다.
 - 내보내기가 주지 않는 것(`days/` 의 화제 목록, 다가오는 일, 정리 전 화제, 정정이 있는 이슈, 60자 제목, 주장 0건 이슈, 키워드 겹침, 내림)은 내보내기 JSON 의 모양을 따라 손으로 쓴 것이다. 무엇을 시험하려고 넣었는지는 DESIGN.md 7절에 있다.
 - `scripts/public-sample.mjs <원본> <새 폴더>` 는 예시를 공개용 모양(internal, publish_state, trend_now, 공개 제외 항목을 지움)으로 바꾼 사본을 만든다. 공개용 빌드 시험에 쓴다:

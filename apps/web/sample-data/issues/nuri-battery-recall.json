@@ -70,6 +70,7 @@
       "kind": "수치",
       "verdict": "확인",
       "evidence_label": "당사자 발표, 회사 공시 기준",
+      "press_label": "",
       "searched": "누리전자 공시, 제품안전원 공고",
       "not_found": "",
       "reasons": [],
@@ -107,6 +108,7 @@
       "kind": "수치",
       "verdict": "일부 맞음",
       "evidence_label": "공식 원문",
+      "press_label": "",
       "searched": "제품안전원 회수 명령 공고",
       "not_found": "",
       "reasons": [],
@@ -189,13 +191,14 @@
       "kind": "인과",
       "verdict": "확인 못 함",
       "evidence_label": "",
+      "press_label": "",
       "searched": "한빛고등법원 판결 요지, 제품안전원 공고",
       "not_found": "",
       "reasons": [
        "절차가 끝나지 않음"
       ],
       "would_decide": "대법원의 확정 판결이나 제품안전원의 원인 조사 결과",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [],
       "sources": [
        {
@@ -216,14 +219,15 @@
       "gist": "누리전자가 결함을 알고도 한 달 넘게 숨겼다.",
       "kind": "사실",
       "verdict": "확인 못 함",
-      "evidence_label": "보도 1곳(맨 처음 가나일보, 근거: 익명 관계자)",
+      "evidence_label": "",
+      "press_label": "보도 1곳(맨 처음 가나일보. 기사가 든 근거: 익명 관계자)",
       "searched": "누리전자 공시, 제품안전원 공고, 가나일보 보도",
       "not_found": "",
       "reasons": [
        "핵심 근거를 구하지 못함"
       ],
       "would_decide": "회사 내부 문서를 확인한 수사기관이나 법원의 문서",
-      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "party_position": "당사자의 직접 발표를 찾지 못함(2099-01-02 11:00 확인)",
       "parts": [],
       "sources": [
        {

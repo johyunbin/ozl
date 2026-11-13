@@ -14,6 +14,7 @@
 //   4. 장마다 실린 글이 그 장의 화면 글에 들어 있다.
 //   5. 자료에서 온 문장(from: data), 판정, 출처, 판 번호가 그 판의 사본(issues/<slug>/r/<판>.json)과 같다.
 //      판 사본이 없으면(미리보기 작업본) 최신 본문과 대조하고 copy: "latest" 로 적는다.
+//      장을 넘겨 이은 글(chain 이 같은 조각)은 장 차례로 이은 글 전체가 사본의 문장과 글자 하나 다르지 않아야 한다.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -156,6 +157,7 @@ try {
     }
 
     const cardsOut = [];
+    const chains = new Map(); // chain → { text, first }
     for (const c of data.cards) {
       const m = measures.find((x) => x.n === c.n);
       const file = `${String(c.n).padStart(2, "0")}.png`;
@@ -168,7 +170,12 @@ try {
       if (m.over.length) cp.push(`넘친 상자 ${m.over.length}개: ${m.over.slice(0, 3).map((o) => `${o.el} ${o.why}${o.text ? ` "${o.text}"` : ""}`).join("; ")}`);
       for (const t of c.texts) {
         if (!m.text.includes(norm(t.text))) cp.push(`화면 글에 없음: "${t.text.slice(0, 30)}"`);
-        if (copy && t.from === "data" && !all.has(t.text)) cp.push(`사본에 없는 문장: "${t.text.slice(0, 30)}"`);
+        if (t.chain) {
+          if (t.from !== "data") cp.push(`이은 글이 자료 글이 아니다: "${t.text.slice(0, 30)}"`);
+          const ch = chains.get(t.chain) || { text: "", first: c.n };
+          ch.text += t.text;
+          chains.set(t.chain, ch);
+        } else if (copy && t.from === "data" && !all.has(t.text)) cp.push(`사본에 없는 문장: "${t.text.slice(0, 30)}"`);
       }
       for (const v of c.verdicts) {
         const hit = claims.find((x) => x.gist === v.text) || parts.find((x) => x.gist === v.text);
@@ -187,6 +194,10 @@ try {
         room_px: m.room, used_px: m.used, estimate_px: Math.round((c.est_em ?? 0) * 48),
         texts: c.texts, verdicts: c.verdicts, sources: c.sources,
       });
+    }
+
+    for (const [, ch] of chains) {
+      if (copy && !all.has(ch.text)) problems.push(`${ch.first}장부터 이은 글이 사본의 문장과 다르다: "${ch.text.slice(0, 30)}"`);
     }
 
     const out = {

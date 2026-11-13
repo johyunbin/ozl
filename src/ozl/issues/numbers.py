@@ -148,9 +148,26 @@ KOREAN_QTY = re.compile(
     r"|(?:[일이삼사오육칠팔구]|이십|삼십|사십|오십|육십|칠십|팔십|구십)\s?퍼센트)")
 
 
+# 숫자말 없이 크기 단위 한 글자와 단위가 붙은 낱말 가운데 수량이 아닌 것 — '조건', '경건', 뒤에 '하·한·했·할·해' 가 오는 '만개', '천명'
+_NOT_QTY = {"조건", "경건"}
+_NOT_QTY_VERB = {"만개", "천명"}
+_VERB_TAIL = "하한했할해"
+
+
 def korean_qty(text: str) -> list[str]:
-    """한글로 쓴 수량 표기들('이백억 원', '수천억 원', '열두 명', '삼십 퍼센트')."""
-    return [m.group(0) for m in KOREAN_QTY.finditer(text or "")]
+    """한글로 쓴 수량 표기들('이백억 원', '수천억 원', '열두 명', '삼십 퍼센트'). '조건', '경건', '만개했다', '천명한' 은 수량이 아니다."""
+    text = text or ""
+    out = []
+    for m in KOREAN_QTY.finditer(text):
+        w = m.group(0)
+        if w in _NOT_QTY or (w in _NOT_QTY_VERB and text[m.end():m.end() + 1] in tuple(_VERB_TAIL)):
+            continue
+        out.append(w)
+    return out
+
+
+from .idents import (MSG_IDENT, exempt_counts, exempt_note, identifier_error, identifiers,  # noqa: E402,F401 (다시 내보낸다)
+                     mask_calendar)
 
 
 # 키워드의 숫자 — 키워드는 숫자 종류 검사를 받을 수 없으니 수량은 쓰지 않는다(설계 C-7·C-8). 다만 숫자가 이름의 일부인 표기
@@ -171,12 +188,13 @@ def _kw_unit(word: str) -> bool:
     return bool(word) and (word in _KW_UNIT_EXACT or word.startswith(_KW_UNIT_PREFIX) or word.lower() in _KW_ASCII_WORD)
 
 
-def keyword_qty(text: str) -> bool:
-    """키워드(또는 화제 목록의 키워드)에 수량이 있는가. 달력은 수량이 아니고, 숫자가 이름의 일부인 표기도 수량이 아니다."""
+def keyword_qty(text: str, identifiers=()) -> bool:
+    """키워드(또는 화제 목록의 키워드)에 수량이 있는가. 달력은 수량이 아니고, 숫자가 이름의 일부인 표기도 수량이 아니다.
+    identifiers(이슈의 식별자 목록)에 적은 표기('COVID-19', '주 4.5일제')도 받는다. 수량 단위가 붙은 표기는 식별자가 될 수 없다."""
     text = str(text or "")
     if korean_qty(text):
         return True
-    for t in N.claim_tokens(text):
+    for t in N.claim_tokens(text, identifiers):
         if t.kind == "cal":
             continue
         core, left = text[t.start:t.end], t.start > 0 and text[t.start - 1].isalpha()
@@ -289,7 +307,9 @@ def number_errors(issue: dict, evidences: dict) -> list[tuple[str, str]]:
     errs: list[tuple[str, str]] = []
     seen: dict[int, tuple[str, dict]] = {}
     matched: set[int] = set()
+    idents = identifiers(issue)
     for path, text, nums, item in model.reader_items(issue):
+        text = mask_calendar(text)                  # 'M.D.(요일)'·'H시 M분' 은 달력과 시각이다(자리는 그대로)
         cited = set(model.item_evidence_ids(item)) if item is not None else set(evidences)
         for n in nums:
             if not isinstance(n, dict):
@@ -302,11 +322,11 @@ def number_errors(issue: dict, evidences: dict) -> list[tuple[str, str]]:
         entries = [n for n in nums if isinstance(n, dict)]
         canon = []
         for n in entries:
-            toks = [t for t in N.claim_tokens(str(n.get("value") or "")) if not t.fragment]
+            toks = [t for t in N.claim_tokens(str(n.get("value") or ""), idents) if not t.fragment]
             canon.append({(t.canon, t.kind) for t in toks})
         for shown in korean_qty(text):
             errs.append((path, f"한글로 쓴 수량 '{shown}'은 숫자로 고쳐 쓴다 — 그래야 종류(공식, 주장, 계산)를 적고 검사할 수 있다"))
-        for t in N.claim_tokens(text):
+        for t in N.claim_tokens(text, idents):
             shown = text[t.start:t.end]
             if t.fragment:
                 errs.append((path, f"숫자 '{shown}'을 온전한 수량으로 읽지 못했다 — 표기를 고친다"))
@@ -317,7 +337,7 @@ def number_errors(issue: dict, evidences: dict) -> list[tuple[str, str]]:
             if kind not in model.NUMBER_KINDS:
                 errs.append((path, f"숫자 '{value}'의 종류 '{kind}'은 허용 값({', '.join(model.NUMBER_KINDS)})이 아니다"))
                 continue
-            if not c or not N.complete_in(str(value), text, need_digits=False):
+            if not c or not N.complete_in(str(value), text, need_digits=False, identifiers=idents):
                 continue   # 이 글에 없는 값(같은 항목의 다른 글 칸에 쓰인 것)은 그 칸에서 본다
             matched.add(id(n))
             if kind == "공식":
@@ -325,7 +345,7 @@ def number_errors(issue: dict, evidences: dict) -> list[tuple[str, str]]:
             elif kind == "주장":
                 refutes = n.get("refutes") or (item or {}).get("refutes")
                 ok = CLAIM_FIELDS.match(path) or (isinstance(refutes, str) and REFUTES.match(refutes)
-                                                  and _refutes_ok(issue, refutes, c))
+                                                  and _refutes_ok(issue, refutes, c, idents))
                 why = "" if ok else (f"주장 속 값 '{value}'은 주장 요지와 퍼진 곳에만 쓴다 — 반박하려고 적는 문장이면 refutes 로 "
                                      "그 값을 담은 '사실과 다름'·'일부 맞음' 주장을 가리킨다")
                 if ok and not CLAIM_FIELDS.match(path) and path.startswith("facts."):
@@ -340,12 +360,12 @@ def number_errors(issue: dict, evidences: dict) -> list[tuple[str, str]]:
     return errs
 
 
-def _refutes_ok(issue: dict, cid: str, canon: set) -> bool:
+def _refutes_ok(issue: dict, cid: str, canon: set, idents=()) -> bool:
     """refutes 가 가리킨 주장이 '사실과 다름'·'일부 맞음'이고, 그 요지·작은 주장 요지·숫자에 같은 값이 있는가."""
     c = next((x for x in issue.get("claims") or [] if isinstance(x, dict) and x.get("id") == cid), None)
     if c is None or c.get("verdict") not in ("사실과 다름", "일부 맞음"):
         return False
     texts = [str(c.get("gist") or "")] + [str(p.get("gist") or "") for p in c.get("parts") or [] if isinstance(p, dict)]
     texts += [str(x.get("value") or "") for x in c.get("numbers") or [] if isinstance(x, dict)]
-    have = {(t.canon, t.kind) for x in texts for t in N.claim_tokens(x) if not t.fragment}
+    have = {(t.canon, t.kind) for x in texts for t in N.claim_tokens(x, idents) if not t.fragment}
     return bool(canon) and canon <= have

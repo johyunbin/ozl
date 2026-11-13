@@ -58,6 +58,23 @@ facts:
     target_kind: 기관과 정책
     publish: 게시 가능
     numbers: []
+  - id: f3
+    text: 회수 명령의 대상은 누리전자가 국내에서 판매한 보조 배터리다.
+    type: 사실
+    kind: 사실
+    evidence: [i20990101-02-e1]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers: []
+  - id: f4
+    text: 누리전자는 회수 대상 제품의 교환 비용을 30억 원으로 추산했다.
+    type: 사실
+    kind: 사실
+    evidence: [i20990101-02-e2]
+    target_kind: 기관과 정책
+    publish: 게시 가능
+    numbers:
+      - {value: 30억 원, kind: 공식, evidence: i20990101-02-e2}
 claims:
   - id: c1
     gist: 회수 대상은 1만 2천 개이고, 모두 수출용이다.
@@ -78,6 +95,7 @@ claims:
         evidence:
           - {id: i20990101-02-e1, stance: 지지, basis: 가, subject: 누리전자 보조 배터리 회수 대상, period: 2099년 1월 1일,
              scope: 회수 명령 전체, unit: 개, passage_role: 작성자의 판단}
+        basis_facts: [f1]
       - id: p2
         gist: 회수 대상은 모두 수출용이다.
         core: false
@@ -87,6 +105,7 @@ claims:
         evidence:
           - {id: i20990101-02-e1, stance: 반대, basis: 가, subject: 회수 대상의 판매처, period: 2099년 1월 1일,
              scope: 회수 명령 전체, passage_role: 작성자의 판단}
+        basis_facts: [f3]
     party_position: {text: 회사는 회수 대상 제품을 무상으로 바꿔 준다고 밝혔다., evidence: i20990101-02-e2, checked_at: '2099-01-02 10:00'}
     allegation: false
     target_kind: 기관과 정책
@@ -108,6 +127,7 @@ claims:
     evidence:
       - {id: i20990101-02-e2, stance: 지지, basis: 나, subject: 누리전자 회수 제품 교환 비용, period: 2099년 1월,
          scope: 회수 대상 제품의 교환 비용 추산, unit: 원, passage_role: 사실 기재}
+    basis_facts: [f4]
     party_position: {text: 회사는 교환 비용을 추산치로 공시했다., evidence: i20990101-02-e2, checked_at: '2099-01-02 10:00'}
     allegation: false
     target_kind: 기관과 정책

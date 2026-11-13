@@ -64,7 +64,7 @@
     "사실과 다름": 0,
     "확인 못 함": 3
    },
-   "hidden_claims": 0,
+   "hidden_claims": 2,
    "sensitive": [],
    "example": true,
    "category": "지역",

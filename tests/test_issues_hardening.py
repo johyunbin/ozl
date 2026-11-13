@@ -270,7 +270,7 @@ def test_poll_words_in_parts_and_corrections(desk):
     assert has(errors(issue, evs), "spillover.similar_cases.0.text", style.MSG_POLL)
 
 
-def _elect_body(masked=("c1", "f1")):
+def _elect_body(masked=("c1", "f1", "f3")):   # f3 = c1 을 받치는 사실(118억 원) — 함께 가린다
     issue, evs = load(I1)
     _elect(issue, masked)
     f1 = issue["facts"][0]
@@ -290,8 +290,8 @@ def test_mask_strips_numbers_verdicts_sources(desk):
     flat = json.dumps(out, ensure_ascii=False)
     assert "한빛시 버스 운송 적자가 한 해 200억 원" not in flat and "118억" not in flat     # c1 의 요지가 남지 않는다
     assert E2 in {x["id"] for x in out["sources"]}                         # 제목 숫자의 계산 입력이 기대는 근거는 남는다
-    out3 = mask.apply(_elect_body(masked=("c5",)), "2099-04-05T10:00:00+09:00")
-    assert E3 in {x["id"] for x in _elect_body(masked=("c5",))["sources"]}
+    out3 = mask.apply(_elect_body(masked=("c5", "f4")), "2099-04-05T10:00:00+09:00")   # f4 = c5 의 작은 주장을 받치는 사실(e3)
+    assert E3 in {x["id"] for x in _elect_body(masked=("c5", "f4"))["sources"]}
     assert E3 not in {x["id"] for x in out3["sources"]}                    # 가린 주장만 인용한 근거는 출처 목록에서 빠진다
     assert out["verdicts"]["masked_claims"] == 1 and out["verdicts"]["summary"]["사실과 다름"] == 1
     assert out["corrections"][0]["before"] == mask.MASKED_TEXT and out["corrections_top"][0]["after"] == mask.MASKED_TEXT

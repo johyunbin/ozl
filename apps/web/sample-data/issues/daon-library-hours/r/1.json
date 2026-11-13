@@ -169,11 +169,12 @@
       "kind": "발표 여부",
       "verdict": "확인",
       "evidence_label": "공식 원문",
+      "press_label": "",
       "searched": "구 공지",
       "not_found": "",
       "reasons": [],
       "would_decide": "",
-      "party_position": "공개된 입장 없음",
+      "party_position": "당사자의 직접 발표를 찾지 못함",
       "parts": [],
       "sources": [
        {
@@ -195,11 +196,12 @@
       "kind": "수치",
       "verdict": "확인",
       "evidence_label": "기관 자료",
+      "press_label": "",
       "searched": "구 의회 추가 예산안",
       "not_found": "",
       "reasons": [],
       "would_decide": "",
-      "party_position": "공개된 입장 없음",
+      "party_position": "당사자의 직접 발표를 찾지 못함",
       "parts": [],
       "sources": [
        {

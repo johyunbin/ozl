@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Pulse 서버는 tailnet 안에서 HTTP 로만 열린다(tailnet 에 HTTPS 인증서를 켜지 않았다).
+	<!-- OZL 서버는 tailnet 안에서 HTTP 로만 열린다(tailnet 에 HTTPS 인증서를 켜지 않았다).
 	     예외는 *.ts.net 과 로컬 주소(시뮬레이터용 127.0.0.1)에만 둔다. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
