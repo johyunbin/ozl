@@ -1,7 +1,10 @@
 """python -m ozl.render check <사양.yaml> [--draft] [--claims-dir <경로>]…
 python -m ozl.render build <사양.yaml> [--draft] [--claims-dir <경로>]… [--no-export]
+python -m ozl.render bundle <사양.yaml> [--out <md>]          # 검토 묶음(ozl.render.bundle)
+python -m ozl.render progress <card_id> [--start|--resume|--mark 단계|--done --final 폴더|--abandon]   # 진행 기록(ozl.render.progress)
 
---draft        사람 대조 전(human_verified 거짓)·대기 폴더 기록도 인용 허용. 해당 쪽에 [검증 대기] 딱지, 산출물 이름에 _draft.
+--draft        아직 '확인'(사람 대조)도 「원문 일치」(프로그램 대조 + 독립 재대조)도 아닌 기록·대기 폴더 기록도 인용 허용.
+               해당 쪽에 [검증 대기] 딱지, 산출물 이름에 _draft. 완성본은 엄격 모드(--draft 없이)로만 만든다.
 --claims-dir   카드 기록 폴더(private/desk/claims) 말고 기록을 더 찾을 폴더(예: private/desk/staging/<card_id>/). 초안 모드에서만 쓸 수 있다.
 """
 from __future__ import annotations
@@ -37,6 +40,9 @@ def _opts(argv: list[str]) -> tuple[list[str], bool, bool, list[str]]:
 
 
 def main(argv: list[str]) -> int:
+    if argv and argv[0] in ("bundle", "progress"):   # 하위 명령은 각 모듈이 인자를 읽는다(_opts 는 사양 파일 명령 전용)
+        from importlib import import_module
+        return import_module(f"ozl.render.{argv[0]}").main(argv[1:])
     pos, draft, export, dirs = _opts(argv)
     if len(pos) < 2 or pos[0] not in ("check", "build"):
         print(__doc__)
@@ -79,6 +85,12 @@ def main(argv: list[str]) -> int:
         return 1
     for k, v in info.items():
         print(f"{k}: {v}")
+    cid = str(sp.get("card_id", ""))
+    if C.CARD_ID.match(cid):
+        from ozl.render import progress as P   # 막지 않고 알리기만 한다(빌드는 한 편에 여러 번 부른다)
+        st = P.load(cid)
+        if st.get("status") == P.DONE and not draft:
+            print(f"[진행 기록] 이 카드는 이미 완성본이 있다: {st.get('final', '')} — 다시 만드는 중이면 progress --start --force")
     if draft:
         print(f"[검증 대기] 기록을 인용한 슬라이드: {info.get('pending_slides', 0)}장")
     return 0

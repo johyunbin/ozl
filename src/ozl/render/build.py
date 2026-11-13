@@ -703,7 +703,7 @@ def appendix_problems(spec: dict, claims: dict, card: dict | None, pending=None)
 # ── 덱 ──────────────────────────────────────────────────────────────────
 
 def draw_pending(slide, ids: list[str]):
-    """사람 대조 전 기록을 인용한 슬라이드 — 오른쪽 위에 빨간 테두리 딱지(초안 모드 전용)."""
+    """아직 '확인'도 「원문 일치」도 아닌 기록을 인용한 슬라이드 — 오른쪽 위에 빨간 테두리 딱지(초안 모드 전용)."""
     waits = [str(c)[len(S.WAIT_IMAGE):] for c in ids if str(c).startswith(S.WAIT_IMAGE)]  # 원문 화면 그림 대기(capture)
     ids = list(dict.fromkeys("보도" if str(c).startswith("보도:") else str(c).split(" ")[0] for c in ids if not str(c).startswith(S.WAIT_IMAGE)))  # 'c13 교차' → 'c13' · 사양 보도 → '보도' · 중복 제거
     parts = [PENDING_MARK + " " + ", ".join(c.rsplit("-", 1)[-1] for c in ids)] if ids else []
@@ -802,7 +802,7 @@ def build_pptx(spec: dict, claims: dict, card: dict, out: pathlib.Path, pending:
             draw_pending(s, pending[idx])
             recs = [c for c in pending[idx] if not str(c).startswith(S.WAIT_IMAGE)]
             waits = [c[len(S.WAIT_IMAGE):] for c in pending[idx] if str(c).startswith(S.WAIT_IMAGE)]
-            nt = (f"{PENDING_MARK} 사람 대조 전·대기 폴더 기록: {', '.join(recs)}\n" if recs else "") + \
+            nt = (f"{PENDING_MARK} 검증 전·대기 폴더 기록: {', '.join(recs)}\n" if recs else "") + \
                  (f"{WAIT_MARK} 원문 화면 그림이 아직 없다: {', '.join(waits)}\n" if waits else "") + nt
         s.notes_slide.notes_text_frame.text = nt
     n_main = len(spec["slides"])
@@ -844,7 +844,7 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
         "",
         f"왜 이 소재를 골랐는가: {why if why else '＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿＿ (지원자가 한 줄로 쓴다)'}",
         "",
-        f"초안 {ts} · 본편 {len(slides)}장 · 예상 발화 {total // 60}분 {total % 60}초 · " + (basis if not pending else f"**초안 모드 — [검증 대기] 기록을 인용한 쪽 {len(pending)}장({', '.join(map(str, pending))}쪽). 사람 대조 전에는 제출·발행하지 않는다**") + " · 슬라이드 문구와 말은 사람이 다듬는다.",
+        f"초안 {ts} · 본편 {len(slides)}장 · 예상 발화 {total // 60}분 {total % 60}초 · " + (basis if not pending else f"**초안 모드 — [검증 대기] 기록을 인용한 쪽 {len(pending)}장({', '.join(map(str, pending))}쪽). 엄격 모드를 통과하기 전에는 제출·발행하지 않는다**") + " · 말은 진행자 말투로 바꿔 읽어도 된다(수치·인용·단서는 그대로).",
         "",
         "## 장별 진행",
         "",
