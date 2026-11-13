@@ -19,9 +19,10 @@ why_today:                         # ③
 data:                              # ④ full 이면 3개 이상 · 전부 T1/T2 · claim_id 필수
   - {text: "지어낸 수치 문장", source_name: "가상 통계청", url: "https://example.org/stat", tier: T1, claim_id: 2026-01-02-am-01-c1}
 sources:                           # 그 밖의 1차 출처·보도 링크
-  - {name: "가상 통신 보도", url: "https://example.org/news", tier: T3}
+  - {name: "가상 통신 보도", url: "https://example.org/news", tier: T3}   # 보도(T3)는 숫자 근거가 아니다 — 덱은 이 링크를 사양 refs 로 숫자 없이 '기사'로만 인용한다
 badge: pending                     # ⑤ 클레임 상태 중 가장 약한 것 — pending | verified | credible_estimate | single_source | unverified_rumor
-badge_note: "원문 대조 3/3 · 사람 확인 0/3"
+                                   #   verified 의 표시는 기록으로 다시 가른다: 전부 사람 대조면 '확인', 기계 대조가 섞이면 「원문 일치」(cards.badge_ko)
+badge_note: "원문 대조 3/3 · 독립 검증 일치 3/3 · 「원문 일치」 0/3"   # 자유 글(보고서 ⑤ 배지 뒤에 붙는다). 사람 대조는 사용자가 스스로 대조했다고 말한 것만 센다
 coverage:                          # ⑥
   summary: "전용 영상 없음 · 본문 언급 2편"
   searched: ["낱말1", "낱말2"]      # 대조에 쓴 낱말 — 비우면 검사에서 걸린다
