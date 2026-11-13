@@ -266,7 +266,7 @@ def test_build_puts_chart_and_capture_pictures_in_pptx(desk):
     assert abs(pics[0].width / pics[0].height - gw / gh) < 0.01                             # 새로 그린 그림의 비율을 지켰다
     assert pics[0].height <= B.deck.IMG_H + 1 and pics[0].width <= B.deck.IMG_W + 1          # 자리 안쪽
     texts = [sh.text_frame.text for sh in slides[4].shapes if sh.has_text_frame]
-    assert any(t.startswith("원문: stats.example.org · 받은 날 ") for t in texts), texts
+    assert "원문: stats.example.org" in texts and not any("받은 날" in t for t in texts), texts
     assert all(not sh.name == "그림 자리" for sh in slides[2].shapes)
     md = B.running_sheet(sp, {"card_id": CARD}, {CID: c}, "20990102_000000")
     assert "| 근거 | 그림 |" in md and "| 차트(선) |" in md and "| 차트(막대) |" in md and "| 원문 캡처 c1 |" in md and "| 그림 자리(회색) |" in md

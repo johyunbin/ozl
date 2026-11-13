@@ -141,7 +141,7 @@ def test_appendix_rows_for_chart_and_capture(desk):
     sp = spec_of([slide(chart=line_chart(y_from_zero=False)), slide(capture=CID)])
     rows = B.visual_check_rows(sp, {CID: c})
     assert rows[0][:3] == ["3", "차트(선)", "가상의 섬 감자 값 · 기록 c1"]
-    assert rows[0][3] == "단위 원 · 기간 2098-01 ~ 2098-12" and "칸과 값의 짝은 문장 대조에서 확인" in rows[0][5] and "0에서 시작하지 않음" in rows[0][5]
+    assert rows[0][3] == "단위 원 · 기간 2098-01 ~ 2098-12" and "칸과 값의 짝은 다른 에이전트가 문장 대조로 봄" in rows[0][5] and "확인" not in rows[0][5] and "0에서 시작하지 않음" in rows[0][5]
     cap = c["verification"]["capture"]
     assert rows[1][:4] == ["4", "원문 캡처", "기록 c1", URL]
     assert rows[1][4] == f"{cap['fetched_at'][:10]} {cap['fetched_at'][11:16]} · sha256 {cap['sha256'][:12]}" and rows[1][5] == "원문의 글을 옮겨 그림"

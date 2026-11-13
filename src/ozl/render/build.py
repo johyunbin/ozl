@@ -379,13 +379,13 @@ def chart_png_size(im: Img) -> tuple[int, int]:
 
 
 def capture_credit(c: dict) -> str:
-    """원문 캡처 아래 출처 줄: 원문 주소의 호스트 · 받은 날짜(검사가 붙이는 구조 글 — 부록의 링크·기준 시점 칸처럼 숫자 대조에서 뺀다)."""
+    """원문 캡처 아래 출처 줄: 원문 주소의 호스트만(검사가 붙이는 구조 글 — 부록의 링크·기준 시점 칸처럼 숫자 대조에서 뺀다).
+    받은 시각은 화면에서 읽을 일이 없어 부록 「시각물 출처·검증표」가 맡는다(2026-11-13 구성 평가)."""
     import urllib.parse
     cap = ((c.get("verification") or {}).get("capture") or {}) if isinstance(c.get("verification"), dict) else {}
     url = str(cap.get("final_url") or cap.get("url") or (c.get("source") or {}).get("url") or "")
     host = urllib.parse.urlsplit(url).hostname or url
-    day = str(cap.get("fetched_at") or "")[:10]
-    return "원문: " + host + (f" · 받은 날 {day}" if day else "")
+    return "원문: " + host
 
 
 def fit_inside(img_w: int, img_h: int, box_w: float, box_h: float) -> tuple[float, float, float, float]:
@@ -592,8 +592,9 @@ def visual_check_rows(spec: dict, claims: dict, pending=None, views: dict[int, s
             ch = sl["chart"]
             ids = ", ".join(str(c).rsplit("-", 1)[-1] for c in ch.get("claims") or [])
             has_copy = any(S.copy_text(claims.get(str(c)) or {})[0] for c in ch.get("claims") or [])
-            scope = ("값이 사본에 있는지는 프로그램이 확인" if has_copy else "값이 기록 observed·text 에 있는지는 프로그램이 확인") + \
-                " · 칸과 값의 짝은 문장 대조에서 확인" + (" · 세로축이 0에서 시작하지 않음" if ch.get("y_from_zero") is False else "")
+            # '확인'은 사람이 대조한 일에만 쓴다(완성본 평가 기준 가8) — 프로그램과 에이전트가 한 일은 '대조'로 적는다.
+            scope = ("값이 사본에 있는지는 프로그램이 대조" if has_copy else "값이 기록 observed·text 에 있는지는 프로그램이 대조") + \
+                " · 칸과 값의 짝은 다른 에이전트가 문장 대조로 봄" + (" · 세로축이 0에서 시작하지 않음" if ch.get("y_from_zero") is False else "")
             rows.append([pg, f"차트({'선' if ch.get('kind') == 'line' else '막대'})", f"{ch.get('title', '')} · 기록 {ids}",
                          f"단위 {ch.get('unit', '')} · 기간 {ch.get('period', '')}", "", scope])
         elif v == "capture":
