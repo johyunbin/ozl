@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """공개본 추출 게이트.
 
-검사 대상(pre-commit files 필터): tracks/syuka/decks/*.pptx · daily·docs·tracks 의 md·json · src·tests·scripts·tools 의 소스 · README.md
+검사 대상(pre-commit files 필터): tracks/syuka/decks/*.pptx · daily·docs·tracks 의 md·json · src·tests·scripts·tools 의 소스 · apps/web 의 화면과 예시 자료 · 스킬 문서 · README.md
 - pptx: 발표자 노트·숨김 슬라이드가 남아 있으면 실패(공개본은 export 로 제거해야 함)
 - md: 비공개 전사 코퍼스(private/transcripts/**/*.json 의 text, private/pilot/**/*.txt)와 연속 N자(정규화) 일치하면 실패
   · 코퍼스 셔글은 private/.gate_shingles.pkl 에 캐시(index.csv mtime 기준 무효화)
@@ -39,6 +39,8 @@ UI_TEXT = re.compile(r"저장하시겠습니까|저장하지 않은 변경|저�
 STRIDE = 7    # 코퍼스 셔글 추출 간격 — STRIDE 칸 묶음마다 한글 기준을 넘는 첫 창을 넣는다(transcript_windows).
               # 보장: 옮긴 문장이 N+2·STRIDE−1(=33)자 이상이고 그 안에 한글 기준을 넘는 20자 창이 하나라도 있으면 반드시 걸린다
 MIN_HITS = 1
+# 글로 읽어 대조하는 파일 종류. 웹 화면(astro, ts, mjs, js, css, html)도 본다 — 화면 틀과 예시 자료에 비공개 문구가 섞이면 사이트로 나간다(2026-11-14)
+TEXT_SUFFIXES = (".md", ".py", ".json", ".txt", ".swift", ".yml", ".yaml", ".toml", ".sh", ".astro", ".ts", ".mjs", ".js", ".css", ".html")
 
 
 def norm(s: str) -> str:
@@ -189,7 +191,7 @@ def main(argv: list[str]) -> int:
             continue
         if p.suffix == ".pptx":
             errs = check_pptx(p)
-        elif p.suffix in (".md", ".py", ".json", ".txt", ".swift", ".yml", ".yaml", ".toml", ".sh"):  # 소스·데이터 파일도 대조(2026-11-10: deck.py 시제품 예시에 슬라이드 제목이 들어가 있던 것을 md 전용 게이트가 못 잡았다)
+        elif p.suffix in TEXT_SUFFIXES:  # 소스·데이터 파일도 대조(2026-11-10: deck.py 시제품 예시에 슬라이드 제목이 들어가 있던 것을 md 전용 게이트가 못 잡았다)
             if sh is None:
                 sh, slide_sh = transcript_shingles()
             errs = check_md(p, sh, slide_sh)

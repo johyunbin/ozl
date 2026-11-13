@@ -10,5 +10,5 @@ repos:
         name: 공개본 추출 게이트(노트·숨김 슬라이드·전사 인용 검사)
         entry: .venv/bin/python scripts/publish_gate.py
         language: system
-        files: '^(tracks/syuka/decks/.*\.pptx|(daily|docs|tracks|claims|skills)/.*\.(md|json|yaml|yml)|(src|tests|scripts|tools)/.*\.(py|swift|yaml|yml|sh)|README\.md|CLAUDE\.md)$'
+        files: '^(tracks/syuka/decks/.*\.pptx|(daily|docs|tracks|claims|skills|\.claude/skills)/.*\.(md|json|yaml|yml)|(src|tests|scripts|tools)/.*\.(py|swift|yaml|yml|sh|json|md|txt)|apps/web/(src|public|sample-data|scripts|checks)/.*\.(astro|ts|mjs|js|css|html|json|md|yaml|yml|txt)|apps/web/[^/]+\.(md|mjs|ts)|apps/ios/.*\.(swift|json|md)|README\.md|CLAUDE\.md|AGENTS\.md)$'
         pass_filenames: true
