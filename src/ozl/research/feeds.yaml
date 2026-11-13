@@ -16,6 +16,21 @@ feeds:
   - {id: mk_stock, outlet: 매일경제, url: "https://www.mk.co.kr/rss/50200011/", tier: T3, lang: ko, kind: news, section: 증시}
   - {id: sedaily_economy, outlet: 서울경제, url: "https://www.sedaily.com/rss/economy", tier: T3, lang: ko, kind: news, section: 경제}
   - {id: mt_all, outlet: 머니투데이, url: "https://rss.mt.co.kr/mt_news.xml", tier: T3, lang: ko, kind: news, section: 종합}
+  # ── 국내 종합일간지·방송 (T3 · 2026-11-13 추가) — 넣은 기준: robots.txt 가 피드 경로를 모두에게 막지 않았고,
+  #    사용자를 대신해 읽는 AI 에이전트(Claude-User·Claude-Code)도 막지 않은 곳. 학습용 수집기(ClaudeBot·GPTBot·CCBot)만
+  #    막은 곳은 위의 연합·매경·서경과 같은 기준으로 넣었다. 뺀 곳: 한겨레(Claude-User·Claude-Code 차단) · MBC·YTN(피드 경로
+  #    전체 차단) · 중앙·KBS·JTBC(피드 주소를 안내 쪽에서 찾지 못함). 이용 조건은 개인의 비상업적 구독(동아·경향·SBS 안내 쪽) —
+  #    기사 제목은 후보 발굴에만 쓰고 공개 쪽에는 옮기지 않는다. 확인표 = private/desk/trials/feeds_kr_*.md
+  - {id: chosun_economy, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/?outputType=xml", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: chosun_international, outlet: 조선일보, url: "https://www.chosun.com/arc/outboundfeeds/rss/category/international/?outputType=xml", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: donga_economy, outlet: 동아일보, url: "https://rss.donga.com/economy.xml", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: donga_international, outlet: 동아일보, url: "https://rss.donga.com/international.xml", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: khan_economy, outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/economy_news.xml", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: khan_world, outlet: 경향신문, url: "https://www.khan.co.kr/rss/rssdata/kh_world.xml", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: sbs_economy, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: sbs_international, outlet: SBS, url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=07&plink=RSSREADER", tier: T3, lang: ko, kind: news, section: 국제}
+  - {id: yonhaptv_economy, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/economy/feed/", tier: T3, lang: ko, kind: news, section: 경제}
+  - {id: yonhaptv_international, outlet: 연합뉴스TV, url: "https://www.yonhapnewstv.co.kr/category/news/international/feed/", tier: T3, lang: ko, kind: news, section: 국제}
   # ── 해외 언론 (T3)
   - {id: bbc_business, outlet: BBC, url: "https://feeds.bbci.co.uk/news/business/rss.xml", tier: T3, lang: en, kind: news, section: 경제}
   - {id: bbc_world, outlet: BBC, url: "https://feeds.bbci.co.uk/news/world/rss.xml", tier: T3, lang: en, kind: news, section: 국제}
