@@ -1,0 +1,26 @@
+---
+// 누가 뭐라고 하나(설계 4-5). 판정 색을 쓰지 않는다.
+import type { Stance } from "../lib/data";
+import { fmtDate } from "../lib/format";
+interface Props { stances: Stance[] }
+const ORDER = ["발표", "인정", "부인", "평가", "전망"];
+const rank = (k: string) => { const i = ORDER.indexOf(k); return i < 0 ? ORDER.length : i; };
+const list = [...Astro.props.stances].filter((s) => s.who || s.summary).sort((a, b) => rank(a.kind) - rank(b.kind) || a.at.localeCompare(b.at));
+---
+{list.length > 0 && (
+  <section class="section" aria-labelledby="stances-h" data-short="hide">
+    <h2 id="stances-h">누가 뭐라고 하나</h2>
+    <ul class="rows">
+      {list.map((s) => (
+        <li>
+          <p><strong>{s.who}</strong> {s.kind && <span class="tag">{s.kind}{(s.kind === "평가" || s.kind === "전망") && " · 의견"}</span>}</p>
+          <p>{s.summary}</p>
+          <p class="xs muted num">{fmtDate(s.at)}{s.sources.map((x) => <><span class="sep" />{x.url ? <a href={x.url} rel="noopener">{x.by || x.title}</a> : (x.by || x.title)}</>)}</p>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+<style>
+  .rows a { display: inline-block; padding: 12px 0; }
+</style>

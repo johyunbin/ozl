@@ -1,0 +1,58 @@
+---
+// 키워드 쪽(설계 1-8).
+import Base from "../../../layouts/Base.astro";
+import VerdictSummary from "../../../components/VerdictSummary.astro";
+import ExampleTag from "../../../components/ExampleTag.astro";
+import { loadSite, type Keyword } from "../../../lib/data";
+import { fmtDate } from "../../../lib/format";
+import { dayUrl, issueUrl, keywordSlug, keywordSlugUrl } from "../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  return [...site.keywords.entries()].map(([slug, k]) => ({ params: { kw: slug }, props: { k, slug } }));
+}
+const { k } = Astro.props as { k: Keyword; slug: string };
+const site = loadSite();
+const rows = k.issues.map((s) => site.index.find((r) => r.slug === s)).filter((r) => r && site.issues.has(r.slug));
+const onlyExample = rows.length > 0 && rows.every((r) => r!.example);
+const dates = [...k.dates].sort().reverse();
+// 공백만 다른 변형은 한 이름으로 본다(빌드 경고에는 남는다).
+const variants = [...new Set(k.names.map((n) => n.replace(/\s+/g, " ").trim()))];
+const related = [...new Set(k.related)].map((r) => keywordSlug(r)).filter((s) => site.keywords.has(s) && s !== keywordSlug(k.name));
+---
+<Base title={k.name}>
+  <h1><ExampleTag show={onlyExample} />{k.name}</h1>
+  {variants.length > 1 && <p class="small muted">같은 키워드로 묶은 것: {variants.map((n) => `"${n}"`).join(", ")}</p>}
+  <p class="small summary-line num">{k.first_seen ? `처음 나온 날 ${fmtDate(k.first_seen)}` : "처음 나온 날 기록 없음"}<span class="sep" />나온 날 {k.dates.length}일</p>
+
+  <section class="section" aria-labelledby="kw-rec-h">
+    <h2 id="kw-rec-h">이 키워드가 나온 기록</h2>
+    {rows.length ? (
+      <ul class="rows">
+        {rows.map((r) => (
+          <li>
+            <p class="row-title"><ExampleTag show={r!.example} /><a href={issueUrl(r!.slug)}>{r!.title}</a></p>
+            <p class="row-line">{r!.rev !== null && <span class="num nw">{r!.rev}판<span class="sep" /></span>}<VerdictSummary summary={r!.verdict_summary} /></p>
+          </li>
+        ))}
+      </ul>
+    ) : <p class="empty">공개한 기록이 없다.</p>}
+  </section>
+
+  <section class="section" aria-labelledby="kw-dates-h">
+    <h2 id="kw-dates-h">나온 날</h2>
+    {dates.length ? <ul class="inline-list">{dates.map((d) => <li>{site.days.has(d) ? <a href={dayUrl(d)}>{fmtDate(d)}</a> : <span class="muted">{fmtDate(d)}</span>}</li>)}</ul>
+      : <p class="empty">날짜 기록 없음</p>}
+  </section>
+
+  {related.length > 0 && (
+    <section class="section" aria-labelledby="kw-rel-h">
+      <h2 id="kw-rel-h">관련 키워드</h2>
+      <ul class="inline-list">{related.map((s) => <li><a href={keywordSlugUrl(s)}>{site.keywords.get(s)!.name}</a></li>)}</ul>
+    </section>
+  )}
+</Base>
+<style>
+  .summary-line { margin-top: var(--sp-2); }
+  .rows a { display: inline; }
+</style>

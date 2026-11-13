@@ -1,0 +1,115 @@
+---
+// 첫 화면(설계 1-3).
+import Base from "../layouts/Base.astro";
+import TopicRow from "../components/TopicRow.astro";
+import PreTopicRow from "../components/PreTopicRow.astro";
+import DateNav from "../components/DateNav.astro";
+import VerdictSummary from "../components/VerdictSummary.astro";
+import ExampleTag from "../components/ExampleTag.astro";
+import StatusTag from "../components/StatusTag.astro";
+import { latestTopicDay, loadSite, sortedDates, visibleTopics } from "../lib/data";
+import { IS_PREVIEW } from "../lib/mode";
+import { fmtClock, fmtDate, fmtDateTime, fmtDateWeek } from "../lib/format";
+import { dayUrl, issueUrl, monthUrl, url } from "../lib/paths";
+
+const site = loadSite();
+const day = latestTopicDay(site);
+const t = day?.topics ?? null;
+const dates = sortedDates(site);
+const at = day ? dates.indexOf(day.date) : -1;
+const prev1 = at > 0 ? dates[at - 1] : undefined;
+const prev2 = at > 1 ? dates[at - 2] : undefined;
+const pre = t ? t.pre.filter((p) => IS_PREVIEW || !p.excluded.length) : [];
+const allRecords = [...site.index].filter((r) => site.issues.has(r.slug)).sort((a, b) => b.rev_at.localeCompare(a.rev_at));
+// 첫 화면 용량이 기록 수에 따라 늘지 않게 최근 것만 둔다. 나머지는 날짜 쪽과 달력에서 찾는다.
+const RECENT = 30;
+const records = allRecords.slice(0, RECENT);
+const lastMonth = sortedDates(site).at(-1)?.slice(0, 7);
+const newItems = t ? visibleTopics(site, t.new, IS_PREVIEW, `${day!.date} 새로 뜬 것`).slice(0, 4) : [];
+const ongoingItems = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date} 이어지는 것`).slice(0, 6) : [];
+---
+<Base title="" description="그날 여러 곳에서 함께 오르내리는 이슈를 골라 떠도는 주장마다 판정과 근거를 붙이는 이슈 기록">
+  <h1 class="sr-only">OZL 오늘의 이슈 기록</h1>
+  {t && day ? (
+    <>
+      <div class="base-line">
+        <p class="xs muted num">
+          {fmtDateWeek(day.date)}
+          {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
+          {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
+          {t.line.source_kinds_failed.length > 0 && <><span class="sep" /><strong class="failed">{t.line.source_kinds_failed.join(", ")} 수집 실패</strong></>}
+        </p>
+        <p class="links small"><a href={url("search/")}>검색</a><a href={monthUrl(day.date.slice(0, 7))}>다른 날</a></p>
+      </div>
+
+      <section class="section first" aria-labelledby="new-h">
+        <h2 id="new-h">오늘 새로 뜬 것</h2>
+        {newItems.length ? <ol class="rows">{newItems.map((it) => <TopicRow item={it} site={site} />)}</ol>
+          : <p class="empty">{t.empty_note.new || "오늘 새로 정리한 이슈가 없다."}</p>}
+      </section>
+
+      <section class="section" aria-labelledby="ongoing-h">
+        <h2 id="ongoing-h">며칠째 이어지는 것</h2>
+        {ongoingItems.length ? <ol class="rows">{ongoingItems.map((it) => <TopicRow item={it} site={site} />)}</ol>
+          : <p class="empty">{t.empty_note.ongoing || "며칠째 이어지는 이슈가 없다."}</p>}
+      </section>
+
+      <section class="section" aria-labelledby="up-h">
+        <h2 id="up-h">다가오는 일</h2>
+        {t.upcoming.length ? (
+          <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {u.url ? <a href={u.url} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
+        ) : <p class="empty">{t.empty_note.upcoming || "날짜가 정해진 일정이 없다."}</p>}
+      </section>
+
+      <section class="section" aria-labelledby="pre-h">
+        <h2 id="pre-h">정리 전 화제</h2>
+        <p class="lead">일어난 일과 그 출처만 적었다. 떠도는 주장의 사실 여부는 아직 정리 전이다.</p>
+        {pre.length ? <ul class="rows">{pre.map((p) => <PreTopicRow p={p} />)}</ul>
+          : <p class="empty">{t.empty_note.pre || "정리 전 화제가 없다."}</p>}
+      </section>
+
+      <section class="section">
+        <h2 class="sr-only">날짜 이동</h2>
+        <DateNav items={[
+          { label: "어제", href: prev1 ? dayUrl(prev1) : undefined },
+          { label: "그제", href: prev2 ? dayUrl(prev2) : undefined },
+          { label: "날짜 고르기", href: monthUrl(day.date.slice(0, 7)) },
+        ]} />
+      </section>
+    </>
+  ) : (
+    <>
+      <p class="first-empty">아직 공개한 화제 목록이 없다.</p>
+      {records.length ? (
+        <section class="section" aria-labelledby="rec-h">
+          <h2 id="rec-h">OZL 기록</h2>
+          <ol class="rows">
+            {records.map((r) => (
+              <li>
+                <p class="row-title"><ExampleTag show={r.example} /><a href={issueUrl(r.slug)}>{r.title}</a></p>
+                <p class="row-sub num">{r.rev !== null && `${r.rev}판`}{fmtDateTime(r.rev_at) && ` · ${fmtDateTime(r.rev_at)}`}</p>
+                <p class="row-line"><VerdictSummary summary={r.verdict_summary} />{r.publish_state && <> <StatusTag state={r.publish_state} /></>}</p>
+              </li>
+            ))}
+          </ol>
+          {allRecords.length > records.length && (
+            <p class="small more">최근 <span class="num">{records.length}</span>건만 보인다. 지난 기록은 {lastMonth ? <a href={monthUrl(lastMonth)}>달력</a> : "달력"}과 <a href={url("search/")}>검색</a>에서 찾는다.</p>
+          )}
+        </section>
+      ) : (
+        <p class="empty">아직 공개한 기록이 없다. 판정 기준과 편집 원칙은 <a href={url("about/")}>소개</a>에서 볼 수 있다.</p>
+      )}
+    </>
+  )}
+</Base>
+<style>
+  .base-line { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 var(--sp-4); }
+  .base-line .failed { color: var(--text); }
+  .base-line .links { display: flex; gap: var(--sp-4); }
+  .base-line .links a { display: inline-flex; align-items: center; min-height: 44px; }
+  .section.first { margin-top: var(--sp-5); }
+  .rows a { display: inline; }
+  .first-empty { margin-top: var(--sp-4); }
+  .more { margin-top: var(--sp-4); }
+  .more a { display: inline-block; padding: 10px 0; }
+</style>

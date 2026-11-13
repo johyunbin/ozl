@@ -1,0 +1,81 @@
+{
+ "date": "2099-01-01",
+ "topics": {
+  "line": {
+   "updated_at": "2099-01-01 07:40",
+   "source_kinds_ok": [
+    "보도",
+    "검색 추이",
+    "위키백과",
+    "커뮤니티"
+   ],
+   "source_kinds_failed": []
+  },
+  "new": [
+   {
+    "issue_id": "i20990101-01",
+    "status_line": "새로 뜸 · 인상안 보도",
+    "verdict_summary": {
+     "확인": 1,
+     "일부 맞음": 1,
+     "사실과 다름": 1,
+     "확인 못 함": 1
+    },
+    "hidden_claims": 0
+   }
+  ],
+  "ongoing": [],
+  "upcoming": [],
+  "pre": [
+   {
+    "keyword": "한빛시 해맞이 축제",
+    "desc": "한빛시가 해맞이 축제에 12만 명이 왔다고 밝혔다.",
+    "links": [
+     {
+      "outlet": "한빛일보",
+      "url": "https://hanbit-daily.example/news/0101-sunrise.html"
+     },
+     {
+      "outlet": "한빛방송",
+      "url": "https://hanbit-tv.example/news/0101-sunrise.html"
+     }
+    ],
+    "flags": []
+   },
+   {
+    "keyword": "가람군 한파 특보",
+    "desc": "가람군에 한파 특보가 내려졌다.",
+    "links": [
+     {
+      "outlet": "가람신문",
+      "url": "https://garam-news.example/0101-cold.html"
+     },
+     {
+      "outlet": "날씨누리",
+      "url": "https://weather.example/garam/0101.html"
+     },
+     {
+      "outlet": "한빛방송",
+      "url": "https://hanbit-tv.example/news/0101-cold.html"
+     }
+    ],
+    "flags": []
+   }
+  ]
+ },
+ "records": [
+  {
+   "id": "i20990101-01",
+   "slug": "hanbit-bus-fare-400",
+   "title": "버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치",
+   "rev": 1,
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 1,
+    "확인 못 함": 1
+   }
+  }
+ ],
+ "restored": null
+}

@@ -1,0 +1,45 @@
+---
+// 오류 제보와 권리침해 신고 안내(설계 1-11).
+import Base from "../../layouts/Base.astro";
+import { loadSite } from "../../lib/data";
+import { IS_PREVIEW } from "../../lib/mode";
+
+const site = loadSite();
+const contact = (process.env.OZL_REPORT_CONTACT || site.meta.report_contact || "").trim();
+const isMail = /^[^@\s]+@[^@\s]+$/.test(contact);
+const isUrl = /^https?:\/\//.test(contact);
+// 처리 절차 글은 별도로 쓴다. 없으면 공개용 빌드는 guard.mjs 가 멈춘다.
+const proc = import.meta.glob("../../content/report-procedure.md", { eager: true }) as Record<string, { Content: any }>;
+const Procedure = Object.values(proc)[0]?.Content;
+---
+<Base title="오류 제보와 권리침해 신고">
+  <h1>오류 제보와 권리침해 신고</h1>
+
+  <section class="section" aria-labelledby="to-h">
+    <h2 id="to-h">받는 곳</h2>
+    {contact ? (
+      <p>{isMail ? <a href={`mailto:${contact}`}>{contact}</a> : isUrl ? <a href={contact} rel="noopener">{contact}</a> : contact}</p>
+    ) : IS_PREVIEW ? (
+      <p class="pending">연락처 미정(공개용 빌드는 이 칸이 비면 만들어지지 않는다)</p>
+    ) : null}
+  </section>
+
+  <section class="section" aria-labelledby="what-h">
+    <h2 id="what-h">적어 줄 것</h2>
+    <ul class="rows">
+      <li>어느 기록인지(제목이나 주소)와 몇 판인지. 판 번호는 제목 밑에 있다.</li>
+      <li>어느 문장인지.</li>
+      <li>근거가 있으면 그 주소.</li>
+    </ul>
+  </section>
+
+  {(Procedure || IS_PREVIEW) && <section class="section" aria-labelledby="proc-h">
+    <h2 id="proc-h">처리 순서</h2>
+    {Procedure ? <div class="proc"><Procedure /></div>
+      : IS_PREVIEW ? <p class="pending">처리 절차 글을 아직 쓰지 않았다. 이 글이 없으면 공개용 사이트는 만들어지지 않는다.</p>
+      : null}
+  </section>}
+</Base>
+<style>
+  .proc :global(p + p) { margin-top: var(--sp-3); }
+</style>

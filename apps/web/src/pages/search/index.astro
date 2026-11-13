@@ -1,0 +1,20 @@
+---
+// 검색 결과(설계 1-13, 5절).
+import Base from "../../layouts/Base.astro";
+import SearchBox from "../../components/SearchBox.astro";
+import { url } from "../../lib/paths";
+---
+<Base title="검색">
+  <h1>검색</h1>
+  <SearchBox />
+  <p class="small nojs" data-search-nojs>검색은 스크립트가 필요하다. <a href={url("k/")}>키워드 모음</a>에서 찾을 수 있다.</p>
+  <p class="small status" data-search-status role="status" aria-live="polite"></p>
+  <ol class="rows results" data-search-results></ol>
+</Base>
+<script src="../../scripts/search.ts"></script>
+<style>
+  .nojs, .status { margin-top: var(--sp-3); }
+  .results { margin-top: var(--sp-3); }
+  .results :global(mark) { background: var(--surface); color: var(--text); font-weight: 700; }
+  .results :global(.excerpt) { margin-top: var(--sp-1); }
+</style>

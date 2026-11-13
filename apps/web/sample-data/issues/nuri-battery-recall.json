@@ -1,0 +1,430 @@
+{
+ "header": {
+  "site": "OZL"
+ },
+ "footer": {},
+ "id": "i20990101-02",
+ "slug": "nuri-battery-recall",
+ "rev": 1,
+ "rev_at": "",
+ "example": true,
+ "title": "보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전",
+ "rev_line": "",
+ "what_new": "제품안전원이 1월 1일 보조 배터리 회수 명령을 내렸다.",
+ "why_matters": "같은 배터리를 쓰는 집이 많고 회수 방법을 알아야 한다.",
+ "so_far": [
+  "회수 대상은 국내 판매분 1만 2천 개다.",
+  "회사는 교환 비용을 30억 원으로 추산했다.",
+  "화재 원인을 다룬 판결은 아직 확정되지 않았다."
+ ],
+ "reason": "회수 명령이 나온 뒤 회수 규모와 화재 원인을 두고 서로 다른 주장이 퍼졌다.",
+ "category": "국내 경제·정책",
+ "keywords": [
+  "누리전자",
+  "보조 배터리",
+  "제품 회수"
+ ],
+ "aliases": [],
+ "sensitive": [],
+ "election": null,
+ "numbers": {
+  "so_far.0": [
+   {
+    "value": "1만 2천 개",
+    "kind": "공식",
+    "evidence": "i20990101-02-e1"
+   }
+  ],
+  "so_far.1": [
+   {
+    "value": "30억 원",
+    "kind": "공식",
+    "evidence": "i20990101-02-e2"
+   }
+  ],
+  "titles.candidates.0": [
+   {
+    "value": "1만 2천 개",
+    "kind": "공식",
+    "evidence": "i20990101-02-e1"
+   }
+  ],
+  "titles.candidates.1": [
+   {
+    "value": "30억 원",
+    "kind": "공식",
+    "evidence": "i20990101-02-e2"
+   }
+  ]
+ },
+ "corrections_top": [],
+ "verdicts": {
+  "groups": [
+   {
+    "verdict": "확인",
+    "note": "",
+    "claims": [
+     {
+      "id": "c2",
+      "gist": "회사가 추산한 교환 비용은 30억 원이다.",
+      "kind": "수치",
+      "verdict": "확인",
+      "evidence_label": "당사자 발표, 회사 공시 기준",
+      "searched": "누리전자 공시, 제품안전원 공고",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "회사는 교환 비용을 추산치로 공시했다.",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990101-02-e2",
+        "kind": "공식 원문",
+        "by": "누리전자",
+        "title": "제품 회수에 따른 비용 공시",
+        "url": "https://nuri-electronics.example/ir/disclosure-0102.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [
+       {
+        "value": "30억 원",
+        "kind": "주장"
+       }
+      ],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "일부 맞음",
+    "note": "",
+    "claims": [
+     {
+      "id": "c1",
+      "gist": "회수 대상은 1만 2천 개이고, 모두 수출용이다.",
+      "kind": "수치",
+      "verdict": "일부 맞음",
+      "evidence_label": "공식 원문",
+      "searched": "제품안전원 회수 명령 공고",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "회사는 회수 대상 제품을 무상으로 바꿔 준다고 밝혔다.",
+      "parts": [
+       {
+        "id": "p1",
+        "gist": "회수 대상은 1만 2천 개다.",
+        "core": true,
+        "verdict": "확인",
+        "reasons": [],
+        "would_decide": "",
+        "sources": [
+         {
+          "id": "i20990101-02-e1",
+          "kind": "공식 원문",
+          "by": "제품안전원",
+          "title": "보조 배터리 회수 명령 공고",
+          "url": "https://product-safety.example/notice/recall-0101.html",
+          "checked_at": "2099-01-02T10:00:00+09:00"
+         }
+        ]
+       },
+       {
+        "id": "p2",
+        "gist": "회수 대상은 모두 수출용이다.",
+        "core": false,
+        "verdict": "사실과 다름",
+        "reasons": [],
+        "would_decide": "",
+        "sources": [
+         {
+          "id": "i20990101-02-e1",
+          "kind": "공식 원문",
+          "by": "제품안전원",
+          "title": "보조 배터리 회수 명령 공고",
+          "url": "https://product-safety.example/notice/recall-0101.html",
+          "checked_at": "2099-01-02T10:00:00+09:00"
+         }
+        ]
+       }
+      ],
+      "sources": [
+       {
+        "id": "i20990101-02-e1",
+        "kind": "공식 원문",
+        "by": "제품안전원",
+        "title": "보조 배터리 회수 명령 공고",
+        "url": "https://product-safety.example/notice/recall-0101.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       },
+       {
+        "id": "i20990101-02-e2",
+        "kind": "공식 원문",
+        "by": "누리전자",
+        "title": "제품 회수에 따른 비용 공시",
+        "url": "https://nuri-electronics.example/ir/disclosure-0102.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [
+       {
+        "value": "1만 2천 개",
+        "kind": "주장"
+       }
+      ],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "확인 못 함",
+    "note": "거짓이라는 뜻이 아니다",
+    "claims": [
+     {
+      "id": "c3",
+      "gist": "배터리 결함이 화재를 일으켰다.",
+      "kind": "인과",
+      "verdict": "확인 못 함",
+      "evidence_label": "",
+      "searched": "한빛고등법원 판결 요지, 제품안전원 공고",
+      "not_found": "",
+      "reasons": [
+       "절차가 끝나지 않음"
+      ],
+      "would_decide": "대법원의 확정 판결이나 제품안전원의 원인 조사 결과",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990101-02-e3",
+        "kind": "기관 자료",
+        "by": "한빛고등법원",
+        "title": "보조 배터리 화재 손해배상 사건 판결 요지",
+        "url": "https://court.example/ruling/battery-fire.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     },
+     {
+      "id": "c4",
+      "gist": "누리전자가 결함을 알고도 한 달 넘게 숨겼다.",
+      "kind": "사실",
+      "verdict": "확인 못 함",
+      "evidence_label": "보도 1곳(맨 처음 가나일보, 근거: 익명 관계자)",
+      "searched": "누리전자 공시, 제품안전원 공고, 가나일보 보도",
+      "not_found": "",
+      "reasons": [
+       "핵심 근거를 구하지 못함"
+      ],
+      "would_decide": "회사 내부 문서를 확인한 수사기관이나 법원의 문서",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990101-02-e4",
+        "kind": "보도",
+        "by": "가나일보",
+        "title": "누리전자, 배터리 결함 알고도 알리지 않았다는 증언",
+        "url": "https://ganadaily.example/news/0001",
+        "checked_at": "2099-01-02 08:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   }
+  ],
+  "hidden_claims": 2,
+  "summary": {
+   "확인": 1,
+   "일부 맞음": 1,
+   "사실과 다름": 0,
+   "확인 못 함": 2
+  }
+ },
+ "facts": [
+  {
+   "id": "f1",
+   "text": "제품안전원은 1월 1일 누리전자 휴대용 보조 배터리 1만 2천 개에 회수 명령을 내렸다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20990101-02-e1",
+     "kind": "공식 원문",
+     "by": "제품안전원",
+     "title": "보조 배터리 회수 명령 공고",
+     "url": "https://product-safety.example/notice/recall-0101.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [
+    {
+     "value": "1만 2천 개",
+     "kind": "공식"
+    }
+   ],
+   "election_mask": false
+  },
+  {
+   "id": "f2",
+   "text": "누리전자는 회수 대상 제품을 무상으로 바꿔 준다고 공시했다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20990101-02-e2",
+     "kind": "공식 원문",
+     "by": "누리전자",
+     "title": "제품 회수에 따른 비용 공시",
+     "url": "https://nuri-electronics.example/ir/disclosure-0102.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "flow": [
+  {
+   "id": "w1",
+   "event_date": "2098-12-20",
+   "report_date": "2098-12-20",
+   "what": "고등법원이 결함을 화재 원인으로 판단했다(확정 전).",
+   "kind": "결정",
+   "sources": [
+    {
+     "id": "i20990101-02-e3",
+     "kind": "기관 자료",
+     "by": "한빛고등법원",
+     "title": "보조 배터리 화재 손해배상 사건 판결 요지",
+     "url": "https://court.example/ruling/battery-fire.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w2",
+   "event_date": "2099-01-01",
+   "report_date": "2099-01-01",
+   "what": "제품안전원이 회수 명령을 내렸다.",
+   "kind": "계기",
+   "sources": [
+    {
+     "id": "i20990101-02-e1",
+     "kind": "공식 원문",
+     "by": "제품안전원",
+     "title": "보조 배터리 회수 명령 공고",
+     "url": "https://product-safety.example/notice/recall-0101.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "stances": [
+  {
+   "id": "s1",
+   "who": "누리전자",
+   "kind": "인정",
+   "summary": "회수 대상 제품을 무상으로 바꿔 주겠다고 밝혔다.",
+   "at": "2099-01-02",
+   "sources": [
+    {
+     "id": "i20990101-02-e2",
+     "kind": "공식 원문",
+     "by": "누리전자",
+     "title": "제품 회수에 따른 비용 공시",
+     "url": "https://nuri-electronics.example/ir/disclosure-0102.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "open_questions": [
+  {
+   "id": "q1",
+   "text": "대법원이 화재 원인을 어떻게 판단할지",
+   "election_mask": false
+  }
+ ],
+ "spillover": {
+  "issues": [],
+  "similar_cases": []
+ },
+ "figures": [],
+ "sources": [
+  {
+   "id": "i20990101-02-e1",
+   "kind": "공식 원문",
+   "by": "제품안전원",
+   "title": "보조 배터리 회수 명령 공고",
+   "url": "https://product-safety.example/notice/recall-0101.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-02-e2",
+   "kind": "공식 원문",
+   "by": "누리전자",
+   "title": "제품 회수에 따른 비용 공시",
+   "url": "https://nuri-electronics.example/ir/disclosure-0102.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-02-e3",
+   "kind": "기관 자료",
+   "by": "한빛고등법원",
+   "title": "보조 배터리 화재 손해배상 사건 판결 요지",
+   "url": "https://court.example/ruling/battery-fire.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-02-e4",
+   "kind": "보도",
+   "by": "가나일보",
+   "title": "누리전자, 배터리 결함 알고도 알리지 않았다는 증언",
+   "url": "https://ganadaily.example/news/0001",
+   "checked_at": "2099-01-02 08:00"
+  }
+ ],
+ "corrections": [],
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "trend": null,
+ "internal": {
+  "publish_state": "작성 중",
+  "content_hash": "77a5e5013782dfd3ed63051565418807",
+  "hidden": [
+   "claims.c5",
+   "claims.c6"
+  ],
+  "errors": [],
+  "warnings": []
+ },
+ "trend_now": {
+  "score": 57,
+  "bars7": [
+   0,
+   0,
+   0,
+   0,
+   0.1,
+   0.5,
+   0.9
+  ],
+  "asof": "2099-01-02 07:40",
+  "formula_version": 1
+ }
+}

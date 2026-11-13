@@ -1,0 +1,43 @@
+---
+// 출처 목록(설계 4-11). short 면 판정표 펼침 안의 짧은 꼴.
+import type { Source } from "../lib/data";
+import { fmtDateTime, host } from "../lib/format";
+interface Props { sources: Source[]; short?: boolean }
+const { sources, short = false } = Astro.props;
+const ORDER = ["공식 원문", "기관 자료", "언론 공개 원자료", "보도"];
+const seen = new Set<string>();
+const uniq = sources.filter((s) => {
+  const key = `${s.url}|${s.title}`;
+  if (seen.has(key)) return false;
+  seen.add(key);
+  return !!(s.title || s.by);
+});
+const groups = [...ORDER, "그 밖"].map((k) => ({ kind: k, items: uniq.filter((s) => (k === "그 밖" ? !ORDER.includes(s.kind) : s.kind === k)) })).filter((g) => g.items.length);
+const when = (s: Source) => { const t = fmtDateTime(s.checked_at); return t ? `${t} ${s.kind === "보도" ? "읽음" : "확인"}` : ""; };
+---
+{uniq.length > 0 && (short ? (
+  <ul class="src-short">
+    {uniq.map((s) => (
+      <li><strong>{s.by}</strong>{s.title && <><span class="sep" />{s.url ? <a href={s.url} rel="noopener">{s.title}</a> : s.title}</>}{when(s) && <><span class="sep" /><span class="xs muted num">{when(s)}</span></>}</li>
+    ))}
+  </ul>
+) : (
+  groups.map((g) => (
+    <>
+      <h3>{g.kind} <span class="num">{g.items.length}</span>건</h3>
+      <ul class="rows src-list">
+        {g.items.map((s) => (
+          <li>
+            <strong>{s.by}</strong>{s.title && <><span class="sep" />{s.url ? <a href={s.url} rel="noopener">{s.title}</a> : s.title}</>}
+            {s.url && host(s.url) && <span class="xs muted"> {host(s.url)}</span>}
+            {when(s) && <div class="xs muted num">{when(s)}</div>}
+          </li>
+        ))}
+      </ul>
+    </>
+  ))
+))}
+<style>
+  .src-short li { font-size: var(--fs-sm); padding: var(--sp-1) 0; }
+  .src-list li { padding: var(--sp-3) 0; font-size: var(--fs-sm); }
+</style>

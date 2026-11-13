@@ -1,0 +1,24 @@
+---
+// 고정판(설계 1-5). 내린 판은 파일이 없으므로 주소도 없다.
+import Base from "../../../../../layouts/Base.astro";
+import IssueBody from "../../../../../components/IssueBody.astro";
+import { loadSite, type Body, type Issue } from "../../../../../lib/data";
+import { revUrl } from "../../../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  const out: { params: { slug: string; rev: string }; props: { issue: Issue; b: Body } }[] = [];
+  for (const is of site.issues.values()) {
+    for (const [r, b] of is.revs) {
+      if (is.takenDown.has(r)) continue;
+      out.push({ params: { slug: is.slug, rev: String(r) }, props: { issue: is, b } });
+    }
+  }
+  return out;
+}
+const { issue, b } = Astro.props;
+const site = loadSite();
+---
+<Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} canonical={revUrl(issue.slug, b.rev ?? 0)}>
+  <IssueBody site={site} issue={issue} b={b} fixed={true} />
+</Base>

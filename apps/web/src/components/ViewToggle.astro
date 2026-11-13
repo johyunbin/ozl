@@ -1,0 +1,17 @@
+---
+// "짧게 / 전부" 전환(설계 4-12). 스크립트가 붙을 때만 보인다.
+---
+<div class="view-toggle" role="group" aria-label="보기 분량" hidden data-view-toggle>
+  <button type="button" data-view="short" aria-pressed="false">짧게</button>
+  <button type="button" data-view="full" aria-pressed="true">전부</button>
+</div>
+<script src="../scripts/view-toggle.ts"></script>
+<style>
+  .view-toggle { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+  .view-toggle[hidden] { display: none; }
+  .view-toggle button {
+    min-height: 44px; min-width: 64px; padding: 0 var(--sp-4); background: var(--bg); color: var(--text);
+    border: 1px solid var(--rule-strong); border-radius: 2px; font-size: var(--fs-sm); cursor: pointer;
+  }
+  .view-toggle button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+</style>

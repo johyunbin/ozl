@@ -1,0 +1,15 @@
+---
+// 검색 색인 전용 숨은 칸(설계 5-2). 화면 밖으로 빼고, 화면 읽기에서도 뺀다.
+import type { Body } from "../lib/data";
+import { roots } from "../lib/search-terms";
+interface Props { b: Body; aliases: Record<string, string[]> }
+const { b, aliases } = Astro.props;
+const terms = new Set<string>();
+for (const k of b.keywords) {
+  terms.add(k);
+  terms.add(k.replace(/\s+/g, ""));
+  for (const a of aliases[k] ?? []) { terms.add(a); terms.add(a.replace(/\s+/g, "")); }
+}
+for (const r of roots([b.title, ...b.so_far])) terms.add(r);
+---
+<div class="index-only" aria-hidden="true">{[...terms].join(" ")}</div>

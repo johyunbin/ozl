@@ -1,0 +1,31 @@
+---
+// 키워드 모음(설계 1-8). 초성(ㄱ ㄴ ㄷ …), 영문 A–Z, 숫자 0–9 머리 밑에 가나다순.
+// 키워드가 많으면(KW_ONE_PAGE 초과) 머리마다 기록이 많은 것 몇 개만 싣고 머리별 쪽(keywords/<번호>/)으로 잇는다.
+import Base from "../../layouts/Base.astro";
+import { loadSite } from "../../lib/data";
+import { keywordSlugUrl, url } from "../../lib/paths";
+import { KW_ONE_PAGE, KW_PER_HEAD, keywordGroups, recordCount } from "../../lib/kwgroups";
+
+const site = loadSite();
+const groups = keywordGroups(site);
+const split = site.keywords.size > KW_ONE_PAGE;
+const shown = (items: (typeof groups)[number]["items"]) =>
+  split ? [...items].sort((a, b) => recordCount(site, b[1]) - recordCount(site, a[1]) || a[1].name.localeCompare(b[1].name, "ko")).slice(0, KW_PER_HEAD) : items;
+---
+<Base title="키워드">
+  <h1>키워드</h1>
+  {split && <p class="small muted">키워드가 <span class="num">{site.keywords.size}</span>개라 머리마다 기록이 많은 것만 싣는다. 머리를 누르면 전부 보인다.</p>}
+  {groups.length ? groups.map((g) => (
+    <section class="section" aria-labelledby={`h-${g.n}`}>
+      <h2 id={`h-${g.n}`}>{split ? <a href={url(`keywords/${g.n}/`)}>{g.head}</a> : g.head}{split && <span class="small muted num"> ({g.items.length}개)</span>}</h2>
+      <ul class="inline-list">
+        {shown(g.items).map(([slug, k]) => <li><a href={keywordSlugUrl(slug)}>{k.name}</a>&nbsp;<span class="small muted num">(기록 {recordCount(site, k)})</span></li>)}
+      </ul>
+      {split && g.items.length > KW_PER_HEAD && <p class="small"><a class="all" href={url(`keywords/${g.n}/`)}>{g.head} 키워드 전부 보기</a></p>}
+    </section>
+  )) : <p class="empty">아직 키워드가 없다.</p>}
+</Base>
+<style>
+  .section { margin-top: var(--sp-6); }
+  h2 a, .all { display: inline-block; padding: 8px 0; }
+</style>

@@ -1,0 +1,128 @@
+{
+ "issues": [
+  {
+   "id": "i20990101-01",
+   "slug": "hanbit-bus-fare-400",
+   "title": "버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치",
+   "topic_state": "이어지는 중",
+   "rev": 3,
+   "rev_at": "2099-01-03T07:40:00+09:00",
+   "rev_line": "'적자 200억' 판정이 확인 못 함에서 사실과 다름으로 바뀌었다.",
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 2,
+    "확인 못 함": 1
+   },
+   "hidden_claims": 0,
+   "sensitive": [],
+   "example": true,
+   "category": "국내 경제·정책",
+   "keywords": [
+    "한빛시",
+    "버스 요금",
+    "요금 인상"
+   ],
+   "publish_state": "게시"
+  },
+  {
+   "id": "i20990101-02",
+   "slug": "nuri-battery-recall",
+   "title": "보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전",
+   "topic_state": "커지는 중",
+   "rev": 1,
+   "rev_at": "",
+   "rev_line": "",
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 0,
+    "확인 못 함": 2
+   },
+   "hidden_claims": 2,
+   "sensitive": [],
+   "example": true,
+   "category": "국내 경제·정책",
+   "keywords": [
+    "누리전자",
+    "보조 배터리",
+    "제품 회수"
+   ],
+   "publish_state": "작성 중"
+  },
+  {
+   "id": "i20990103-01",
+   "slug": "garam-reservoir-levee",
+   "title": "가람군 저수지 둑 보강 공사비 120억 원, 완공은 두 차례 미뤄졌고 세 번째 일정은 아직 군청 공고에 없다",
+   "topic_state": "새로 뜸",
+   "rev": 1,
+   "rev_at": "",
+   "rev_line": "",
+   "verdict_summary": {
+    "확인": 0,
+    "일부 맞음": 1,
+    "사실과 다름": 0,
+    "확인 못 함": 3
+   },
+   "hidden_claims": 0,
+   "sensitive": [],
+   "example": true,
+   "category": "지역",
+   "keywords": [
+    "가람군",
+    "저수지",
+    "둑 보강"
+   ],
+   "publish_state": "검토 대기"
+  },
+  {
+   "id": "i20981231-01",
+   "slug": "daon-library-hours",
+   "title": "다온구 도서관 밤 10시 운영, 구가 밝힌 예산은 1년치가 아니라 석 달치",
+   "topic_state": "이어지는 중",
+   "rev": 2,
+   "rev_at": "2099-01-02T08:00:00+09:00",
+   "rev_line": "예산 기간을 한 해에서 석 달로 바로잡았다.",
+   "verdict_summary": {
+    "확인": 2,
+    "일부 맞음": 0,
+    "사실과 다름": 1,
+    "확인 못 함": 0
+   },
+   "hidden_claims": 0,
+   "sensitive": [],
+   "example": true,
+   "category": "지역",
+   "keywords": [
+    "다온구",
+    "도서관",
+    "야간 운영"
+   ],
+   "publish_state": "게시"
+  },
+  {
+   "id": "i20990103-02",
+   "slug": "hanbit-parking-fee",
+   "title": "한빛시 공영주차장 요금 조정안, 시의회 상임위 심사는 1월 9일",
+   "topic_state": "새로 뜸",
+   "rev": 1,
+   "rev_at": "",
+   "rev_line": "",
+   "verdict_summary": {
+    "확인": 0,
+    "일부 맞음": 0,
+    "사실과 다름": 0,
+    "확인 못 함": 0
+   },
+   "hidden_claims": 0,
+   "sensitive": [],
+   "example": true,
+   "category": "국내 경제·정책",
+   "keywords": [
+    "한빛시",
+    "주차장 요금"
+   ],
+   "publish_state": "작성 중"
+  }
+ ]
+}

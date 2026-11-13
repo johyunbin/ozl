@@ -1,0 +1,40 @@
+---
+// 이슈 화면(최신판)과 옛 주소 안내 쪽(설계 1-4, 1-1).
+import Base from "../../../layouts/Base.astro";
+import IssueBody from "../../../components/IssueBody.astro";
+import { loadSite, type Issue } from "../../../lib/data";
+import { issueUrl } from "../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  const out: { params: { slug: string }; props: { kind: "issue" | "alias"; issue: Issue } }[] = [];
+  for (const is of site.issues.values()) out.push({ params: { slug: is.slug }, props: { kind: "issue", issue: is } });
+  const taken = new Set(site.issues.keys());
+  for (const is of site.issues.values()) {
+    for (const a of is.latest.aliases) {
+      if (taken.has(a) || !/^[a-z0-9]+(-[a-z0-9]+){0,7}$/.test(a)) continue;
+      taken.add(a);
+      out.push({ params: { slug: a }, props: { kind: "alias", issue: is } });
+    }
+  }
+  return out;
+}
+
+const { kind, issue } = Astro.props;
+const site = loadSite();
+const b = issue.latest;
+const to = issueUrl(issue.slug);
+---
+{kind === "alias" ? (
+  <Base title="옮겨 간 기록" canonical={to} refresh={to}>
+    <h1>이 기록은 새 주소로 옮겼다</h1>
+    <p class="moved"><a href={to}>{b.title}</a></p>
+  </Base>
+) : (
+  <Base title={`${b.title}${b.rev !== null ? ` · ${b.rev}판` : ""}`} description={b.so_far.join(" ")}>
+    <IssueBody site={site} issue={issue} b={b} fixed={false} />
+  </Base>
+)}
+<style>
+  .moved { margin-top: var(--sp-4); }
+</style>

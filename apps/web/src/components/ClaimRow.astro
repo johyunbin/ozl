@@ -1,0 +1,66 @@
+---
+// 주장 한 줄(설계 4-2). '사실과 다름' 은 펼친 채로 둔다.
+import type { Claim } from "../lib/data";
+import { fmtDate } from "../lib/format";
+import VerdictMark from "./VerdictMark.astro";
+import SourceList from "./SourceList.astro";
+interface Props { c: Claim; currentRev: number | null }
+const { c, currentRev } = Astro.props;
+const isFalse = c.verdict === "사실과 다름";
+const past = c.history.length ? c.history[c.history.length - 1] : null;
+const showReasons = c.verdict === "확인 못 함" || c.verdict === "일부 맞음";
+const hasMore = c.parts.length || c.not_found || (showReasons && (c.reasons.length || c.would_decide)) || c.party_position || c.sources.length || c.history.length;
+const shortHide = isFalse ? undefined : "hide";
+// '사실과 다름' 작은 주장은 접어도, 짧게 보기에서도 요지 줄에 꺼내 둔다(계획 4-3).
+const falseParts = isFalse ? [] : c.parts.filter((p) => p.verdict === "사실과 다름");
+---
+<li class="claim">
+  <details open={isFalse} data-claim-open={isFalse ? "keep" : "fold"}>
+    <summary>
+      <span class="gist">{c.kind && <span class="tag muted">{c.kind}</span>}{c.gist}</span>
+      <span class="meta">
+        {past && past.from && <><VerdictMark verdict={past.from} struck /><span class="arrow" aria-hidden="true">→</span></>}
+        <VerdictMark verdict={c.verdict} />
+        {c.evidence_label && <span data-short={shortHide}><span class="sep" />근거: {c.evidence_label}</span>}
+      </span>
+      {falseParts.map((p) => <span class="meta false-part">작은 주장 <VerdictMark verdict="사실과 다름" /> {p.gist}</span>)}
+      {c.searched && <span class="meta searched" data-short={shortHide}>찾아본 범위: {c.searched}</span>}
+    </summary>
+    {hasMore && (
+      <div class="more">
+        {c.parts.length > 0 && (
+          <div><p class="mh">작은 주장</p>
+            <ul class="parts">{c.parts.map((p) => <li><VerdictMark verdict={p.verdict} /> {p.core && <span class="tag">핵심</span>}{p.gist}
+              {p.reasons.length > 0 && <span class="small muted"> — {p.reasons.join(", ")}</span>}</li>)}</ul>
+          </div>
+        )}
+        {c.not_found && <div><p class="mh">찾지 못한 것</p><p>{c.not_found}</p></div>}
+        {showReasons && c.reasons.length > 0 && <div><p class="mh">판정하지 못한 까닭</p><ul class="dots">{c.reasons.map((r) => <li>{r}</li>)}</ul></div>}
+        {showReasons && c.would_decide && <div><p class="mh">무엇이 나오면 판정할 수 있나</p><p>{c.would_decide}</p></div>}
+        {c.party_position && <div><p class="mh">당사자 입장</p><p>{c.party_position}</p></div>}
+        {c.sources.length > 0 && <div><p class="mh">근거 문서</p><SourceList sources={c.sources} short /></div>}
+        {c.history.length > 0 && (
+          <div><p class="mh">판정 바뀐 기록</p>
+            <ul class="dots">{c.history.map((h) => <li>{h.rev !== null ? `${h.rev}판` : fmtDate(h.at)}에서 <VerdictMark verdict={h.from} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={h.to} />{h.why && <>. 까닭: {h.why}</>}</li>)}</ul>
+          </div>
+        )}
+      </div>
+    )}
+  </details>
+</li>
+<style>
+  .claim { border-top: 1px solid var(--rule); }
+  .claim:last-child { border-bottom: 1px solid var(--rule); }
+  summary { cursor: pointer; padding: var(--sp-4) 0; display: block; list-style: none; min-height: 44px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "펼치기"; font-size: var(--fs-xs); color: var(--accent); text-decoration: underline; display: inline-block; margin-top: var(--sp-1); }
+  details[open] > summary::after { content: "접기"; }
+  .gist { display: block; font-size: var(--fs-md); }
+  .meta { display: block; font-size: var(--fs-sm); margin-top: var(--sp-1); }
+  .searched { color: var(--muted); }
+  .more { background: var(--surface); border-left: 2px solid var(--rule-strong); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-4); font-size: var(--fs-sm); }
+  .more > div + div { margin-top: var(--sp-3); }
+  .mh { font-weight: 700; }
+  .parts li, .dots li { padding: var(--sp-1) 0; }
+  .dots li::before { content: "– "; color: var(--muted); }
+</style>

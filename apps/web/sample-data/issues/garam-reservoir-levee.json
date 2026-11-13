@@ -1,0 +1,559 @@
+{
+ "header": {
+  "site": "OZL"
+ },
+ "footer": {},
+ "id": "i20990103-01",
+ "slug": "garam-reservoir-levee",
+ "rev": 1,
+ "rev_at": "",
+ "example": true,
+ "title": "가람군 저수지 둑 보강 공사비 120억 원, 완공은 두 차례 미뤄졌고 세 번째 일정은 아직 군청 공고에 없다",
+ "rev_line": "",
+ "what_new": "가람군이 둑 보강 공사비를 120억 원으로 다시 공고했다.",
+ "why_matters": "둑 아래 마을의 장마철 안전과 이어진다.",
+ "so_far": [
+  "군은 공사비를 120억 원으로 공고했다.",
+  "완공은 두 차례 미뤄졌다.",
+  "세 번째 완공 일정은 아직 공고에 없다."
+ ],
+ "reason": "공사비와 일정에 대한 말이 여럿 도는데 군 공고와 맞지 않는 것이 있다.",
+ "category": "지역",
+ "keywords": [
+  "가람군",
+  "저수지",
+  "둑 보강"
+ ],
+ "aliases": [],
+ "sensitive": [],
+ "election": null,
+ "numbers": {},
+ "corrections_top": [],
+ "verdicts": {
+  "groups": [
+   {
+    "verdict": "일부 맞음",
+    "note": "",
+    "claims": [
+     {
+      "id": "c1",
+      "gist": "공사비는 처음 계획보다 두 배가 됐다.",
+      "kind": "수치",
+      "verdict": "일부 맞음",
+      "evidence_label": "공식 원문",
+      "searched": "군 공고, 점검 결과, 군 의회 녹취",
+      "not_found": "2096년 처음 계획서",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "군은 설계를 바꾼 몫이 있다고 했다.",
+      "parts": [
+       {
+        "id": "p1",
+        "gist": "공사비는 120억 원이다.",
+        "core": true,
+        "verdict": "확인",
+        "reasons": [],
+        "would_decide": "",
+        "sources": [
+         {
+          "id": "i20990103-01-e1",
+          "kind": "공식 원문",
+          "by": "가람군",
+          "title": "저수지 둑 보강 공사 계획 공고",
+          "url": "https://garam-county.example/notice/levee.html",
+          "checked_at": "2099-01-03T06:50:00+09:00"
+         }
+        ]
+       },
+       {
+        "id": "p2",
+        "gist": "처음 계획의 공사비는 60억 원이었다.",
+        "core": false,
+        "verdict": "확인 못 함",
+        "reasons": [
+         "처음 계획 문서가 공개되지 않음"
+        ],
+        "would_decide": "2096년 군 사업 계획서",
+        "sources": []
+       },
+       {
+        "id": "p3",
+        "gist": "늘어난 몫은 자재비 때문이다.",
+        "core": false,
+        "verdict": "확인 못 함",
+        "reasons": [
+         "군이 항목별 금액을 밝히지 않음"
+        ],
+        "would_decide": "공사비 항목별 내역",
+        "sources": []
+       }
+      ],
+      "sources": [
+       {
+        "id": "i20990103-01-e1",
+        "kind": "공식 원문",
+        "by": "가람군",
+        "title": "저수지 둑 보강 공사 계획 공고",
+        "url": "https://garam-county.example/notice/levee.html",
+        "checked_at": "2099-01-03T06:50:00+09:00"
+       },
+       {
+        "id": "i20990103-01-e2",
+        "kind": "기관 자료",
+        "by": "가람군 농어촌관리단",
+        "title": "둑 안전 점검 결과",
+        "url": "https://garam-farm.example/report/levee-check.html",
+        "checked_at": "2099-01-03T06:55:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "확인 못 함",
+    "note": "거짓이라는 뜻이 아니다",
+    "claims": [
+     {
+      "id": "c2",
+      "gist": "둑에서 물이 새고 있다.",
+      "kind": "사실",
+      "verdict": "확인 못 함",
+      "evidence_label": "기관 자료",
+      "searched": "농어촌관리단 점검 결과",
+      "not_found": "누수 측정 기록",
+      "reasons": [
+       "점검 결과에 누수 항목이 없음",
+       "현장 사진의 촬영 날짜를 알 수 없음"
+      ],
+      "would_decide": "관리단의 누수 측정 기록",
+      "party_position": "공개된 입장 없음",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990103-01-e2",
+        "kind": "기관 자료",
+        "by": "가람군 농어촌관리단",
+        "title": "둑 안전 점검 결과",
+        "url": "https://garam-farm.example/report/levee-check.html",
+        "checked_at": "2099-01-03T06:55:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     },
+     {
+      "id": "c3",
+      "gist": "세 번째 완공 일정은 2100년 봄이다.",
+      "kind": "발표 여부",
+      "verdict": "확인 못 함",
+      "evidence_label": "",
+      "searched": "군 공고, 군 보도자료",
+      "not_found": "세 번째 일정을 적은 공고",
+      "reasons": [
+       "군이 일정을 공고하지 않음"
+      ],
+      "would_decide": "군의 공사 일정 공고",
+      "party_position": "공개된 입장 없음",
+      "parts": [],
+      "sources": [],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     },
+     {
+      "id": "c4",
+      "gist": "공사가 미뤄진 것은 업체가 바뀌었기 때문이다.",
+      "kind": "인과",
+      "verdict": "확인 못 함",
+      "evidence_label": "언론 공개 원자료",
+      "searched": "군 의회 녹취, 군 공고",
+      "not_found": "",
+      "reasons": [
+       "의회 발언 하나뿐이고 군의 설명이 없음"
+      ],
+      "would_decide": "군의 계약 변경 공고",
+      "party_position": "공개된 입장 없음",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990103-01-e4",
+        "kind": "언론 공개 원자료",
+        "by": "가람신문",
+        "title": "군 의회 회의 녹취 공개본",
+        "url": "https://garam-news.example/data/council-1230.html",
+        "checked_at": "2099-01-03T07:05:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   }
+  ],
+  "hidden_claims": 0,
+  "summary": {
+   "확인": 0,
+   "일부 맞음": 1,
+   "사실과 다름": 0,
+   "확인 못 함": 3
+  }
+ },
+ "facts": [
+  {
+   "id": "f1",
+   "text": "가람군은 1월 3일 둑 보강 공사비를 120억 원으로 공고했다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "f2",
+   "text": "농어촌관리단은 12월 점검에서 둑 상태를 '보통'으로 적었다.",
+   "type": "사실",
+   "kind": "수치",
+   "sources": [
+    {
+     "id": "i20990103-01-e2",
+     "kind": "기관 자료",
+     "by": "가람군 농어촌관리단",
+     "title": "둑 안전 점검 결과",
+     "url": "https://garam-farm.example/report/levee-check.html",
+     "checked_at": "2099-01-03T06:55:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "flow": [
+  {
+   "id": "w1",
+   "event_date": "2098-03-02",
+   "report_date": "2098-03-02",
+   "what": "군이 둑 보강 공사를 처음 공고했다.",
+   "kind": "공개",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w2",
+   "event_date": "2098-09-01",
+   "report_date": "2098-09-01",
+   "what": "첫 완공 일정이 미뤄졌다.",
+   "kind": "공개",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w3",
+   "event_date": "2098-12-20",
+   "report_date": "2098-12-20",
+   "what": "농어촌관리단이 점검 결과를 냈다.",
+   "kind": "공개",
+   "sources": [
+    {
+     "id": "i20990103-01-e2",
+     "kind": "기관 자료",
+     "by": "가람군 농어촌관리단",
+     "title": "둑 안전 점검 결과",
+     "url": "https://garam-farm.example/report/levee-check.html",
+     "checked_at": "2099-01-03T06:55:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w4",
+   "event_date": "2098-12-30",
+   "report_date": "2099-01-02",
+   "what": "군 의회에서 두 번째로 미뤄진 일정이 나왔다.",
+   "kind": "보도",
+   "sources": [
+    {
+     "id": "i20990103-01-e3",
+     "kind": "보도",
+     "by": "가람신문",
+     "title": "저수지 공사 또 미뤄져",
+     "url": "https://garam-news.example/0102-levee.html",
+     "checked_at": "2099-01-03T07:00:00+09:00"
+    },
+    {
+     "id": "i20990103-01-e4",
+     "kind": "언론 공개 원자료",
+     "by": "가람신문",
+     "title": "군 의회 회의 녹취 공개본",
+     "url": "https://garam-news.example/data/council-1230.html",
+     "checked_at": "2099-01-03T07:05:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w5",
+   "event_date": "2099-01-03",
+   "report_date": "2099-01-03",
+   "what": "군이 공사비를 120억 원으로 다시 공고했다.",
+   "kind": "계기",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w6",
+   "event_date": "2099-01-20",
+   "report_date": "2099-01-03",
+   "what": "군 의회가 공사비 변경안을 심사한다.",
+   "kind": "예정",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "stances": [
+  {
+   "id": "s1",
+   "who": "가람군",
+   "kind": "발표",
+   "summary": "공사비를 120억 원으로 바꿨다고 공고했다.",
+   "at": "2099-01-03",
+   "sources": [
+    {
+     "id": "i20990103-01-e1",
+     "kind": "공식 원문",
+     "by": "가람군",
+     "title": "저수지 둑 보강 공사 계획 공고",
+     "url": "https://garam-county.example/notice/levee.html",
+     "checked_at": "2099-01-03T06:50:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "s2",
+   "who": "가람군 농어촌관리단",
+   "kind": "인정",
+   "summary": "점검이 한 해 늦었다고 밝혔다.",
+   "at": "2099-01-02",
+   "sources": [
+    {
+     "id": "i20990103-01-e2",
+     "kind": "기관 자료",
+     "by": "가람군 농어촌관리단",
+     "title": "둑 안전 점검 결과",
+     "url": "https://garam-farm.example/report/levee-check.html",
+     "checked_at": "2099-01-03T06:55:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "s3",
+   "who": "시공 업체",
+   "kind": "부인",
+   "summary": "업체 교체가 일정 지연의 까닭이 아니라고 했다.",
+   "at": "2099-01-02",
+   "sources": [
+    {
+     "id": "i20990103-01-e3",
+     "kind": "보도",
+     "by": "가람신문",
+     "title": "저수지 공사 또 미뤄져",
+     "url": "https://garam-news.example/0102-levee.html",
+     "checked_at": "2099-01-03T07:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "s4",
+   "who": "가람군 의회 의원",
+   "kind": "평가",
+   "summary": "공사비 증가 설명이 모자라다고 했다.",
+   "at": "2098-12-30",
+   "sources": [
+    {
+     "id": "i20990103-01-e4",
+     "kind": "언론 공개 원자료",
+     "by": "가람신문",
+     "title": "군 의회 회의 녹취 공개본",
+     "url": "https://garam-news.example/data/council-1230.html",
+     "checked_at": "2099-01-03T07:05:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "s5",
+   "who": "토목학회 지역 위원",
+   "kind": "전망",
+   "summary": "장마 전 완공은 어렵다고 봤다.",
+   "at": "2099-01-02",
+   "sources": [
+    {
+     "id": "i20990103-01-e3",
+     "kind": "보도",
+     "by": "가람신문",
+     "title": "저수지 공사 또 미뤄져",
+     "url": "https://garam-news.example/0102-levee.html",
+     "checked_at": "2099-01-03T07:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "open_questions": [
+  {
+   "id": "q1",
+   "text": "세 번째 완공 일정은 언제 공고되는지",
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "q2",
+   "text": "늘어난 공사비를 어디서 마련하는지",
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "spillover": {
+  "issues": [],
+  "similar_cases": [
+   {
+    "text": "다른 군의 둑 보강 공사 일정 공고",
+    "url": "https://levee-cases.example/list.html"
+   }
+  ]
+ },
+ "figures": [
+  {
+   "id": "g1",
+   "kind": "지도",
+   "caption": "저수지와 둑 아래 마을의 위치",
+   "alt": "가람군 저수지 둘레 지도",
+   "election_mask": false
+  }
+ ],
+ "sources": [
+  {
+   "id": "i20990103-01-e1",
+   "kind": "공식 원문",
+   "by": "가람군",
+   "title": "저수지 둑 보강 공사 계획 공고",
+   "url": "https://garam-county.example/notice/levee.html",
+   "checked_at": "2099-01-03T06:50:00+09:00"
+  },
+  {
+   "id": "i20990103-01-e2",
+   "kind": "기관 자료",
+   "by": "가람군 농어촌관리단",
+   "title": "둑 안전 점검 결과",
+   "url": "https://garam-farm.example/report/levee-check.html",
+   "checked_at": "2099-01-03T06:55:00+09:00"
+  },
+  {
+   "id": "i20990103-01-e4",
+   "kind": "언론 공개 원자료",
+   "by": "가람신문",
+   "title": "군 의회 회의 녹취 공개본",
+   "url": "https://garam-news.example/data/council-1230.html",
+   "checked_at": "2099-01-03T07:05:00+09:00"
+  },
+  {
+   "id": "i20990103-01-e3",
+   "kind": "보도",
+   "by": "가람신문",
+   "title": "저수지 공사 또 미뤄져",
+   "url": "https://garam-news.example/0102-levee.html",
+   "checked_at": "2099-01-03T07:00:00+09:00"
+  }
+ ],
+ "corrections": [],
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "internal": {
+  "publish_state": "검토 대기",
+  "content_hash": "00000000000000000000000000000000",
+  "hidden": [
+   "facts.f9"
+  ],
+  "errors": [],
+  "warnings": [
+   "flow.w6: 예정 사건의 날짜가 공고 날짜보다 늦다"
+  ]
+ },
+ "trend": null,
+ "trend_now": {
+  "score": 33,
+  "bars7": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0.1,
+   0.7
+  ],
+  "asof": "2099-01-03 07:40",
+  "formula_version": 1
+ }
+}

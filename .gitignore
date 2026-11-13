@@ -25,3 +25,11 @@ node_modules/
 
 # 로컬 빌드 산출(문자 인식 CLI 바이너리)
 tools/ocr/ocr
+
+# 웹(apps/web) 빌드 산출
+apps/web/node_modules/
+apps/web/dist/
+apps/web/.astro/
+apps/web/.pw-browsers/
+apps/web/test-results/
+apps/web/playwright-report/

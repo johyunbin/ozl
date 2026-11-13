@@ -1,0 +1,303 @@
+{
+ "header": {
+  "site": "OZL"
+ },
+ "footer": {},
+ "id": "i20981231-01",
+ "slug": "daon-library-hours",
+ "example": true,
+ "title": "다온구 도서관 밤 10시 운영, 구가 밝힌 예산은 1년치가 아니라 석 달치",
+ "what_new": "구 의회 추가 예산안에 야간 운영 기간이 석 달로 적혀 있다.",
+ "why_matters": "4월 이후 야간 운영이 이어질지가 예산에 달렸다.",
+ "so_far": [
+  "구립 도서관은 1월부터 밤 10시까지 연다.",
+  "구가 밝힌 예산 2억 4천만 원은 석 달 치다.",
+  "4월 이후 예산은 아직 정해지지 않았다."
+ ],
+ "reason": "'한 해 예산'이라는 말이 퍼졌는데 예산안의 기간과 다르다.",
+ "category": "지역",
+ "keywords": [
+  "다온구",
+  "도서관",
+  "야간 운영"
+ ],
+ "aliases": [],
+ "sensitive": [],
+ "election": null,
+ "numbers": {},
+ "facts": [
+  {
+   "id": "f1",
+   "text": "다온구는 12월 31일 구립 도서관 야간 운영을 공지했다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20981231-01-e1",
+     "kind": "공식 원문",
+     "by": "다온구",
+     "title": "구립 도서관 야간 운영 안내",
+     "url": "https://daon-gu.example/notice/library-night.html",
+     "checked_at": "2098-12-31T09:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "flow": [
+  {
+   "id": "w1",
+   "event_date": "2098-12-31",
+   "report_date": "2098-12-31",
+   "what": "구가 야간 운영을 공지했다.",
+   "kind": "계기",
+   "sources": [
+    {
+     "id": "i20981231-01-e1",
+     "kind": "공식 원문",
+     "by": "다온구",
+     "title": "구립 도서관 야간 운영 안내",
+     "url": "https://daon-gu.example/notice/library-night.html",
+     "checked_at": "2098-12-31T09:00:00+09:00"
+    },
+    {
+     "id": "i20981231-01-e3",
+     "kind": "보도",
+     "by": "다온소식",
+     "title": "도서관 밤 10시까지 연다",
+     "url": "https://daon-news.example/1231-library.html",
+     "checked_at": "2098-12-31T09:30:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "w2",
+   "event_date": "2099-01-02",
+   "report_date": "2099-01-02",
+   "what": "구 의회가 추가 예산안을 공개했다.",
+   "kind": "공개",
+   "sources": [
+    {
+     "id": "i20981231-01-e2",
+     "kind": "기관 자료",
+     "by": "다온구 의회",
+     "title": "2099년 1분기 추가 예산안",
+     "url": "https://daon-council.example/budget/2099-q1.html",
+     "checked_at": "2099-01-02T09:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "stances": [
+  {
+   "id": "s1",
+   "who": "다온구",
+   "kind": "발표",
+   "summary": "1월부터 밤 10시까지 연다고 했다.",
+   "at": "2098-12-31",
+   "sources": [
+    {
+     "id": "i20981231-01-e1",
+     "kind": "공식 원문",
+     "by": "다온구",
+     "title": "구립 도서관 야간 운영 안내",
+     "url": "https://daon-gu.example/notice/library-night.html",
+     "checked_at": "2098-12-31T09:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "open_questions": [
+  {
+   "id": "q1",
+   "text": "4월 이후 예산이 추가 예산에 들어갈지",
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "spillover": {
+  "issues": [],
+  "similar_cases": []
+ },
+ "figures": [],
+ "sources": [
+  {
+   "id": "i20981231-01-e1",
+   "kind": "공식 원문",
+   "by": "다온구",
+   "title": "구립 도서관 야간 운영 안내",
+   "url": "https://daon-gu.example/notice/library-night.html",
+   "checked_at": "2098-12-31T09:00:00+09:00"
+  },
+  {
+   "id": "i20981231-01-e2",
+   "kind": "기관 자료",
+   "by": "다온구 의회",
+   "title": "2099년 1분기 추가 예산안",
+   "url": "https://daon-council.example/budget/2099-q1.html",
+   "checked_at": "2099-01-02T09:00:00+09:00"
+  },
+  {
+   "id": "i20981231-01-e3",
+   "kind": "보도",
+   "by": "다온소식",
+   "title": "도서관 밤 10시까지 연다",
+   "url": "https://daon-news.example/1231-library.html",
+   "checked_at": "2098-12-31T09:30:00+09:00"
+  }
+ ],
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "rev": 2,
+ "rev_at": "2099-01-02T08:00:00+09:00",
+ "rev_line": "예산 기간을 한 해에서 석 달로 바로잡았다.",
+ "verdicts": {
+  "groups": [
+   {
+    "verdict": "확인",
+    "note": "",
+    "claims": [
+     {
+      "id": "c1",
+      "gist": "구립 도서관은 1월부터 밤 10시까지 연다.",
+      "kind": "발표 여부",
+      "verdict": "확인",
+      "evidence_label": "공식 원문",
+      "searched": "구 공지",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "공개된 입장 없음",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20981231-01-e1",
+        "kind": "공식 원문",
+        "by": "다온구",
+        "title": "구립 도서관 야간 운영 안내",
+        "url": "https://daon-gu.example/notice/library-night.html",
+        "checked_at": "2098-12-31T09:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     },
+     {
+      "id": "c2",
+      "gist": "야간 운영 예산은 2억 4천만 원이다.",
+      "kind": "수치",
+      "verdict": "확인",
+      "evidence_label": "기관 자료",
+      "searched": "구 의회 추가 예산안",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "공개된 입장 없음",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20981231-01-e2",
+        "kind": "기관 자료",
+        "by": "다온구 의회",
+        "title": "2099년 1분기 추가 예산안",
+        "url": "https://daon-council.example/budget/2099-q1.html",
+        "checked_at": "2099-01-02T09:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "사실과 다름",
+    "note": "",
+    "claims": [
+     {
+      "id": "c3",
+      "gist": "야간 운영 예산은 한 해 치다.",
+      "kind": "사실",
+      "verdict": "사실과 다름",
+      "evidence_label": "기관 자료",
+      "searched": "구 의회 추가 예산안, 구 공지",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "구는 나머지 기간 예산을 다음 추가 예산에 넣겠다고 했다.",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20981231-01-e2",
+        "kind": "기관 자료",
+        "by": "다온구 의회",
+        "title": "2099년 1분기 추가 예산안",
+        "url": "https://daon-council.example/budget/2099-q1.html",
+        "checked_at": "2099-01-02T09:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   }
+  ],
+  "hidden_claims": 0,
+  "summary": {
+   "확인": 2,
+   "일부 맞음": 0,
+   "사실과 다름": 1,
+   "확인 못 함": 0
+  }
+ },
+ "corrections": [
+  {
+   "rev": 2,
+   "at": "2099-01-02T08:00:00+09:00",
+   "kind": "정정",
+   "before": "야간 운영 예산은 한 해 치 2억 4천만 원이다.",
+   "after": "야간 운영 예산 2억 4천만 원은 1월부터 3월까지 석 달 치다.",
+   "why": "구 공지만 보고 기간을 한 해로 적었다. 추가 예산안에 기간이 석 달로 적혀 있다."
+  },
+  {
+   "rev": 2,
+   "at": "2099-01-02T08:00:00+09:00",
+   "kind": "새 사건",
+   "before": "",
+   "after": "구 의회가 1분기 추가 예산안을 공개했다.",
+   "why": ""
+  }
+ ],
+ "corrections_top": [
+  {
+   "rev": 2,
+   "at": "2099-01-02T08:00:00+09:00",
+   "kind": "정정",
+   "before": "야간 운영 예산은 한 해 치 2억 4천만 원이다.",
+   "after": "야간 운영 예산 2억 4천만 원은 1월부터 3월까지 석 달 치다.",
+   "why": "구 공지만 보고 기간을 한 해로 적었다. 추가 예산안에 기간이 석 달로 적혀 있다."
+  }
+ ],
+ "trend": {
+  "score": 26,
+  "bars7": [
+   0,
+   0,
+   0,
+   0,
+   0.4,
+   0.2,
+   0.5
+  ],
+  "asof": "2099-01-02 08:00",
+  "formula_version": 1
+ }
+}

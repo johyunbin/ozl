@@ -1,0 +1,16 @@
+---
+import { fmtDateTime } from "../lib/format";
+interface Props { rev: number | null; at: string; older?: boolean }
+const { rev, at, older = false } = Astro.props;
+const when = fmtDateTime(at);
+---
+{rev !== null && (
+  <p class="rev-mark">
+    <span class="num">{rev}판</span>{when && <><span class="sep" /><span class="num">{when}</span></>}
+    {older && <><span class="sep" /><a href="#revisions">지난 판 보기</a></>}
+  </p>
+)}
+<style>
+  .rev-mark { font-size: var(--fs-sm); color: var(--muted); margin-top: var(--sp-2); }
+  .rev-mark a { display: inline-block; padding: 10px 0; }
+</style>

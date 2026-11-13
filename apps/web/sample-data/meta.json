@@ -1,0 +1,15 @@
+{
+ "schema": 1,
+ "made_at": "2099-01-03T07:40:00+09:00",
+ "export_version": 1,
+ "mode": "preview",
+ "report_contact": "",
+ "test": true,
+ "mask_rule_version": 1,
+ "counts": {
+  "issues": 5,
+  "revisions": 5,
+  "days": 3,
+  "restored": 1
+ }
+}

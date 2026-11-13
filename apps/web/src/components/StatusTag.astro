@@ -1,0 +1,8 @@
+---
+// 미리보기 상태 꼬리표(설계 1-12). 공개용 빌드는 아예 출력하지 않는다.
+import { IS_PREVIEW } from "../lib/mode";
+interface Props { state: string }
+const { state } = Astro.props;
+const show = IS_PREVIEW && !!state && state !== "게시";
+---
+{show && <span class="tag status" data-status={state}>{state}</span>}

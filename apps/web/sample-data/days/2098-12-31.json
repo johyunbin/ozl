@@ -1,0 +1,48 @@
+{
+ "date": "2098-12-31",
+ "topics": null,
+ "records": [
+  {
+   "id": "i20981231-01",
+   "slug": "daon-library-hours",
+   "title": "다온구 도서관 밤 10시 운영, 구가 밝힌 예산은 1년치가 아니라 석 달치",
+   "rev": 2,
+   "verdict_summary": {
+    "확인": 2,
+    "일부 맞음": 0,
+    "사실과 다름": 1,
+    "확인 못 함": 0
+   }
+  }
+ ],
+ "restored": {
+  "label": "위키백과 조회로 본 그날의 관심 문서",
+  "items": [
+   {
+    "rank": 1,
+    "article": "한빛시 해맞이 축제",
+    "views": 12345
+   },
+   {
+    "rank": 2,
+    "article": "다온구립 도서관",
+    "views": 8210
+   },
+   {
+    "rank": 3,
+    "article": "가람 저수지",
+    "views": 5402
+   },
+   {
+    "rank": 4,
+    "article": "한빛 시내버스",
+    "views": 3980
+   },
+   {
+    "rank": 5,
+    "article": "누리 보조 배터리",
+    "views": 2011
+   }
+  ]
+ }
+}

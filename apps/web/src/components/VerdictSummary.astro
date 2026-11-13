@@ -1,0 +1,13 @@
+---
+// 판정 요약 줄 "● 확인 3 · ○ 확인 못 함 2". 0건인 판정은 뺀다.
+// 구분점은 앞 항목 끝에 붙인다. 줄이 넘어가도 새 줄이 구분점으로 시작하지 않는다.
+// trail 이 참이면 마지막 항목 뒤에도 구분점을 둔다(뒤에 "이 밖에 다루지 않은 주장" 이 이어질 때).
+import VerdictMark from "./VerdictMark.astro";
+import { summaryParts, type Summary } from "../lib/verdicts";
+interface Props { summary: Summary; empty?: string; trail?: boolean }
+const { summary, empty = "판정할 주장 없음, 확인된 사실만", trail = false } = Astro.props;
+const parts = summaryParts(summary);
+---
+{parts.length ? (
+  <span class="vsum">{parts.map((p, i) => <span class="item"><VerdictMark verdict={p.verdict} /> <span class="num">{p.n}</span>{(i < parts.length - 1 || trail) && <span class="sep" />}</span>)}</span>
+) : <span class="vsum muted">{empty}{trail && <span class="sep" />}</span>}

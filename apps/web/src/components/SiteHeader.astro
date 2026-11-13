@@ -1,0 +1,15 @@
+---
+import { loadSite, months } from "../lib/data";
+import { monthUrl, url } from "../lib/paths";
+const ms = months(loadSite());
+const last = ms[ms.length - 1];
+---
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href={url()}>OZL</a>
+    <nav aria-label="사이트">
+      <a href={url("search/")}>검색</a>
+      {last && <a href={monthUrl(last)}>날짜</a>}
+    </nav>
+  </div>
+</header>

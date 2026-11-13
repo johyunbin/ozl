@@ -1,0 +1,439 @@
+{
+ "header": {
+  "site": "OZL"
+ },
+ "footer": {},
+ "id": "i20990101-01",
+ "slug": "hanbit-bus-fare-400",
+ "rev": 1,
+ "rev_at": "2099-01-02T11:30:00+09:00",
+ "example": true,
+ "title": "버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치",
+ "rev_line": "",
+ "what_new": "시가 1월 2일 요금 400원 인상안을 발표했다.",
+ "why_matters": "하루 버스 이용자 전체의 요금이 바뀐다.",
+ "so_far": [
+  "시는 인상 근거로 운송 적자와 연료비를 들었다.",
+  "운송 적자 수치는 3년 전 결산의 값이었다.",
+  "떠도는 '적자 200억 원'은 아직 원문으로 확인하지 못했다."
+ ],
+ "reason": "한빛시 시내버스 요금이 1월부터 오르는데, 시가 든 근거와 떠도는 적자 수치가 서로 다르다.",
+ "category": "국내 경제·정책",
+ "keywords": [
+  "한빛시",
+  "버스 요금",
+  "요금 인상"
+ ],
+ "aliases": [
+  "hanbit-bus-fare"
+ ],
+ "sensitive": [],
+ "election": null,
+ "numbers": {
+  "so_far.1": [
+   {
+    "value": "3년",
+    "kind": "계산",
+    "inputs": {
+     "결산연도": "2098",
+     "근거연도": "2095"
+    },
+    "formula": "결산연도 - 근거연도",
+    "unit": "년",
+    "rounding": "그대로"
+   }
+  ],
+  "so_far.2": [
+   {
+    "value": "200억 원",
+    "kind": "주장",
+    "refutes": "c1"
+   }
+  ],
+  "titles.candidates.0": [
+   {
+    "value": "400원",
+    "kind": "공식",
+    "evidence": "i20990101-01-e1"
+   },
+   {
+    "value": "2건",
+    "kind": "계산",
+    "inputs": {
+     "근거수": "2건"
+    },
+    "formula": "근거수",
+    "unit": "건",
+    "rounding": "그대로"
+   },
+   {
+    "value": "1건",
+    "kind": "계산",
+    "inputs": {
+     "옛수치근거수": "1건"
+    },
+    "formula": "옛수치근거수",
+    "unit": "건",
+    "rounding": "그대로"
+   },
+   {
+    "value": "3년",
+    "kind": "계산",
+    "inputs": {
+     "결산연도": "2098",
+     "근거연도": "2095"
+    },
+    "formula": "결산연도 - 근거연도",
+    "unit": "년",
+    "rounding": "그대로"
+   }
+  ],
+  "what_new": [
+   {
+    "value": "400원",
+    "kind": "공식",
+    "evidence": "i20990101-01-e1"
+   }
+  ]
+ },
+ "corrections_top": [],
+ "verdicts": {
+  "groups": [
+   {
+    "verdict": "확인",
+    "note": "",
+    "claims": [
+     {
+      "id": "c4",
+      "gist": "시가 발표한 기본요금 인상 폭은 400원이다.",
+      "kind": "수치",
+      "verdict": "확인",
+      "evidence_label": "공식 원문",
+      "searched": "시 보도자료 원문",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990101-01-e1",
+        "kind": "공식 원문",
+        "by": "한빛시",
+        "title": "시내버스 요금 조정 안내",
+        "url": "https://hanbit-city.example/press/fare-2099.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [
+       {
+        "value": "400원",
+        "kind": "주장"
+       }
+      ],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "일부 맞음",
+    "note": "",
+    "claims": [
+     {
+      "id": "c5",
+      "gist": "시는 연료비와 운송 적자를 근거로 들었고, 연료비는 30% 올랐다.",
+      "kind": "사실",
+      "verdict": "일부 맞음",
+      "evidence_label": "공식 원문",
+      "searched": "시 보도자료 원문, 한빛통계원 연료 가격 통계",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [
+       {
+        "id": "p1",
+        "gist": "시는 연료비와 운송 적자를 인상 근거로 들었다.",
+        "core": true,
+        "verdict": "확인",
+        "reasons": [],
+        "would_decide": "",
+        "sources": [
+         {
+          "id": "i20990101-01-e1",
+          "kind": "공식 원문",
+          "by": "한빛시",
+          "title": "시내버스 요금 조정 안내",
+          "url": "https://hanbit-city.example/press/fare-2099.html",
+          "checked_at": "2099-01-02T10:00:00+09:00"
+         }
+        ]
+       },
+       {
+        "id": "p2",
+        "gist": "연료비는 30% 올랐다.",
+        "core": false,
+        "verdict": "사실과 다름",
+        "reasons": [],
+        "would_decide": "",
+        "sources": [
+         {
+          "id": "i20990101-01-e3",
+          "kind": "기관 자료",
+          "by": "한빛통계원",
+          "title": "2098년 연료 가격 통계",
+          "url": "https://hanbit-stats.example/fuel/2098.html",
+          "checked_at": "2099-01-02T10:00:00+09:00"
+         }
+        ]
+       }
+      ],
+      "sources": [
+       {
+        "id": "i20990101-01-e1",
+        "kind": "공식 원문",
+        "by": "한빛시",
+        "title": "시내버스 요금 조정 안내",
+        "url": "https://hanbit-city.example/press/fare-2099.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       },
+       {
+        "id": "i20990101-01-e3",
+        "kind": "기관 자료",
+        "by": "한빛통계원",
+        "title": "2098년 연료 가격 통계",
+        "url": "https://hanbit-stats.example/fuel/2098.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [
+       {
+        "value": "30%",
+        "kind": "주장"
+       }
+      ],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "사실과 다름",
+    "note": "",
+    "claims": [
+     {
+      "id": "c2",
+      "gist": "시가 든 인상 근거의 적자 수치는 올해 수치다.",
+      "kind": "사실",
+      "verdict": "사실과 다름",
+      "evidence_label": "공식 원문",
+      "searched": "시 보도자료 원문, 2095년 결산서",
+      "not_found": "",
+      "reasons": [],
+      "would_decide": "",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [],
+      "sources": [
+       {
+        "id": "i20990101-01-e1",
+        "kind": "공식 원문",
+        "by": "한빛시",
+        "title": "시내버스 요금 조정 안내",
+        "url": "https://hanbit-city.example/press/fare-2099.html",
+        "checked_at": "2099-01-02T10:00:00+09:00"
+       }
+      ],
+      "history": [],
+      "numbers": [],
+      "election_mask": false
+     }
+    ]
+   },
+   {
+    "verdict": "확인 못 함",
+    "note": "거짓이라는 뜻이 아니다",
+    "claims": [
+     {
+      "id": "c1",
+      "gist": "한빛시 버스 운송 적자가 한 해 200억 원이다.",
+      "kind": "수치",
+      "verdict": "확인 못 함",
+      "evidence_label": "",
+      "searched": "시 결산서 2098년, 시 보도자료, 시의회 회의록",
+      "not_found": "",
+      "reasons": [
+       "핵심 근거를 구하지 못함"
+      ],
+      "would_decide": "시 결산서 원문이나 결산 검사 보고서",
+      "party_position": "공개된 입장 없음(2099-01-02 11:00 확인)",
+      "parts": [],
+      "sources": [],
+      "history": [],
+      "numbers": [
+       {
+        "value": "200억 원",
+        "kind": "주장"
+       }
+      ],
+      "election_mask": false
+     }
+    ]
+   }
+  ],
+  "hidden_claims": 0,
+  "summary": {
+   "확인": 1,
+   "일부 맞음": 1,
+   "사실과 다름": 1,
+   "확인 못 함": 1
+  }
+ },
+ "facts": [
+  {
+   "id": "f1",
+   "text": "한빛시는 1월 2일 시내버스 요금을 400원 올리는 안을 발표했다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20990101-01-e1",
+     "kind": "공식 원문",
+     "by": "한빛시",
+     "title": "시내버스 요금 조정 안내",
+     "url": "https://hanbit-city.example/press/fare-2099.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [
+    {
+     "value": "400원",
+     "kind": "공식"
+    }
+   ],
+   "election_mask": false
+  },
+  {
+   "id": "f2",
+   "text": "한빛통계원 통계로 2098년 연료비는 한 해 30% 올랐다.",
+   "type": "사실",
+   "kind": "수치",
+   "sources": [
+    {
+     "id": "i20990101-01-e3",
+     "kind": "기관 자료",
+     "by": "한빛통계원",
+     "title": "2098년 연료 가격 통계",
+     "url": "https://hanbit-stats.example/fuel/2098.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "flow": [
+  {
+   "id": "w1",
+   "event_date": "2099-01-02",
+   "report_date": "2099-01-02",
+   "what": "시가 인상안을 발표했다.",
+   "kind": "계기",
+   "sources": [
+    {
+     "id": "i20990101-01-e1",
+     "kind": "공식 원문",
+     "by": "한빛시",
+     "title": "시내버스 요금 조정 안내",
+     "url": "https://hanbit-city.example/press/fare-2099.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "stances": [
+  {
+   "id": "s1",
+   "who": "한빛시",
+   "kind": "발표",
+   "summary": "운송 적자와 연료비를 인상 근거로 들었다.",
+   "at": "2099-01-02",
+   "sources": [
+    {
+     "id": "i20990101-01-e1",
+     "kind": "공식 원문",
+     "by": "한빛시",
+     "title": "시내버스 요금 조정 안내",
+     "url": "https://hanbit-city.example/press/fare-2099.html",
+     "checked_at": "2099-01-02T10:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "open_questions": [
+  {
+   "id": "q1",
+   "text": "인상분을 어디에 쓸지 조례에 정할지는 아직 알 수 없다.",
+   "election_mask": false
+  }
+ ],
+ "spillover": {
+  "issues": [],
+  "similar_cases": []
+ },
+ "figures": [],
+ "sources": [
+  {
+   "id": "i20990101-01-e1",
+   "kind": "공식 원문",
+   "by": "한빛시",
+   "title": "시내버스 요금 조정 안내",
+   "url": "https://hanbit-city.example/press/fare-2099.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-01-e2",
+   "kind": "기관 자료",
+   "by": "한빛도 재정감사위원회",
+   "title": "2098년 한빛시 결산 검사 보고서",
+   "url": "https://hanbit-audit.example/report/settlement-2098.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-01-e3",
+   "kind": "기관 자료",
+   "by": "한빛통계원",
+   "title": "2098년 연료 가격 통계",
+   "url": "https://hanbit-stats.example/fuel/2098.html",
+   "checked_at": "2099-01-02T10:00:00+09:00"
+  },
+  {
+   "id": "i20990101-01-e4",
+   "kind": "보도",
+   "by": "한빛일보",
+   "title": "시내버스 요금 400원 오른다",
+   "url": "https://hanbit-daily.example/news/0102-bus.html",
+   "checked_at": "2099-01-02T09:10:00+09:00"
+  }
+ ],
+ "corrections": [],
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "trend": {
+  "score": 22,
+  "bars7": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0.3
+  ],
+  "asof": "2099-01-02 11:30",
+  "formula_version": 1
+ }
+}

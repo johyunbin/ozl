@@ -1,0 +1,20 @@
+---
+import { loadSite } from "../lib/data";
+import { fmtDateTime } from "../lib/format";
+import { url } from "../lib/paths";
+const when = fmtDateTime(loadSite().meta.made_at);
+const links = [
+  ["화제 점수 계산법", "about/#score"],
+  ["판정 기준", "about/#verdicts"],
+  ["정정 목록", "corrections/"],
+  ["편집 원칙", "about/#principles"],
+  ["AI 사용 고지", "about/#ai"],
+  ["오류 제보와 신고", "report/"],
+];
+---
+<footer class="site-footer" data-pagefind-ignore>
+  <div class="wrap">
+    <ul>{links.map(([t, h]) => <li><a href={url(h)}>{t}</a></li>)}</ul>
+    {when && <p class="made">자료 만든 시각 <span class="num">{when}</span></p>}
+  </div>
+</footer>

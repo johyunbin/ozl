@@ -1,0 +1,153 @@
+{
+ "date": "2099-01-02",
+ "topics": {
+  "line": {
+   "updated_at": "2099-01-02 07:40",
+   "source_kinds_ok": [
+    "보도",
+    "검색 추이",
+    "위키백과"
+   ],
+   "source_kinds_failed": [
+    "커뮤니티"
+   ]
+  },
+  "new": [
+   {
+    "issue_id": "i20990101-02",
+    "status_line": "새로 뜸 · 회수 공고",
+    "verdict_summary": {
+     "확인": 1,
+     "일부 맞음": 1,
+     "사실과 다름": 0,
+     "확인 못 함": 2
+    },
+    "hidden_claims": 2
+   },
+   {
+    "keyword": "다온구 야간 개방",
+    "state": "정리 전"
+   }
+  ],
+  "ongoing": [
+   {
+    "issue_id": "i20990101-01",
+    "status_line": "2일째 · 새 사실 1건",
+    "verdict_summary": {
+     "확인": 1,
+     "일부 맞음": 1,
+     "사실과 다름": 1,
+     "확인 못 함": 1
+    },
+    "hidden_claims": 0
+   },
+   {
+    "issue_id": "i20981231-01",
+    "status_line": "3일째 · 정정 1건",
+    "verdict_summary": {
+     "확인": 2,
+     "일부 맞음": 0,
+     "사실과 다름": 1,
+     "확인 못 함": 0
+    },
+    "hidden_claims": 0
+   }
+  ],
+  "upcoming": [
+   {
+    "date": "2099-01-09",
+    "what": "한빛시의회 교통위원회 주차장 요금 조정안 심사",
+    "url": "https://hanbit-council.example/schedule/2099-01.html"
+   },
+   {
+    "date": "2099-01-15",
+    "what": "한빛고등법원 보조 배터리 화재 사건 선고",
+    "url": ""
+   }
+  ],
+  "pre": [
+   {
+    "keyword": "한빛역 환승 통로 공사",
+    "desc": "한빛역 환승 통로가 3월까지 공사로 닫힌다.",
+    "links": [
+     {
+      "outlet": "한빛일보",
+      "url": "https://hanbit-daily.example/news/0102-station.html"
+     },
+     {
+      "outlet": "한빛방송",
+      "url": "https://hanbit-tv.example/news/0102-station.html"
+     }
+    ],
+    "flags": []
+   },
+   {
+    "keyword": "다온구 주민 사진 유출",
+    "desc": "",
+    "links": [
+     {
+      "outlet": "다온소식",
+      "url": "https://daon-news.example/0102-photo.html"
+     }
+    ],
+    "flags": [
+     "사생활"
+    ]
+   },
+   {
+    "keyword": "가람군 수돗물 단수",
+    "desc": "가람군 두 개 면에 하루 동안 수돗물이 끊긴다.",
+    "links": [
+     {
+      "outlet": "가람신문",
+      "url": "https://garam-news.example/0102-water.html"
+     },
+     {
+      "outlet": "가람군",
+      "url": "https://garam-county.example/notice/water.html"
+     }
+    ],
+    "flags": []
+   }
+  ]
+ },
+ "records": [
+  {
+   "id": "i20990101-02",
+   "slug": "nuri-battery-recall",
+   "title": "보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전",
+   "rev": 1,
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 0,
+    "확인 못 함": 2
+   }
+  },
+  {
+   "id": "i20990101-01",
+   "slug": "hanbit-bus-fare-400",
+   "title": "버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치",
+   "rev": 2,
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 1,
+    "확인 못 함": 1
+   }
+  },
+  {
+   "id": "i20981231-01",
+   "slug": "daon-library-hours",
+   "title": "다온구 도서관 밤 10시 운영, 구가 밝힌 예산은 1년치가 아니라 석 달치",
+   "rev": 2,
+   "verdict_summary": {
+    "확인": 2,
+    "일부 맞음": 0,
+    "사실과 다름": 1,
+    "확인 못 함": 0
+   }
+  }
+ ],
+ "restored": null
+}

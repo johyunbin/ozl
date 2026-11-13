@@ -1,0 +1,46 @@
+---
+// "이번 판에서 달라진 것"(설계 4-7 ~ 4-9). 최대 3줄. 빈칸을 지어 채우지 않는다.
+import type { Body } from "../lib/data";
+import VerdictMark from "./VerdictMark.astro";
+interface Props { b: Body }
+const { b } = Astro.props;
+type Line = { kind: "text"; text: string } | { kind: "corr"; label: string; text: string; bad: boolean } | { kind: "hist"; gist: string; from: string; to: string };
+const lines: Line[] = [];
+if (b.rev_line) lines.push({ kind: "text", text: b.rev_line });
+const hist = b.verdicts.groups.flatMap((g) => g.claims.flatMap((c) => c.history.filter((h) => h.rev === b.rev).map((h) => ({ gist: c.gist, ...h }))));
+for (const c of b.corrections.filter((c) => c.rev === b.rev)) {
+  if (c.kind === "판정 변경" && hist.length) continue; // 주장 기록과 겹치면 한 번만
+  if (c.kind === "내림") continue;
+  lines.push({ kind: "corr", label: c.kind, text: c.after || c.why, bad: c.kind === "정정" });
+}
+for (const h of hist) lines.push({ kind: "hist", gist: h.gist, from: h.from, to: h.to });
+const shown = lines.slice(0, 3);
+const more = lines.length - shown.length;
+const first = b.rev === 1;
+---
+<section class="changes" aria-labelledby="changes-h">
+  <p id="changes-h" class="changes-h">이번 판에서 달라진 것</p>
+  {shown.length ? (
+    <ul>
+      {shown.map((l) => (
+        <li>
+          {l.kind === "text" && l.text}
+          {l.kind === "corr" && <><strong class={l.bad ? "bad" : ""}>{l.label}</strong> {l.text}</>}
+          {l.kind === "hist" && <>판정 변경: {l.gist} <VerdictMark verdict={l.from} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={l.to} /></>}
+        </li>
+      ))}
+      {more > 0 && <li><a href="#corrections">그 밖에 {more}건은 정정과 판 기록에</a></li>}
+    </ul>
+  ) : <p>{first ? "첫 판이다." : "이번 판에서 바꾼 문장 기록이 없다."}</p>}
+  {first && shown.length === 0 && b.what_new && <p>{b.what_new}</p>}
+  {!first && b.what_new && <p class="sub"><strong>무엇이 새로운가</strong> {b.what_new}</p>}
+  {b.why_matters && <p class="sub"><strong>왜 중요한가</strong> {b.why_matters}</p>}
+</section>
+<style>
+  .changes { margin-top: var(--sp-5); }
+  .changes-h { font-size: var(--fs-sm); font-weight: 700; margin-bottom: var(--sp-1); }
+  .changes li { padding: var(--sp-1) 0; }
+  .changes .bad { color: var(--v-false); }
+  .changes .sub { margin-top: var(--sp-3); }
+  .changes .sub strong { font-size: var(--fs-sm); margin-right: var(--sp-2); }
+</style>

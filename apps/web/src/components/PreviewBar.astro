@@ -1,0 +1,13 @@
+---
+// 미리보기용 빌드에서만 그린다(설계 1-2 3번).
+import { IS_PREVIEW } from "../lib/mode";
+import { loadSite } from "../lib/data";
+import { fmtDateTime } from "../lib/format";
+const meta = loadSite().meta;
+const when = fmtDateTime(meta.made_at);
+---
+{IS_PREVIEW && (
+  <div class="preview-bar" data-status="미리보기" role="region" aria-label="미리보기 안내">
+    <div class="wrap">미리보기<span class="sep" />공개되지 않은 내용이 섞여 있다{when && <><span class="sep" />자료 만든 시각 <span class="num">{when}</span></>}{meta.test && <><span class="sep" />시험 자료</>}</div>
+  </div>
+)}

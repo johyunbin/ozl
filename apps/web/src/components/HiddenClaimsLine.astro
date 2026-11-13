@@ -1,0 +1,10 @@
+---
+// "이 밖에 다루지 않은 주장 n건"(설계 4-3). 내용은 적지 않는다.
+// 목록 꼴의 구분점은 앞의 판정 요약이 끝에 붙인다(VerdictSummary trail).
+import { url } from "../lib/paths";
+interface Props { n: number; where: "list" | "table" }
+const { n, where } = Astro.props;
+---
+{n > 0 && (where === "list"
+  ? <span class="hidden-claims">이 밖에 다루지 않은 주장 <span class="num">{n}</span>건</span>
+  : <p class="hidden-claims small">이 밖에 다루지 않은 주장 <span class="num">{n}</span>건(<a href={url("about/#principles")}>공개 기준</a>)</p>)}

@@ -1,0 +1,187 @@
+{
+ "date": "2099-01-03",
+ "topics": {
+  "line": {
+   "updated_at": "2099-01-03 07:40",
+   "source_kinds_ok": [
+    "보도",
+    "검색 추이",
+    "위키백과",
+    "커뮤니티"
+   ],
+   "source_kinds_failed": []
+  },
+  "new": [
+   {
+    "issue_id": "i20990103-01",
+    "status_line": "새로 뜸 · 공사비 재공고",
+    "verdict_summary": {
+     "확인": 0,
+     "일부 맞음": 1,
+     "사실과 다름": 0,
+     "확인 못 함": 3
+    },
+    "hidden_claims": 0
+   },
+   {
+    "issue_id": "i20990103-02",
+    "status_line": "새로 뜸 · 입법 예고",
+    "verdict_summary": {
+     "확인": 0,
+     "일부 맞음": 0,
+     "사실과 다름": 0,
+     "확인 못 함": 0
+    },
+    "hidden_claims": 0
+   },
+   {
+    "keyword": "누리전자 교환 대기",
+    "state": "정리 전"
+   },
+   {
+    "issue_id": "i20990103-09",
+    "status_line": "새로 뜸",
+    "verdict_summary": {
+     "확인": 0,
+     "일부 맞음": 0,
+     "사실과 다름": 0,
+     "확인 못 함": 0
+    },
+    "hidden_claims": 0
+   }
+  ],
+  "ongoing": [
+   {
+    "issue_id": "i20990101-01",
+    "status_line": "3일째 · 판정 변경 1건",
+    "verdict_summary": {
+     "확인": 1,
+     "일부 맞음": 1,
+     "사실과 다름": 2,
+     "확인 못 함": 1
+    },
+    "hidden_claims": 0
+   },
+   {
+    "issue_id": "i20990101-02",
+    "status_line": "2일째 · 새 사실 2건",
+    "verdict_summary": {
+     "확인": 1,
+     "일부 맞음": 1,
+     "사실과 다름": 0,
+     "확인 못 함": 2
+    },
+    "hidden_claims": 2
+   }
+  ],
+  "upcoming": [
+   {
+    "date": "2099-01-09",
+    "what": "한빛시의회 교통위원회 주차장 요금 조정안 심사",
+    "url": "https://hanbit-council.example/schedule/2099-01.html"
+   }
+  ],
+  "pre": [
+   {
+    "keyword": "다온구 눈썰매장 개장",
+    "desc": "다온구가 하천 둔치에 눈썰매장을 연다.",
+    "links": [
+     {
+      "outlet": "다온소식",
+      "url": "https://daon-news.example/0103-sled.html"
+     },
+     {
+      "outlet": "한빛방송",
+      "url": "https://hanbit-tv.example/news/0103-sled.html"
+     }
+    ],
+    "flags": []
+   },
+   {
+    "keyword": "한빛시 공공 자전거 요금",
+    "desc": "한빛시가 공공 자전거 하루 이용권 값을 바꾼다고 밝혔다.",
+    "links": [
+     {
+      "outlet": "한빛일보",
+      "url": "https://hanbit-daily.example/news/0103-bike.html"
+     },
+     {
+      "outlet": "한빛시",
+      "url": "https://hanbit-city.example/notice/bike.html"
+     }
+    ],
+    "flags": []
+   },
+   {
+    "keyword": "가람군 철새 도래",
+    "desc": "가람 저수지에 겨울 철새가 예년보다 일찍 왔다.",
+    "links": [
+     {
+      "outlet": "가람신문",
+      "url": "https://garam-news.example/0103-birds.html"
+     },
+     {
+      "outlet": "날씨누리",
+      "url": "https://weather.example/garam/0103.html"
+     },
+     {
+      "outlet": "한빛방송",
+      "url": "https://hanbit-tv.example/news/0103-birds.html"
+     }
+    ],
+    "flags": []
+   }
+  ]
+ },
+ "records": [
+  {
+   "id": "i20990103-01",
+   "slug": "garam-reservoir-levee",
+   "title": "가람군 저수지 둑 보강 공사비 120억 원, 완공은 두 차례 미뤄졌고 세 번째 일정은 아직 군청 공고에 없다",
+   "rev": 1,
+   "verdict_summary": {
+    "확인": 0,
+    "일부 맞음": 1,
+    "사실과 다름": 0,
+    "확인 못 함": 3
+   }
+  },
+  {
+   "id": "i20990103-02",
+   "slug": "hanbit-parking-fee",
+   "title": "한빛시 공영주차장 요금 조정안, 시의회 상임위 심사는 1월 9일",
+   "rev": 1,
+   "verdict_summary": {
+    "확인": 0,
+    "일부 맞음": 0,
+    "사실과 다름": 0,
+    "확인 못 함": 0
+   }
+  },
+  {
+   "id": "i20990101-01",
+   "slug": "hanbit-bus-fare-400",
+   "title": "버스 400원 인상, 시가 든 근거 2건 가운데 1건은 3년 전 수치",
+   "rev": 3,
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 2,
+    "확인 못 함": 1
+   }
+  },
+  {
+   "id": "i20990101-02",
+   "slug": "nuri-battery-recall",
+   "title": "보조 배터리 1만 2천 개 회수, 화재 원인 판결은 아직 확정 전",
+   "rev": 1,
+   "verdict_summary": {
+    "확인": 1,
+    "일부 맞음": 1,
+    "사실과 다름": 0,
+    "확인 못 함": 2
+   }
+  }
+ ],
+ "restored": null
+}

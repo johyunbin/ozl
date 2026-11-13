@@ -1,0 +1,178 @@
+---
+// 날짜 쪽(YYYY-MM-DD)과 달 쪽(YYYY-MM)(설계 1-6, 1-7).
+import Base from "../../../layouts/Base.astro";
+import TopicRow from "../../../components/TopicRow.astro";
+import PreTopicRow from "../../../components/PreTopicRow.astro";
+import DateNav from "../../../components/DateNav.astro";
+import VerdictSummary from "../../../components/VerdictSummary.astro";
+import ExampleTag from "../../../components/ExampleTag.astro";
+import { loadSite, months, sortedDates, visibleTopics, type Day } from "../../../lib/data";
+import { IS_PREVIEW } from "../../../lib/mode";
+import { fmtClock, fmtDate, fmtDateWeek, fmtMonthDay, num, weekday } from "../../../lib/format";
+import { dayUrl, issueUrl, monthUrl } from "../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  return [
+    ...sortedDates(site).map((d) => ({ params: { key: d } })),
+    ...months(site).map((m) => ({ params: { key: m } })),
+  ];
+}
+
+const site = loadSite();
+const { key } = Astro.params as { key: string };
+const isDay = key.length === 10;
+const dates = sortedDates(site);
+const ms = months(site);
+
+// 날짜 쪽
+const day: Day | undefined = isDay ? site.days.get(key) : undefined;
+const di = dates.indexOf(key);
+const prevDay = di > 0 ? dates[di - 1] : undefined;
+const nextDay = di >= 0 && di < dates.length - 1 ? dates[di + 1] : undefined;
+const t = day?.topics ?? null;
+const newVis = t ? visibleTopics(site, t.new, IS_PREVIEW, `${key} 새로 뜬 것`) : [];
+const ongoingVis = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${key} 이어지는 것`) : [];
+const exists = (slug: string) => site.issues.has(slug);
+const rowFor = (slug: string) => site.index.find((r) => r.slug === slug);
+
+// 달 쪽
+const [yy, mm] = key.split("-").map(Number);
+const mi = ms.indexOf(key);
+const prevMonth = !isDay && mi > 0 ? ms[mi - 1] : undefined;
+const nextMonth = !isDay && mi >= 0 && mi < ms.length - 1 ? ms[mi + 1] : undefined;
+const daysInMonth = isDay ? 0 : new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+const firstDow = isDay ? 0 : new Date(Date.UTC(yy, mm - 1, 1)).getUTCDay();
+const pad = (n: number) => String(n).padStart(2, "0");
+const cellInfo = (d: number) => {
+  const date = `${key}-${pad(d)}`;
+  const dd = site.days.get(date);
+  const records = dd?.records.length ?? 0;
+  const topics = dd?.topics ? dd.topics.new.length + dd.topics.ongoing.length : 0;
+  const total = records + topics;
+  return { date, dd, records, topics, total, heat: total === 0 ? 0 : total <= 2 ? 1 : 2 };
+};
+const weeks: (number | null)[][] = [];
+if (!isDay) {
+  let w: (number | null)[] = Array(firstDow).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    w.push(d);
+    if (w.length === 7) { weeks.push(w); w = []; }
+  }
+  if (w.length) weeks.push([...w, ...Array(7 - w.length).fill(null)]);
+}
+const monthDays = isDay ? [] : Array.from({ length: daysInMonth }, (_, i) => cellInfo(i + 1)).filter((c) => c.dd);
+const title = isDay ? `${fmtMonthDay(key)} ${weekday(key)}요일 기록` : `${yy}년 ${mm}월`;
+---
+<Base title={isDay ? `${fmtMonthDay(key)} 기록` : title}>
+  {isDay && day ? (
+    <>
+      <h1>{fmtDate(key)} {weekday(key)}요일 기록</h1>
+      <DateNav items={[
+        { label: prevDay ? `← ${fmtMonthDay(prevDay)}` : "← 전날", href: prevDay ? dayUrl(prevDay) : undefined },
+        { label: nextDay ? `${fmtMonthDay(nextDay)} →` : "다음날 →", href: nextDay ? dayUrl(nextDay) : undefined },
+        { label: "이달 달력", href: monthUrl(key.slice(0, 7)) },
+      ]} />
+
+      <section class="section" aria-labelledby="topics-h">
+        <h2 id="topics-h">그날의 화제</h2>
+        {t ? (
+          <>
+            <p class="lead">그날 아침의 화제 순서다. 판정은 아래 OZL 기록에 있다.</p>
+            <p class="xs muted num">
+              {fmtDateWeek(key)}
+              {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
+              {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
+              {t.line.source_kinds_failed.length > 0 && <><span class="sep" /><strong class="failed">{t.line.source_kinds_failed.join(", ")} 수집 실패</strong></>}
+            </p>
+            <h3>새로 뜬 것</h3>
+            {newVis.length ? <ol class="rows">{newVis.map((it) => <TopicRow item={it} site={site} withVerdicts={false} />)}</ol>
+              : <p class="empty">{t.empty_note.new || "새로 정리한 이슈가 없었다."}</p>}
+            <h3>이어지는 것</h3>
+            {ongoingVis.length ? <ol class="rows">{ongoingVis.map((it) => <TopicRow item={it} site={site} withVerdicts={false} />)}</ol>
+              : <p class="empty">{t.empty_note.ongoing || "며칠째 이어지는 이슈가 없었다."}</p>}
+            <h3>다가오는 일</h3>
+            {t.upcoming.length ? <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {u.url ? <a href={u.url} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
+              : <p class="empty">{t.empty_note.upcoming || "날짜가 정해진 일정이 없었다."}</p>}
+            <h3>정리 전 화제</h3>
+            {t.pre.filter((p) => IS_PREVIEW || !p.excluded.length).length ? <ul class="rows">{t.pre.filter((p) => IS_PREVIEW || !p.excluded.length).map((p) => <PreTopicRow p={p} />)}</ul>
+              : <p class="empty">{t.empty_note.pre || "정리 전 화제가 없었다."}</p>}
+          </>
+        ) : <p class="empty">이날의 화제 목록은 남아 있지 않다.</p>}
+      </section>
+
+      <section class="section" aria-labelledby="records-h">
+        <h2 id="records-h">그날의 OZL 기록</h2>
+        {day.records.filter((r) => exists(r.slug)).length ? (
+          <ol class="rows">
+            {day.records.filter((r) => exists(r.slug)).map((r) => (
+              <li>
+                <p class="row-title"><ExampleTag show={rowFor(r.slug)?.example ?? false} /><a href={issueUrl(r.slug)}>{r.title || rowFor(r.slug)?.title}</a></p>
+                <p class="row-line">{r.rev !== null && <span class="num nw">{r.rev}판<span class="sep" /></span>}<VerdictSummary summary={r.verdict_summary} /></p>
+              </li>
+            ))}
+          </ol>
+        ) : <p class="empty">이날 정리한 OZL 기록이 없다.</p>}
+      </section>
+
+      {day.restored && (
+        <section class="section" aria-labelledby="restored-h">
+          <h2 id="restored-h">{day.restored.label}</h2>
+          <p class="lead">그날 만든 목록이 아니라, 나중에 조회 수로 되살린 목록이다. 판정과 점수가 없다.</p>
+          <ol class="rows restored">
+            {day.restored.items.map((x) => <li>{x.article}{x.views !== null && <><span class="sep" /><span class="num">조회 {num(x.views)}회</span></>}</li>)}
+          </ol>
+        </section>
+      )}
+    </>
+  ) : (
+    <>
+      <h1>{title}</h1>
+      <DateNav label="달 이동" items={[
+        { label: "← 앞달", href: prevMonth ? monthUrl(prevMonth) : undefined },
+        { label: "다음달 →", href: nextMonth ? monthUrl(nextMonth) : undefined },
+      ]} />
+      <table class="cal">
+        <caption class="sr-only">{title} 달력</caption>
+        <thead><tr>{["일", "월", "화", "수", "목", "금", "토"].map((d) => <th scope="col">{d}</th>)}</tr></thead>
+        <tbody>
+          {weeks.map((w) => (
+            <tr>
+              {w.map((d) => {
+                if (d === null) return <td />;
+                const c = cellInfo(d);
+                return (
+                  <td class={`h${c.heat}`}>
+                    {c.dd ? <a href={dayUrl(c.date)}><span class="dn num">{d}</span><span class="cnt num">기록 {c.records}</span></a>
+                      : <span class="plain"><span class="dn num">{d}</span></span>}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <section class="section" aria-labelledby="mlist-h">
+        <h2 id="mlist-h">자료가 있는 날</h2>
+        <ul class="rows">
+          {monthDays.map((c) => <li><a href={dayUrl(c.date)}>{fmtMonthDay(c.date)}</a><span class="sep" /><span class="num">화제 {c.topics}</span><span class="sep" /><span class="num">기록 {c.records}</span></li>)}
+        </ul>
+      </section>
+    </>
+  )}
+</Base>
+<style>
+  h1 { margin-bottom: var(--sp-2); }
+  .failed { color: var(--text); }
+  .rows a { display: inline; }
+  .cal { width: 100%; table-layout: fixed; margin-top: var(--sp-4); }
+  .cal th { font-size: var(--fs-xs); font-weight: 600; color: var(--muted); padding: var(--sp-1) 0; }
+  .cal td { height: 56px; min-width: 44px; padding: 0; border: 1px solid var(--rule); vertical-align: top; }
+  .cal td.h1 { background: var(--heat-1); }
+  .cal td.h2 { background: var(--heat-2); }
+  .cal td a, .cal td .plain { display: flex; flex-direction: column; min-height: 54px; padding: 4px; color: var(--text); text-decoration: none; }
+  .cal td a .dn { text-decoration: underline; color: var(--accent); font-weight: 600; }
+  .cal .dn { font-size: var(--fs-sm); }
+  .cal .cnt { font-size: var(--fs-xs); color: var(--muted); line-height: 1.3; }
+  .cal td .plain .dn { color: var(--muted); }
+</style>

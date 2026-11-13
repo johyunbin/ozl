@@ -1,0 +1,15 @@
+---
+// AI 사용 고지(설계 4-13). 자료 문장 그대로.
+import { url } from "../lib/paths";
+interface Props { text: string }
+---
+{Astro.props.text && (
+  <div class="ai-notice small">
+    <p>{Astro.props.text}</p>
+    <p><a href={url("about/#auto-human")}>자동이 하는 일과 사람이 하는 일</a></p>
+  </div>
+)}
+<style>
+  .ai-notice { border-top: 1px solid var(--rule); margin-top: var(--sp-5); padding-top: var(--sp-4); }
+  .ai-notice a { display: inline-block; padding: 12px 0; }
+</style>

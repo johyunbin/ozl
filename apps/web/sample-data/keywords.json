@@ -1,0 +1,195 @@
+{
+ "한빛시": {
+  "issues": [
+   "hanbit-bus-fare-400",
+   "hanbit-parking-fee"
+  ],
+  "dates": [
+   "2099-01-01",
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-01",
+  "related": [
+   "버스 요금",
+   "요금 인상",
+   "주차장 요금"
+  ]
+ },
+ "버스 요금": {
+  "issues": [
+   "hanbit-bus-fare-400"
+  ],
+  "dates": [
+   "2099-01-01",
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-01",
+  "related": [
+   "요금 인상",
+   "한빛시"
+  ]
+ },
+ "버스  요금": {
+  "issues": [
+   "hanbit-bus-fare-400"
+  ],
+  "dates": [
+   "2099-01-02"
+  ],
+  "first_seen": "2099-01-02",
+  "related": [
+   "한빛시"
+  ]
+ },
+ "요금 인상": {
+  "issues": [
+   "hanbit-bus-fare-400"
+  ],
+  "dates": [
+   "2099-01-01",
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-01",
+  "related": [
+   "버스 요금",
+   "한빛시"
+  ]
+ },
+ "누리전자": {
+  "issues": [
+   "nuri-battery-recall"
+  ],
+  "dates": [
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-02",
+  "related": [
+   "보조 배터리",
+   "제품 회수"
+  ]
+ },
+ "보조 배터리": {
+  "issues": [
+   "nuri-battery-recall"
+  ],
+  "dates": [
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-02",
+  "related": [
+   "누리전자",
+   "제품 회수"
+  ]
+ },
+ "제품 회수": {
+  "issues": [
+   "nuri-battery-recall"
+  ],
+  "dates": [
+   "2099-01-02",
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-02",
+  "related": [
+   "누리전자",
+   "보조 배터리"
+  ]
+ },
+ "가람군": {
+  "issues": [
+   "garam-reservoir-levee"
+  ],
+  "dates": [
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-03",
+  "related": [
+   "저수지",
+   "둑 보강"
+  ]
+ },
+ "저수지": {
+  "issues": [
+   "garam-reservoir-levee"
+  ],
+  "dates": [
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-03",
+  "related": [
+   "가람군",
+   "둑 보강"
+  ]
+ },
+ "둑 보강": {
+  "issues": [
+   "garam-reservoir-levee"
+  ],
+  "dates": [],
+  "first_seen": null,
+  "related": [
+   "가람군",
+   "저수지"
+  ]
+ },
+ "다온구": {
+  "issues": [
+   "daon-library-hours"
+  ],
+  "dates": [
+   "2098-12-31",
+   "2099-01-02"
+  ],
+  "first_seen": "2098-12-31",
+  "related": [
+   "도서관",
+   "야간 운영"
+  ]
+ },
+ "도서관": {
+  "issues": [
+   "daon-library-hours"
+  ],
+  "dates": [
+   "2098-12-31",
+   "2099-01-02"
+  ],
+  "first_seen": "2098-12-31",
+  "related": [
+   "다온구",
+   "야간 운영"
+  ]
+ },
+ "야간 운영": {
+  "issues": [
+   "daon-library-hours"
+  ],
+  "dates": [
+   "2098-12-31",
+   "2099-01-02"
+  ],
+  "first_seen": "2098-12-31",
+  "related": [
+   "다온구",
+   "도서관"
+  ]
+ },
+ "주차장 요금": {
+  "issues": [
+   "hanbit-parking-fee"
+  ],
+  "dates": [
+   "2099-01-03"
+  ],
+  "first_seen": "2099-01-03",
+  "related": [
+   "한빛시",
+   "시의회 심사"
+  ]
+ }
+}

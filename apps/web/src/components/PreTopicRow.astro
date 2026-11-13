@@ -1,0 +1,18 @@
+---
+// 정리 전 화제 한 줄(설계 1-3 5번). 제외 표시 항목은 미리보기에서만 꼬리표를 달고 그린다.
+import type { PreItem } from "../lib/data";
+import { IS_PREVIEW } from "../lib/mode";
+interface Props { p: PreItem }
+const { p } = Astro.props;
+---
+{(!p.excluded.length || IS_PREVIEW) && (
+  <li>
+    {IS_PREVIEW && p.excluded.length > 0 && <p><span class="tag status" data-status="공개 제외">공개에서 빠지는 항목({p.excluded.join(", ")})</span></p>}
+    <p class="row-title">{p.keyword}</p>
+    {p.desc && <p>{p.desc}</p>}
+    {p.links.length > 0 && <p class="links">{p.links.slice(0, 3).map((l, i) => <>{i > 0 && <span class="sep" />}<a href={l.url} rel="noopener">{l.outlet}</a></>)}</p>}
+  </li>
+)}
+<style>
+  .links a { display: inline-block; padding: 12px 0; }
+</style>

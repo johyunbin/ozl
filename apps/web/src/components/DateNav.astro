@@ -1,0 +1,14 @@
+---
+// 날짜 이동(설계 4-14). 앞뒤 날은 자료가 있는 날이다. 없으면 글자만.
+interface Item { label: string; href?: string }
+interface Props { items: Item[]; label?: string }
+const { items, label = "날짜 이동" } = Astro.props;
+---
+<nav class="nav-line date-nav" aria-label={label}>
+  {items.map((it, i) => (
+    <>
+      {i > 0 && <span class="muted" aria-hidden="true">·</span>}
+      {it.href ? <a href={it.href}>{it.label}</a> : <span class="off" aria-disabled="true">{it.label}</span>}
+    </>
+  ))}
+</nav>

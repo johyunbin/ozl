@@ -1,0 +1,50 @@
+---
+// 흐름(설계 4-4). 판정이 바뀐 날을 같은 줄에 끼워 넣는다.
+import type { Body } from "../lib/data";
+import { fmtDate } from "../lib/format";
+import VerdictMark from "./VerdictMark.astro";
+interface Props { b: Body }
+const { b } = Astro.props;
+type Row = { date: string; order: number; ev?: Body["flow"][number]; hist?: { gist: string; from: string; to: string } };
+const rows: Row[] = [];
+b.flow.forEach((f, i) => rows.push({ date: (f.event_date || f.report_date).slice(0, 10), order: i, ev: f }));
+for (const g of b.verdicts.groups) for (const c of g.claims) for (const h of c.history) {
+  const d = h.at.slice(0, 10);
+  if (d) rows.push({ date: d, order: 10000 + rows.length, hist: { gist: c.gist, from: h.from, to: h.to } });
+}
+rows.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
+const label = (f: Body["flow"][number]) => {
+  if (f.event_date && f.report_date && f.event_date.slice(0, 10) !== f.report_date.slice(0, 10)) {
+    return `${fmtDate(f.event_date)} 일어남 · ${fmtDate(f.report_date)} 보도`;
+  }
+  return fmtDate(f.event_date || f.report_date);
+};
+---
+{rows.length > 0 && (
+  <section class="section" aria-labelledby="flow-h" data-short="hide">
+    <h2 id="flow-h">흐름</h2>
+    <ol class="flow">
+      {rows.map((r) => r.ev ? (
+        <li class={r.ev.kind === "계기" ? "key" : ""}>
+          <p class="xs muted num">{label(r.ev)}</p>
+          <p class="what">{r.ev.kind === "계기" && <span class="tag">계기</span>}{r.ev.kind === "예정" && <span class="tag">예정</span>}{r.ev.what}</p>
+          {r.ev.sources.length > 0 && <p class="xs">{r.ev.sources.map((s, i) => <>{i > 0 && <span class="sep" />}{s.url ? <a href={s.url} rel="noopener">{s.by || s.title}</a> : (s.by || s.title)}</>)}</p>}
+        </li>
+      ) : (
+        <li class="vchange">
+          <p class="xs muted num">{fmtDate(r.date)}</p>
+          <p class="what"><span class="tag">판정 변경</span>{r.hist!.gist} <VerdictMark verdict={r.hist!.from} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={r.hist!.to} /></p>
+        </li>
+      ))}
+    </ol>
+  </section>
+)}
+<style>
+  .flow { border-left: 2px solid var(--rule-strong); margin-left: 4px; }
+  .flow li { position: relative; padding: 0 0 var(--sp-4) var(--sp-4); }
+  .flow li::before { content: ""; position: absolute; left: -6px; top: 0.45em; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--rule-strong); }
+  .flow li.key::before { background: var(--text); border-color: var(--text); }
+  .flow li.key .what { font-weight: 700; }
+  .what { margin-top: 2px; }
+  .flow a { display: inline-block; padding: 12px 0; }
+</style>

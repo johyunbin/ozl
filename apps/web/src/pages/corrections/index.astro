@@ -1,0 +1,52 @@
+---
+// 정정 목록(설계 1-9).
+import Base from "../../layouts/Base.astro";
+import CorrectionNote from "../../components/CorrectionNote.astro";
+import { loadSite } from "../../lib/data";
+import { issueUrl, revUrl } from "../../lib/paths";
+
+const site = loadSite();
+const items = [...site.corrections].sort((a, b) => b.at.localeCompare(a.at));
+const KINDS = [["정정", "k-correction"], ["판정 변경", "k-verdict"], ["내림", "k-takedown"]] as const;
+const firstOf = new Map<string, number>();
+items.forEach((c, i) => { if (!firstOf.has(c.kind)) firstOf.set(c.kind, i); });
+const idFor = (i: number, kind: string) => { const k = KINDS.find(([n]) => n === kind); return k && firstOf.get(kind) === i ? k[1] : undefined; };
+const row = (slug: string) => site.index.find((r) => r.slug === slug);
+---
+<Base title="정정 목록">
+  <h1>정정 목록</h1>
+  <p class="lead intro">우리가 틀린 것을 고친 기록이다. 판정이 바뀐 것, 새 사건이 붙은 것, 게시를 내린 것도 함께 적는다.</p>
+  {items.length ? (
+    <>
+      <nav class="nav-line" aria-label="걸러 보기" data-corrections-filter>
+        <a href="#all" data-kind="all">전부</a>
+        {KINDS.map(([name, id]) => <>
+          <span class="muted" aria-hidden="true">·</span>
+          {firstOf.has(name) ? <a href={`#${id}`} data-kind={name}>{name}</a> : <span class="off" aria-disabled="true">{name}</span>}
+        </>)}
+      </nav>
+      <ol class="rows" id="all" data-corrections>
+        {items.map((c, i) => {
+          const r = c.slug ? row(c.slug) : undefined;
+          const linked = r && site.issues.has(r.slug);
+          const revExists = linked && c.rev !== null && site.issues.get(r!.slug)!.revs.has(c.rev);
+          return (
+            <li data-kind={c.kind} id={idFor(i, c.kind)}>
+              <CorrectionNote c={c}>
+                {c.kind === "내림" ? <p class="small">내린 기록</p> : !linked ? <p class="small muted">공개 목록에 없는 기록</p> : (
+                  <p class="small"><a href={issueUrl(r!.slug)}>{r!.title}</a>{c.rev !== null && <><span class="sep" />{revExists ? <a href={revUrl(r!.slug, c.rev)}>{c.rev}판</a> : `${c.rev}판`}</>}</p>
+                )}
+              </CorrectionNote>
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  ) : <p class="empty">아직 정정한 것이 없다. 정정이 생기면 이 목록과 해당 이슈의 맨 위에 함께 적는다.</p>}
+</Base>
+<script src="../../scripts/corrections-filter.ts"></script>
+<style>
+  .intro { margin-top: var(--sp-3); }
+  .rows a { display: inline-block; padding: 10px 0; }
+  [aria-current="true"] { font-weight: 700; }
+</style>

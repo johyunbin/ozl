@@ -1,0 +1,46 @@
+---
+// 정정 표시(설계 4-10). 정정은 접지 않는다.
+import type { Correction } from "../lib/data";
+import { fmtDateTime } from "../lib/format";
+import { isVerdict } from "../lib/verdicts";
+import VerdictMark from "./VerdictMark.astro";
+// compact: 이슈 맨 위에 고정할 때 쓰는 짧은 꼴. 바뀐 뒤의 문장 하나만 보이고(전과 까닭은 뺀다) "자세히" 로 정정 기록에 잇는다.
+interface Props { c: Correction; showTime?: boolean; compact?: boolean; more?: string; label?: string }
+const { c, showTime = true, compact = false, more = "#corrections", label } = Astro.props;
+const when = showTime ? fmtDateTime(c.at) : "";
+const kindClass = c.kind === "정정" ? "k-correction" : c.kind === "판정 변경" ? "k-verdict" : c.kind === "내림" ? "k-takedown" : "k-event";
+const verdictChange = c.kind === "판정 변경" && isVerdict(c.before) && isVerdict(c.after);
+---
+<div class={`cnote ${kindClass}${compact ? " compact" : ""}`}>
+  <p class="chead">
+    {c.kind === "새 사건" ? <span class="tag">새 사건</span> : <strong class="ckind">{label ?? (c.kind === "내림" ? "게시를 내림" : c.kind)}</strong>}
+    {when && <span class="xs muted num">{when}</span>}
+    {compact && <a class="xs cmore" href={more}>자세히</a>}
+  </p>
+  <slot />
+  {compact ? (
+    verdictChange
+      ? <p class="cbody"><VerdictMark verdict={c.before} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={c.after} /></p>
+      : (c.after || c.why) && <p class="cbody">{c.after || c.why}</p>
+  ) : verdictChange ? (
+    <p class="cbody"><VerdictMark verdict={c.before} struck /><span class="arrow" aria-hidden="true">→</span><VerdictMark verdict={c.after} /></p>
+  ) : c.kind !== "내림" && (
+    <>
+      {c.before && <p class="cbody">전: {c.before}</p>}
+      {c.after && <p class="cbody">{c.before ? "후: " : ""}{c.after}</p>}
+    </>
+  )}
+  {!compact && c.why && <p class="cbody">까닭: {c.why}</p>}
+</div>
+<style>
+  .cnote { padding: var(--sp-3) var(--sp-4); }
+  .chead { display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); align-items: baseline; }
+  .cbody { margin-top: var(--sp-1); }
+  .compact { padding-top: var(--sp-2); padding-bottom: var(--sp-2); }
+  .compact .cbody { font-size: var(--fs-sm); }
+  .cmore { display: inline-block; padding: 12px 0; margin: -12px 0 -12px auto; }
+  .k-correction { background: var(--surface); border-left: 4px solid var(--v-false); }
+  .k-correction .ckind { color: var(--v-false); }
+  .k-verdict { border-left: 2px solid var(--rule-strong); }
+  .k-event, .k-takedown { padding-left: 0; padding-right: 0; }
+</style>

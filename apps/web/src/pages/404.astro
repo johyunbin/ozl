@@ -1,0 +1,10 @@
+---
+import Base from "../layouts/Base.astro";
+import { url } from "../lib/paths";
+---
+<Base title="없는 쪽">
+  <h1>찾는 쪽이 없다</h1>
+  <p class="msg">주소가 바뀌었거나 게시를 내린 기록일 수 있다.</p>
+  <ul class="inline-list"><li><a href={url()}>첫 화면</a></li><li><a href={url("search/")}>검색</a></li><li><a href={url("corrections/")}>정정 목록</a></li></ul>
+</Base>
+<style>.msg { margin-top: var(--sp-3); }</style>

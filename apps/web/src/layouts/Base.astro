@@ -1,0 +1,40 @@
+---
+// 모든 쪽의 틀(설계 1-2): 건너뛰기, 머리 줄, 미리보기 줄, 본문, 바닥.
+import "../styles/tokens.css";
+import "../styles/base.css";
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import PreviewBar from "../components/PreviewBar.astro";
+import { IS_PREVIEW } from "../lib/mode";
+import { url } from "../lib/paths";
+import previewCss from "../styles/preview.css?raw";
+interface Props { title: string; canonical?: string; refresh?: string; description?: string }
+const { title, canonical, refresh, description } = Astro.props;
+const full = title ? `${title} · OZL` : "OZL";
+---
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{full}</title>
+    {description && <meta name="description" content={description} />}
+    {IS_PREVIEW && <meta name="robots" content="noindex,nofollow" />}
+    {canonical && <link rel="canonical" href={canonical} />}
+    {refresh && <meta http-equiv="refresh" content={`0; url=${refresh}`} />}
+    {/* 글꼴 묶음 목록(약 150KB)은 그리기를 막지 않게 늦게 붙인다. 받기 전에는 시스템 글꼴로 먼저 그린다(밤 5 기준 3초). */}
+    <link rel="preload" as="style" href={url("fonts/pretendard.css")} onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link rel="stylesheet" href={url("fonts/pretendard.css")} /></noscript>
+    {IS_PREVIEW && <style is:inline set:html={previewCss}></style>}
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip" href="#main">본문으로 건너뛰기</a>
+    <SiteHeader />
+    <PreviewBar />
+    <main id="main" class="wrap" tabindex="-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

@@ -1,0 +1,127 @@
+{
+ "header": {
+  "site": "OZL"
+ },
+ "footer": {},
+ "id": "i20990103-02",
+ "slug": "hanbit-parking-fee",
+ "rev": 1,
+ "rev_at": "",
+ "example": true,
+ "title": "한빛시 공영주차장 요금 조정안, 시의회 상임위 심사는 1월 9일",
+ "rev_line": "",
+ "what_new": "시가 공영주차장 요금 조정안을 입법 예고했다.",
+ "why_matters": "",
+ "so_far": [],
+ "reason": "",
+ "category": "국내 경제·정책",
+ "keywords": [
+  "한빛시",
+  "주차장 요금"
+ ],
+ "aliases": [],
+ "sensitive": [],
+ "election": null,
+ "numbers": {},
+ "corrections_top": [],
+ "verdicts": {
+  "groups": [],
+  "hidden_claims": 0,
+  "summary": {
+   "확인": 0,
+   "일부 맞음": 0,
+   "사실과 다름": 0,
+   "확인 못 함": 0
+  }
+ },
+ "facts": [
+  {
+   "id": "f1",
+   "text": "한빛시는 1월 3일 공영주차장 요금 조정안을 입법 예고했다.",
+   "type": "사실",
+   "kind": "발표와 조치",
+   "sources": [
+    {
+     "id": "i20990103-02-e1",
+     "kind": "공식 원문",
+     "by": "한빛시",
+     "title": "공영주차장 요금 조정안 입법 예고",
+     "url": "https://hanbit-city.example/notice/parking-2099.html",
+     "checked_at": "2099-01-03T07:00:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  },
+  {
+   "id": "f2",
+   "text": "시의회 교통위원회는 1월 9일 조정안을 심사한다.",
+   "type": "사실",
+   "kind": "일정",
+   "sources": [
+    {
+     "id": "i20990103-02-e2",
+     "kind": "기관 자료",
+     "by": "한빛시의회",
+     "title": "1월 상임위원회 회의 일정",
+     "url": "https://hanbit-council.example/schedule/2099-01.html",
+     "checked_at": "2099-01-03T07:05:00+09:00"
+    }
+   ],
+   "numbers": [],
+   "election_mask": false
+  }
+ ],
+ "flow": [],
+ "stances": [],
+ "open_questions": [],
+ "spillover": {
+  "issues": [
+   "i20990101-01"
+  ],
+  "similar_cases": []
+ },
+ "figures": [],
+ "sources": [
+  {
+   "id": "i20990103-02-e1",
+   "kind": "공식 원문",
+   "by": "한빛시",
+   "title": "공영주차장 요금 조정안 입법 예고",
+   "url": "https://hanbit-city.example/notice/parking-2099.html",
+   "checked_at": "2099-01-03T07:00:00+09:00"
+  },
+  {
+   "id": "i20990103-02-e2",
+   "kind": "기관 자료",
+   "by": "한빛시의회",
+   "title": "1월 상임위원회 회의 일정",
+   "url": "https://hanbit-council.example/schedule/2099-01.html",
+   "checked_at": "2099-01-03T07:05:00+09:00"
+  }
+ ],
+ "corrections": [],
+ "ai_notice": "조사, 판정, 초안은 AI 도구가 했고, 고르기와 게시 승인은 사람이 했다. AI 를 썼다는 고지가 내용의 정확성을 보증하지는 않는다.",
+ "internal": {
+  "publish_state": "작성 중",
+  "content_hash": "00000000000000000000000000000000",
+  "hidden": [],
+  "errors": [],
+  "warnings": []
+ },
+ "trend": null,
+ "trend_now": {
+  "score": 12,
+  "bars7": [
+   0,
+   0,
+   0,
+   0,
+   0,
+   0,
+   0.3
+  ],
+  "asof": "2099-01-03 07:40",
+  "formula_version": 1
+ }
+}

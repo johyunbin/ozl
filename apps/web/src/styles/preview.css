@@ -1,0 +1,13 @@
+/* 미리보기용 빌드에만 싣는 꼴(Base.astro 가 IS_PREVIEW 일 때 인라인으로 넣는다). 공개용 결과에는 이 파일의 선택자가 없다. */
+:root { --preview: #6b4e00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --preview: #e8c46a; } }
+:root[data-theme="dark"] { --preview: #e8c46a; }
+
+.preview-bar { background: var(--surface); color: var(--preview); font-size: var(--fs-xs); line-height: 1.5; padding: var(--sp-2) 0; }
+.tag.status { color: var(--preview); }
+.pending, .draft { color: var(--preview); }
+
+.ops { background: var(--surface); color: var(--preview); padding: var(--sp-2) var(--sp-3); margin-top: var(--sp-3); display: flex; flex-wrap: wrap; gap: 0 var(--sp-3); align-items: center; }
+.ops details { flex: 1 1 auto; }
+.ops summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.ops li, .ops details > p { padding: var(--sp-1) 0; }

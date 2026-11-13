@@ -1,0 +1,26 @@
+---
+// 키워드 머리별 쪽. 키워드가 많아 목록 쪽을 나눌 때만 만든다(src/lib/kwgroups.ts).
+import Base from "../../../layouts/Base.astro";
+import { loadSite } from "../../../lib/data";
+import { keywordSlugUrl, url } from "../../../lib/paths";
+import { KW_ONE_PAGE, keywordGroups, recordCount, type KwGroup } from "../../../lib/kwgroups";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  if (site.keywords.size <= KW_ONE_PAGE) return [];
+  return keywordGroups(site).map((g) => ({ params: { h: String(g.n) }, props: { g } }));
+}
+const { g } = Astro.props as { g: KwGroup };
+const site = loadSite();
+---
+<Base title={`키워드 ${g.head}`}>
+  <p class="small"><a class="back" href={url("k/")}>키워드 모음</a></p>
+  <h1>키워드 {g.head}</h1>
+  <ul class="inline-list">
+    {g.items.map(([slug, k]) => <li><a href={keywordSlugUrl(slug)}>{k.name}</a>&nbsp;<span class="small muted num">(기록 {recordCount(site, k)})</span></li>)}
+  </ul>
+</Base>
+<style>
+  h1 { margin-bottom: var(--sp-4); }
+  .back { display: inline-block; padding: 10px 0; }
+</style>

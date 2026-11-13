@@ -1,0 +1,81 @@
+/* 색, 글자, 간격 토큰(설계 3절). 어두운 화면은 따로 정한 값이다. */
+:root {
+  color-scheme: light;
+  --bg: #faf8f3;
+  --surface: #f1ede3;
+  --text: #1b1b1b;
+  --muted: #5c5850;
+  --accent: #0b5a73;
+  --v-confirmed: #1f6438;
+  --v-partial: #7a4f00;
+  --v-false: #8e2a1c;
+  --v-unknown: #565b61;
+  --rule-strong: #8a8478;
+  --rule: #d8d2c5;
+  --heat-1: #ece6d8;
+  --heat-2: #dcd3c0;
+
+  --font-body: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --font-title: var(--font-body);
+
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.9375rem;
+  --fs-md: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.5rem;
+
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  --gutter: 16px;
+  --measure: 40rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --fs-lg: 1.3125rem;
+    --fs-xl: 1.75rem;
+    --gutter: 24px;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #14161a;
+    --surface: #1d2026;
+    --text: #e8e6e1;
+    --muted: #a9a59d;
+    --accent: #79c6db;
+    --v-confirmed: #7fd39a;
+    --v-partial: #e3b85c;
+    --v-false: #f29483;
+    --v-unknown: #b9bdc3;
+    --rule-strong: #6e737b;
+    --rule: #2f333a;
+    --heat-1: #242830;
+    --heat-2: #30353e;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #14161a;
+  --surface: #1d2026;
+  --text: #e8e6e1;
+  --muted: #a9a59d;
+  --accent: #79c6db;
+  --v-confirmed: #7fd39a;
+  --v-partial: #e3b85c;
+  --v-false: #f29483;
+  --v-unknown: #b9bdc3;
+  --rule-strong: #6e737b;
+  --rule: #2f333a;
+  --heat-1: #242830;
+  --heat-2: #30353e;
+}
