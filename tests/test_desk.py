@@ -76,7 +76,122 @@ def test_coverage_fulltext_reports_unreadable(monkeypatch, tmp_path):
     (src / "bbb.json").write_text('{"text": "달 달 달 기지"}', encoding="utf-8")
     st: dict = {}
     coverage.search(["달"], months=12, fulltext=True, today="2026-11-10", catalog=CAT, stats=st)
-    assert st == {"scanned": 2, "unreadable": 1}
+    assert st == {"scanned": 2, "unreadable": 1, "not_ready": 0}
+
+
+# ── 기준 시각(--asof)과 전사 없는 최근 영상 (2026-11-13 · 지난 회차를 그때 자료로만 다시 보기) ──────────────
+ASOF_CAT = [{"video_id": "v_late", "title": "자동차 관세 두 번째 이야기", "date": "2026-11-10", "published": "2026-11-10 19:00", "duration_sec": 1500},
+            {"video_id": "v_early", "title": "자동차 관세 첫 이야기", "date": "2026-11-10", "published": "2026-11-10 07:00", "duration_sec": 1500},
+            {"video_id": "v_dateonly", "title": "자동차 수출 지어낸 영상", "date": "2026-11-10", "published": "2026-11-10", "duration_sec": 0,
+             "kind_unknown": True},
+            {"video_id": "v_prev", "title": "자동차 지어낸 전날 영상", "date": "2026-11-09", "published": "2026-11-09", "duration_sec": 0,
+             "kind_unknown": True},
+            {"video_id": "v_old", "title": "자동차 지어낸 옛 영상", "date": "2026-10-01", "published": "2026-10-01 19:00", "duration_sec": 1500}]
+
+
+def test_coverage_asof_excludes_later_and_same_day_dateonly():
+    got = [r["video_id"] for r in coverage.search(["자동차"], months=3, catalog=ASOF_CAT, asof="2026-11-10T07:30")]
+    assert sorted(got) == ["v_early", "v_old", "v_prev"]        # 19시 영상과 시각을 모르는 그날 영상은 그 시각에 없던 것으로 친다
+    assert coverage.existed_at(ASOF_CAT[1], "2026-11-10 07:00") and not coverage.existed_at(ASOF_CAT[1], "2026-11-10T06:59")
+    assert len(coverage.search(["자동차"], months=3, catalog=ASOF_CAT, today="2026-11-11")) == 5   # 기준 시각이 없으면 종전 그대로
+    with pytest.raises(ValueError, match="기준 시각"):
+        coverage.search(["자동차"], catalog=ASOF_CAT, asof="11월 10일")
+
+
+def test_coverage_fulltext_marks_title_hits_without_transcript(monkeypatch, tmp_path):
+    src = tmp_path / "syuka"
+    src.mkdir()
+    (src / "v_early.json").write_text('{"text": "지어낸 전사 자동차 자동차 자동차", "exported_at": "2026-11-09T00:00:00+00:00"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path)
+    rows = {r["video_id"]: r for r in coverage.search(["자동차"], months=3, fulltext=True, catalog=ASOF_CAT, asof="2026-11-10T07:30")}
+    assert rows["v_early"]["no_transcript"] is False and rows["v_early"]["body_hits"] == 3
+    assert rows["v_prev"]["no_transcript"] is True and rows["v_prev"]["body_hits"] == 0   # 0회가 아니라 '못 봄'
+
+
+def test_coverage_untranscribed_recent_window(monkeypatch, tmp_path):
+    src = tmp_path / "syuka"
+    src.mkdir()
+    (src / "v_early.json").write_text('{"text": "지어낸 전사", "exported_at": "2026-11-09T00:00:00+00:00"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path)
+    miss = coverage.untranscribed(ASOF_CAT, asof="2026-11-10T07:30", keywords=["수출", "전날"])
+    assert [r["video_id"] for r in miss] == ["v_prev"]            # 14일 밖(v_old)·전사 있음(v_early)·그 시각 뒤(v_late·v_dateonly)는 빠진다
+    assert miss[0]["title_hits"] == ["전날"] and miss[0]["kind_unknown"] is True
+    assert {r["video_id"] for r in coverage.untranscribed(ASOF_CAT, asof="2026-11-11T07:30")} == {"v_late", "v_dateonly", "v_prev"}
+
+
+def test_coverage_cli_asof_and_bad_asof(monkeypatch, tmp_path, capsys):
+    src = tmp_path / "syuka"
+    src.mkdir()
+    (src / "v_early.json").write_text('{"text": "자동차 자동차 자동차", "exported_at": "2026-11-09T00:00:00+00:00"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path)
+    monkeypatch.setattr(coverage, "load_catalog", lambda: ASOF_CAT)
+    assert coverage.main(["자동차", "--fulltext", "--months", "3", "--asof", "2026-11-10T07:30"]) == 0
+    out = capsys.readouterr().out
+    assert "기준 2026-11-10 07:30" in out and "v_late" not in out and "전사 없음(본문 대조 못 함)" in out
+    assert "전사 없는 최근 영상(기준에서 14일 안) 1편" in out and "짧은 영상인지 알 수 없음" in out
+    assert coverage.main(["자동차", "--asof", "어제"]) == 1
+
+
+def _catalog_files(tmp_path, monkeypatch):
+    """CSV(정본) · 전사 반출 색인 · 최신 업로드 셋을 임시로 — 지어낸 영상만."""
+    csvp = tmp_path / "catalog.csv"
+    csvp.write_text("video_id,title,published_kst,duration_sec,kind\n"
+                    "c_main,지어낸 본편 영상,2026-11-02 18:28,1800,video\n"
+                    "c_clip,지어낸 발췌 영상,2026-11-05 13:42,167,video\n"
+                    "c_short,지어낸 쇼츠,2026-11-05 13:00,40,short\n", encoding="utf-8")
+    idx = tmp_path / "index.csv"
+    idx.write_text("channel,video_id,title,upload_at,duration_sec,is_live_full\n"
+                   "syuka,c_main,나중에 바뀐 제목,2026-11-02 18:28,1800,0\n"
+                   "syuka,l_live,[슈카월드] 지어낸 일요 생방송,2026-11-08 20:22,12685,1\n"
+                   "alex,a_other,다른 채널 영상,2026-11-08 20:00,1000,0\n", encoding="utf-8")
+    latest = tmp_path / "latest.json"
+    latest.write_text('{"videos": [{"video_id": "n_new", "title": "지어낸 최신 영상", "date": "2026-11-10"},'
+                      ' {"video_id": "l_live", "title": "목록 제목", "date": "2026-11-08"}]}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "CATALOG", csvp)
+    monkeypatch.setattr(coverage, "INDEX", idx)
+    monkeypatch.setattr(coverage, "LATEST", latest)
+
+
+def test_coverage_catalog_merges_live_streams_and_marks_shorts(tmp_path, monkeypatch):
+    _catalog_files(tmp_path, monkeypatch)
+    rows = {r["video_id"]: r for r in coverage.load_catalog()}
+    assert set(rows) == {"c_main", "c_clip", "l_live", "n_new"}                  # 쇼츠와 다른 채널은 빠진다
+    assert rows["c_main"]["title"] == "지어낸 본편 영상"                          # 색인의 (나중) 제목보다 CSV 가 정본
+    assert rows["l_live"]["live"] and rows["l_live"]["published"] == "2026-11-08 20:22"   # 생방송은 색인에서 시각까지
+    assert rows["c_clip"]["short"] and not rows["c_main"]["short"] and rows["n_new"].get("kind_unknown")
+
+
+def test_coverage_body_search_ignores_spacing_and_counts_single_hits(tmp_path, monkeypatch):
+    _catalog_files(tmp_path, monkeypatch)
+    src = tmp_path / "exp" / "syuka"
+    src.mkdir(parents=True)
+    (src / "c_main.json").write_text('{"text": "지어낸 전사 — AI 데이터 센터 비용을 빌려서 댄다"}', encoding="utf-8")
+    (src / "l_live.json").write_text('{"text": "지어낸 생방송 전사 데이터센터 데이터센터"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path / "exp")
+    rows = {r["video_id"]: r for r in coverage.search(["데이터센터"], months=3, fulltext=True, today="2026-11-10")}
+    assert rows["c_main"]["body_hits"] == 1                                       # 띄어 쓴 꼴도 · 1회도 결과에 든다
+    assert rows["l_live"]["body_hits"] == 2 and rows["l_live"]["live"]           # 생방송 전체본도 훑는다
+
+
+def test_coverage_asof_counts_transcript_only_if_it_existed(tmp_path, monkeypatch):
+    _catalog_files(tmp_path, monkeypatch)
+    src = tmp_path / "exp" / "syuka"
+    src.mkdir(parents=True)
+    (src / "l_live.json").write_text('{"text": "지어낸 감자 감자", "exported_at": "2026-11-12T17:13:38+00:00"}', encoding="utf-8")
+    trading = tmp_path / "trading"
+    (trading / "t").mkdir(parents=True)
+    (trading / "t" / "c_main.json").write_text("{}", encoding="utf-8")         # 지금 생긴 파일 — 그 시각보다 늦다
+    (src / "c_main.json").write_text('{"text": "지어낸 감자", "trading_md_path": "t/c_main.json"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path / "exp")
+    monkeypatch.setattr(coverage, "TRADING", trading)
+    st: dict = {}
+    rows = coverage.search(["감자"], months=3, fulltext=True, asof="2026-11-10T13:06", stats=st)
+    assert rows == [] and st["not_ready"] == 2                                   # 영상은 있었지만 전사는 아직 없었다
+    miss = {r["video_id"] for r in coverage.untranscribed(asof="2026-11-10T13:06")}
+    assert {"c_main", "l_live", "c_clip"} <= miss
+    later = {r["video_id"]: r for r in coverage.search(["감자"], months=3, fulltext=True, asof="2026-11-13T03:00")}
+    assert later["l_live"]["body_hits"] == 2                                     # 반출 시각(11-13 02:13 KST) 뒤라 있음
+    assert "c_main" not in later                                                 # Trading 파일이 생긴 시각(지금) 전이라 아직 없음
 
 
 def test_coverage_recent_overlap_needs_two_tokens():
@@ -354,3 +469,71 @@ def test_light_card_needs_only_links():
     card2 = copy.deepcopy(card)
     card2["sources"] = []
     assert any("1차 출처" in e for e in C.validate_card(card2, []))
+
+
+# ── 2026-11-13 Codex 검토 회귀(겹침 도구) ────────────────────────────────────────────
+def test_coverage_birthtime_is_kst_regardless_of_process_tz(tmp_path, monkeypatch):
+    import time
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
+    try:
+        monkeypatch.setattr(coverage, "TRADING", tmp_path)
+        (tmp_path / "t.json").write_text("{}", encoding="utf-8")
+        ts = datetime(2026, 11, 10, 8, 0, tzinfo=timezone(timedelta(hours=9))).timestamp()   # 11-10 08:00 KST
+        monkeypatch.setattr(coverage, "_born_ts", lambda p: ts)
+        j = {"trading_md_path": "t.json"}
+        assert coverage.transcript_ready_at(j) == datetime(2026, 11, 10, 8, 0)
+        assert not coverage._ready_by(j, "2026-11-10T07:30")                  # UTC 로 읽으면 23:00 전날이라 '있었다'가 됐다
+    finally:
+        monkeypatch.delenv("TZ", raising=False)
+        time.tzset()
+
+
+def test_coverage_unknown_ready_time_is_not_counted_in_past(tmp_path, monkeypatch):
+    monkeypatch.setattr(coverage, "TRADING", tmp_path)
+    assert not coverage._ready_by({"text": "지어낸"}, "2026-11-10T07:30")        # 생성 시각을 모르면 그때 있었다고 하지 않는다
+    assert not coverage._ready_by({"text": "지어낸", "exported_at": "broken"}, "2026-11-10T07:30")
+    assert coverage._ready_by({"text": "지어낸"}, None)                          # 기준 시각이 없으면(지금) 있는 그대로
+
+
+def test_coverage_csv_short_is_not_revived_by_index_or_latest(tmp_path, monkeypatch):
+    _catalog_files(tmp_path, monkeypatch)
+    idx = tmp_path / "index.csv"
+    idx.write_text(idx.read_text(encoding="utf-8") + "syuka,c_short,지어낸 쇼츠,2026-11-05 13:00,40,0\n", encoding="utf-8")
+    latest = tmp_path / "latest.json"
+    latest.write_text('{"videos": [{"video_id": "c_short", "title": "지어낸 쇼츠", "date": "2026-11-05"}]}', encoding="utf-8")
+    assert "c_short" not in {r["video_id"] for r in coverage.load_catalog()}
+
+
+def test_coverage_unreadable_transcript_listed_as_untranscribed(tmp_path, monkeypatch):
+    _catalog_files(tmp_path, monkeypatch)
+    src = tmp_path / "exp" / "syuka"
+    src.mkdir(parents=True)
+    (src / "c_main.json").write_text('{"text": 7}', encoding="utf-8")                # 글이 아닌 본문
+    (src / "l_live.json").write_text('{"text": "지어낸 감자"}', encoding="utf-8")
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path / "exp")
+    st: dict = {}
+    rows = {r["video_id"]: r for r in coverage.search(["지어낸"], months=3, fulltext=True, today="2026-11-10", stats=st)}
+    assert st["unreadable"] == 1 and rows["c_main"]["no_transcript"] is True
+    assert "c_main" in {r["video_id"] for r in coverage.untranscribed(days=30, asof="2026-11-10T13:00")}   # 두 함수가 같은 기준
+
+
+def test_coverage_untranscribed_window_uses_time(tmp_path, monkeypatch):
+    cat = [{"video_id": "edge_out", "title": "지어낸 경계 밖", "date": "2026-10-27", "published": "2026-10-27 01:00", "duration_sec": 1500},
+           {"video_id": "edge_in", "title": "지어낸 경계 안", "date": "2026-10-27", "published": "2026-10-27 09:00", "duration_sec": 1500}]
+    monkeypatch.setattr(coverage, "EXPORT", tmp_path)
+    got = {r["video_id"] for r in coverage.untranscribed(cat, asof="2026-11-10T07:30")}
+    assert got == {"edge_in"}                                                    # 14일 6시간 30분 전 영상은 창 밖
+
+
+
+def test_coverage_now_is_kst_regardless_of_process_tz(monkeypatch):
+    import time
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
+    try:
+        kst_wall = datetime.now(timezone(timedelta(hours=9))).replace(tzinfo=None)
+        assert abs((coverage._now() - kst_wall).total_seconds()) < 5          # UTC 프로세스에서도 KST 벽시계
+    finally:
+        monkeypatch.delenv("TZ", raising=False)
+        time.tzset()
