@@ -43,8 +43,9 @@ def _short(cid: str) -> str:
 
 
 def _chart_line(ch: dict) -> str:
-    pts = "; ".join(f"{s.get('name', '')}: " + ", ".join(f"{a}={b}" for a, b in (s.get("points") or []))
-                    for s in ch.get("series") or [] if isinstance(s, dict))
+    pts = "; ".join(f"{s.get('name', '')}: " + ", ".join(f"{pt[0]}={S.point_notation(pt)}" for pt in (s.get("points") or [])
+                                                          if isinstance(pt, (list, tuple)) and len(pt) >= 2)
+                    for s in ch.get("series") or [] if isinstance(s, dict))   # 점은 [x, 값] 또는 [x, 값, 표시 문자열]
     return (f"[차트 {ch.get('kind', '')}] {ch.get('title', '')} · 단위 {ch.get('unit', '')} · 기간 {ch.get('period', '')} · {pts}"
             f" · 출처 {ch.get('source', '')} · 기록 {', '.join(_short(c) for c in ch.get('claims') or [])}")
 
@@ -153,17 +154,19 @@ def main(argv: list[str]) -> int:
     if not path.is_file():
         print(f"[bundle] 사양 파일이 없다: {path}", file=sys.stderr)
         return 1
-    sp = S.load_spec(path)
+    raw = path.read_bytes()   # 한 번만 읽는다 — 내용과 sha256 이 같은 판을 가리키게(읽는 사이 파일이 바뀌어도)
+    import yaml
+    sp = yaml.safe_load(raw.decode("utf-8")) or {}
     if not isinstance(sp, dict) or not C.CARD_ID.match(str(sp.get("card_id", ""))):
         print("[bundle] 사양에 카드 ID 가 없다", file=sys.stderr)
         return 1
     cid = str(sp["card_id"])
     card = C.load_card(cid) if C.card_path(cid).exists() else None
-    claims, _ = S.load_claims(all_cited(sp))
+    claims, staged = S.load_claims(all_cited(sp))
     from ozl.render import build as B   # pptx 를 쓰는 모듈 — 엄격 검사의 화면 검사에만 필요하다
-    rep = S.check(sp, claims, S.load_template(), card, B.layout_problems, appendix_fn=B.appendix_problems)
+    rep = S.check(sp, claims, S.load_template(), card, B.layout_problems, staged=staged, appendix_fn=B.appendix_problems)
     check_line = f"{'통과' if rep.ok else '실패'} · 실패 {len(rep.errors)} · 경고 {len(rep.warnings)}"
-    sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    sha = hashlib.sha256(raw).hexdigest()
     target = pathlib.Path(out) if out else default_out(cid)
     if not _inside_private(target):
         print(f"[bundle] private/ 밖에는 쓰지 않는다: {target}", file=sys.stderr)

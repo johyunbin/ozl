@@ -595,3 +595,46 @@ def test_public_page_hides_topic_of_unapproved_cards(desk):
     card = C.load_card(CID)
     assert CID in pub and "승인 대기" in pub
     assert "지어낸 제목 하나" not in pub and card.get("topic", "없는 분야") not in pub and card["why_today"]["trigger_type"] not in pub
+
+
+# ── 2026-11-13 Codex 검토 회귀 ─────────────────────────────────────────────
+def _retarget(obj, old: str, new: str):
+    if isinstance(obj, str):
+        return obj.replace(old, new)
+    if isinstance(obj, list):
+        return [_retarget(x, old, new) for x in obj]
+    if isinstance(obj, dict):
+        return {k: _retarget(v, old, new) for k, v in obj.items()}
+    return obj
+
+
+def test_publish_cards_of_two_slots_in_one_command(desk):
+    """서로 다른 회차의 카드 둘을 한 번에 발행해도 멈추지 않는다 — 회차별로 승인 → 렌더한다."""
+    pm = "2026-11-10-pm-01"
+    card = _retarget(make_card(), CID, pm)
+    card["slot"] = "pm"
+    C.save_yaml(C.card_path(pm), card)
+    for i in (1, 2, 3):
+        cl = _retarget(make_claim(i), CID, pm)
+        C.save_yaml(C.claim_path(cl["claim_id"]), cl)
+    C.human_verify([f"{c}-c{i}" for c in (CID, pm) for i in (1, 2, 3)], "tester")
+    from ozl.research.__main__ import main as research_main
+    assert research_main(["publish", CID, pm, "--by", "tester"]) == 0
+    idx = json.loads(index_text(desk))
+    assert sorted(c["card_id"] for c in idx["cards"]) == [CID, pm] and len(idx["reports"]) == 2
+    assert load_build_site().main(desk) == 0
+
+
+def test_first_approval_between_decision_and_index_is_retried(desk, monkeypatch):
+    """쓰지 않기로 판정한 뒤 색인을 만들기 전에 첫 승인이 끼어들면, 예외로 끝내지 않고 다시 판정해 발행본을 쓴다."""
+    C.human_verify([f"{CID}-c{i}" for i in (1, 2, 3)], "tester")
+    real, calls = archive.build_index, []
+
+    def approve_on_second_call(*a, **kw):
+        calls.append(1)
+        if len(calls) == 2:                       # 1 = 미리 거르기, 2 = 첫 판의 보고서를 다 쓴 뒤
+            C.approve_publish(CID, "tester")
+        return real(*a, **kw)
+    monkeypatch.setattr(archive, "build_index", approve_on_second_call)
+    r = report.render_all("2026-11-10", "am")
+    assert r["public_page"] is True and pathlib.Path(r["paths"]["public"]).exists() and r["published"] == 1

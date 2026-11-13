@@ -17,10 +17,13 @@
 """
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import os
 import pathlib
 import sys
+import tempfile
 from datetime import datetime, timedelta, timezone
 
 import yaml
@@ -49,13 +52,39 @@ def load(card_id: str) -> dict:
 
 
 def save(card_id: str, st: dict) -> pathlib.Path:
-    """임시 파일에 다 쓴 뒤 바꿔 끼운다 — 중간에 멈춰도 반쯤 쓴 기록이 남지 않는다."""
+    """호출마다 고유한 임시 파일에 다 쓴 뒤 바꿔 끼운다 — 중간에 멈춰도 반쯤 쓴 기록이 남지 않고, 동시에 저장해도 임시 파일이 겹치지 않는다."""
     p = state_path(card_id)
     p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(yaml.safe_dump(st, allow_unicode=True, sort_keys=False, width=1000), encoding="utf-8")
-    os.replace(tmp, p)
+    fd, tmp = tempfile.mkstemp(dir=p.parent, prefix=p.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(yaml.safe_dump(st, allow_unicode=True, sort_keys=False, width=1000))
+        os.replace(tmp, p)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+        raise
     return p
+
+
+@contextlib.contextmanager
+def _locked(card_id: str):
+    """카드별 잠금 — 읽기 → 판정 → 저장을 한 덩어리로(두 세션이 같은 카드를 동시에 시작하거나 단계를 적어도 덮어쓰지 않게)."""
+    lock = state_path(card_id).with_name("state.lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock, "a+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def run_steps(st: dict) -> list[dict]:
+    """지금 작업 회차의 단계 — 마지막 '다시 시작' 뒤의 것만(이전 회차의 완료 단계를 새 작업의 완료로 세지 않는다)."""
+    steps = list(st.get("steps") or [])
+    cut = max((i for i, s in enumerate(steps) if s.get("step") == "다시 시작"), default=-1)
+    return [s for s in steps[cut + 1:] if s.get("step") in STEPS]
 
 
 def digest(card_id: str) -> str:
@@ -87,35 +116,36 @@ def start(card_id: str, by: str = "", force: bool = False, at: datetime | None =
     at = at or now()
     if not C.card_path(card_id).exists():
         raise ValueError(f"카드 {card_id} 가 없다")
-    st = load(card_id)
-    if lease_alive(st, at):
-        raise ValueError(f"{card_id} 는 진행 중이다({st.get('by', '')} · {st['lease_until']} 까지) — 이어 받으려면 --resume")
-    if st.get("status") == DONE and not force:
-        raise ValueError(f"{card_id} 는 이미 완성본이 있다({st.get('final', '')}) — 다시 만들려면 --force")
-    prev = st.get("status", "")
-    st = {"card_id": card_id, "status": IN_PROGRESS, "by": by, "started_at": _iso(at), "steps": list(st.get("steps") or []),
-          "final": st.get("final", "") if prev == DONE else ""}
-    if prev:
-        st["steps"].append({"step": "다시 시작", "at": _iso(at), "note": f"이전 상태: {prev}", "digest": digest(card_id)})
-    _renew(st, at)
-    save(card_id, st)
-    return st
+    with _locked(card_id):
+        st = load(card_id)
+        if lease_alive(st, at):
+            raise ValueError(f"{card_id} 는 진행 중이다({st.get('by', '')} · {st['lease_until']} 까지) — 이어 받으려면 --resume")
+        if st.get("status") == DONE and not force:
+            raise ValueError(f"{card_id} 는 이미 완성본이 있다({st.get('final', '')}) — 다시 만들려면 --force")
+        prev = st.get("status", "")
+        st = {"card_id": card_id, "status": IN_PROGRESS, "by": by, "started_at": _iso(at), "steps": list(st.get("steps") or []),
+              "final": st.get("final", "") if prev == DONE else ""}
+        if prev:
+            st["steps"].append({"step": "다시 시작", "at": _iso(at), "note": f"이전 상태: {prev}", "digest": digest(card_id)})
+        _renew(st, at)
+        save(card_id, st)
+        return st
 
 
 def resume(card_id: str, by: str = "", at: datetime | None = None) -> tuple[dict, str]:
     """진행 중 기록을 이어 받는다(만료돼도 받는다). 돌려주는 글 = 마지막 단계와, 그 뒤에 카드·기록이 바뀌었는지."""
     at = at or now()
-    st = load(card_id)
-    if st.get("status") != IN_PROGRESS:
-        raise ValueError(f"{card_id} 는 진행 중이 아니다(상태: {st.get('status') or '기록 없음'}) — --start")
-    st["by"] = by or st.get("by", "")
-    _renew(st, at)
-    save(card_id, st)
+    with _locked(card_id):
+        st = load(card_id)
+        if st.get("status") != IN_PROGRESS:
+            raise ValueError(f"{card_id} 는 진행 중이 아니다(상태: {st.get('status') or '기록 없음'}) — --start")
+        st["by"] = by or st.get("by", "")
+        _renew(st, at)
+        save(card_id, st)
     return st, summary(st, card_id)
 
 
-def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None) -> dict:
-    at = at or now()
+def _mark_unlocked(card_id: str, step: str, note: str, spec: str | None, at: datetime) -> dict:
     if step not in STEPS:
         raise ValueError(f"단계 이름은 {', '.join(STEPS)} 가운데 하나다: {step!r}")
     st = load(card_id)
@@ -130,35 +160,42 @@ def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: d
         rec["spec_sha256"] = hashlib.sha256(sp.read_bytes()).hexdigest()
     st.setdefault("steps", []).append(rec)
     _renew(st, at)
-    save(card_id, st)
     return st
+
+
+def mark(card_id: str, step: str, note: str = "", spec: str | None = None, at: datetime | None = None) -> dict:
+    with _locked(card_id):
+        st = _mark_unlocked(card_id, step, note, spec, at or now())
+        save(card_id, st)
+        return st
 
 
 def done(card_id: str, final: str, note: str = "", at: datetime | None = None) -> dict:
-    at = at or now()
     if not pathlib.Path(final).is_dir():
         raise ValueError(f"완성본 폴더가 없다: {final}")
-    st = mark(card_id, "산출", note or "완성본", at=at)
-    st.update({"status": DONE, "final": str(final), "lease_until": ""})
-    save(card_id, st)
-    return st
+    with _locked(card_id):   # 단계 기록과 상태 바꿈을 한 번에 저장한다
+        st = _mark_unlocked(card_id, "산출", note or "완성본", None, at or now())
+        st.update({"status": DONE, "final": str(final), "lease_until": ""})
+        save(card_id, st)
+        return st
 
 
 def abandon(card_id: str, note: str = "", at: datetime | None = None) -> dict:
     at = at or now()
-    st = load(card_id)
-    if not st:
-        raise ValueError(f"{card_id} 의 진행 기록이 없다")
-    st.setdefault("steps", []).append({"step": "접음", "at": _iso(at), "note": note, "digest": digest(card_id)})
-    st.update({"status": ABANDONED, "lease_until": "", "updated_at": _iso(at)})
-    save(card_id, st)
-    return st
+    with _locked(card_id):
+        st = load(card_id)
+        if not st:
+            raise ValueError(f"{card_id} 의 진행 기록이 없다")
+        st.setdefault("steps", []).append({"step": "접음", "at": _iso(at), "note": note, "digest": digest(card_id)})
+        st.update({"status": ABANDONED, "lease_until": "", "updated_at": _iso(at)})
+        save(card_id, st)
+        return st
 
 
 def summary(st: dict, card_id: str) -> str:
     if not st:
         return f"{card_id}: 진행 기록 없음"
-    steps = [s for s in st.get("steps") or [] if s.get("step") in STEPS]
+    steps = run_steps(st)
     last = steps[-1] if steps else None
     lines = [f"{card_id}: {st.get('status', '')}" + (f" · {st.get('by')}" if st.get("by") else "")
              + (f" · 만료 {st['lease_until']}" if st.get("lease_until") else "") + (f" · 완성본 {st['final']}" if st.get("final") else "")]

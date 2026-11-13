@@ -116,14 +116,19 @@ def main(argv: list[str] | None = None) -> int:
         a = ap.parse_args(rest)
         from . import report
         rc = 0
+        # 회차별로 승인 → 렌더한다. 승인 전 회차는 발행본 쪽이 없으므로(report.keeps_public_page), 여러 회차를 한꺼번에 승인한 뒤
+        # 렌더하면 첫 회차의 색인이 아직 쪽이 없는 다른 회차의 승인 카드를 만나 멈춘다(2026-11-13 Codex 검토).
+        slots: dict[tuple[str, str], list[str]] = {}
         for cid in a.card_ids:
-            try:
-                C.approve_publish(cid, a.by)
-                print(f"{cid} → 공개 발행 승인")
-            except (PermissionError, ValueError) as e:
-                print(f"거부: {e}")
-                rc = 1
-        for date, slot in sorted({(cid[:10], cid[11:13]) for cid in a.card_ids}):
+            slots.setdefault((cid[:10], cid[11:13]), []).append(cid)
+        for (date, slot), ids in sorted(slots.items()):
+            for cid in ids:
+                try:
+                    C.approve_publish(cid, a.by)
+                    print(f"{cid} → 공개 발행 승인")
+                except (PermissionError, ValueError) as e:
+                    print(f"거부: {e}")
+                    rc = 1
             print(json.dumps(report.render_all(date, slot), ensure_ascii=False))
         return rc
     if cmd == "withdraw":

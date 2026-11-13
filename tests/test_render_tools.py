@@ -102,3 +102,60 @@ def test_progress_rejects_unknown_step_and_bad_card_id(desk):
     with pytest.raises(ValueError):
         P.state_path("../밖")
     assert P.state_path(CARD) == C.DESK / "builds" / CARD / "state.yaml"
+
+
+# ── 2026-11-13 Codex 검토 회귀 ─────────────────────────────────────────────
+def test_bundle_chart_line_accepts_display_string_points():
+    ch = {"kind": "line", "title": "지어낸 값", "unit": "원", "period": "2098", "source": "가상",
+          "series": [{"name": "감자", "points": [["2098-06", 20.4, "20.40"], ["2098-12", "18,250"]]}], "claims": []}
+    line = BU._chart_line(ch)
+    assert "2098-06=20.40" in line and "2098-12=18,250" in line
+
+
+def test_bundle_passes_staged_records_to_check(desk, tmp_path, monkeypatch):
+    V.machine_claim(desk, image=False)
+    import yaml
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(yaml.safe_dump(V.spec_of([V.slide()]), allow_unicode=True), encoding="utf-8")
+    seen = {}
+    real_load, real_check = S.load_claims, S.check
+    monkeypatch.setattr(S, "load_claims", lambda ids, dirs=(): (real_load(ids, dirs)[0], {V.CID}))
+    monkeypatch.setattr(S, "check", lambda *a, **kw: seen.update(kw) or real_check(*a, **kw))
+    render_main(["bundle", str(spec), "--out", str(C.DESK / "builds" / CARD / "reviews" / "s.md")])
+    assert seen.get("staged") == {V.CID}                        # 대기 기록이면 엄격 검사가 거부할 수 있게 그대로 넘긴다
+
+
+def test_progress_forced_restart_counts_only_new_run(desk, tmp_path):
+    C.save_yaml(C.card_path(CARD), _card())
+    final = tmp_path / "final"
+    final.mkdir()
+    P.start(CARD)
+    for s in P.STEPS[:-1]:
+        P.mark(CARD, s)
+    P.done(CARD, str(final))
+    st = P.start(CARD, force=True)
+    text = P.summary(st, CARD)
+    assert "마지막 단계" not in text and "남은 단계: " + " → ".join(P.STEPS) in text   # 이전 회차의 완료 단계를 새 작업으로 세지 않는다
+    assert P.run_steps(st) == []
+
+
+def test_progress_concurrent_start_only_one_wins(desk):
+    import threading
+    C.save_yaml(C.card_path(CARD), _card())
+    gate, results = threading.Barrier(4), []
+
+    def go(name):
+        gate.wait()
+        try:
+            P.start(CARD, name)
+            results.append(("ok", name))
+        except ValueError:
+            results.append(("refused", name))
+    ts = [threading.Thread(target=go, args=(f"세션-{i}",)) for i in range(4)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert sorted(r[0] for r in results) == ["ok", "refused", "refused", "refused"]
+    assert P.load(CARD)["by"] == next(n for r, n in results if r == "ok")
+    assert not list((C.DESK / "builds" / CARD).glob("*.tmp"))

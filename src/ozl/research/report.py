@@ -312,7 +312,12 @@ def render_all(date: str, slot: str) -> dict:
             P[k].parent.mkdir(parents=True, exist_ok=True)
             P[k].write_text(text, encoding="utf-8")
             written = text if k == "public" else written
-        index = archive.build_index(include=[(date, slot)] if keep else [])   # 보고서를 다 쓴 뒤 다시 계산한다 — 색인은 늘 보고서와 같거나 더 나중 상태
+        try:
+            index = archive.build_index(include=[(date, slot)] if keep else [])   # 보고서를 다 쓴 뒤 다시 계산한다 — 색인은 늘 보고서와 같거나 더 나중 상태
+        except ValueError:
+            if not keep and keeps_public_page(C.cards_for(date, slot)):
+                continue   # 쓰지 않기로 판정한 뒤에 첫 승인이 끼어들었다 — 다시 판정해 발행본을 쓴다
+            raise
         # 실제로 쓴 발행본의 자리표와 색인의 이 회차 발행 카드가 같아야 저장한다. 그 사이 승인·철회가 끼어들었으면 다시 쓴다
         in_report = {f"{date}-{a}" for a in _ANCHOR.findall(written)}
         in_index = {c["card_id"] for c in index["cards"] if (c["date"], c["slot"]) == (date, slot)}
