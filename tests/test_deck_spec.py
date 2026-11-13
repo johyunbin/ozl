@@ -819,7 +819,16 @@ def test_refs_label_follows_source_tier():
     assert ft == "자료: 가상 섬 정부 발표 자료  ·  보도: 가상 일보", ft
     rows = B.source_rows(sp, {}, card, {})
     by = {r[1]: r for r in rows}
-    assert by["가상 섬 정부 발표 자료"][0] == "자료(T1)" and "문서 인용" in by["가상 섬 정부 발표 자료"][2]
-    assert by["가상 일보"][0] == "보도(T3)" and "보도 인용" in by["가상 일보"][2]
+    assert by["가상 섬 정부 발표 자료"][0] == "자료" and "문서 인용" in by["가상 섬 정부 발표 자료"][2]
+    assert by["가상 일보"][0] == "보도" and "보도 인용" in by["가상 일보"][2]
     card["sources"][0]["tier"] = "T3"                                 # 등급이 보도면 종전처럼 '보도'
     assert S.footnote_text(sp["slides"][2], {}, card, {}) == "보도: 가상 섬 정부 발표 자료 / 가상 일보"
+
+
+def test_footnote_groups_bases_of_one_source():
+    """같은 출처의 기록 둘이 기준 시점만 다르면 꼬리 줄에 출처를 한 번만 적고 기준을 모은다(2026-11-13). 예시는 지어낸 것이다."""
+    a, b = "2099-01-02-am-01-c1", "2099-01-02-am-01-c2"
+    claims = {a: {"checks": {"base_period": "2099-Q3"}, "source": {"publisher": "가상 섬 통계청"}},
+              b: {"checks": {"base_period": "2098-Q3"}, "source": {"publisher": "가상 섬 통계청"}}}
+    ft = S.footnote_text({"claim_ids": [a, b, a]}, claims, None, {})
+    assert ft == "출처: 가상 섬 통계청 · 기준 2099년 3분기, 2098년 3분기", ft

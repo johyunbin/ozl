@@ -550,14 +550,14 @@ def source_rows(spec: dict, claims: dict, card: dict, pending=None) -> list[list
         for x in c.get("cross_check") or []:  # 교차 출처도 부록에 — 화면에서 '다른 보도'로 인용한 문장을 거슬러 갈 수 있게
             if isinstance(x, dict) and x.get("url"):
                 rows.append([short.split("\n")[0] + " 교차" + (f"\n{PENDING_MARK}" if cid in (pending_ids or set()) else ""),
-                             str(x.get("publisher") or ""), f"교차 출처({x.get('tier', '')})", str(x["url"]), "", ", ".join(map(str, pages[cid]))])
+                             str(x.get("publisher") or ""), "교차 출처", str(x["url"]), "", ", ".join(map(str, pages[cid]))])
     by_name = {s.get("name"): s for s in spec.get("press_sources") or [] if isinstance(s, dict)}
     by_name.update({s.get("name"): s for s in card.get("sources") or []})  # 카드 sources 가 우선
     for ref, pg in ref_pages.items():
         s = by_name.get(ref) or {}
         mark = f"\n{PENDING_MARK}" if pend_pages & set(pg) else ""
         doc = s.get("tier") in S.DOC_TIERS   # 각주(footnote_text)와 같은 기준 — 기업·기관 문서는 보도로 부르지 않는다
-        rows.append([f"{'자료' if doc else '보도'}({s.get('tier', '')})" + mark, ref,
+        rows.append([("자료" if doc else "보도") + mark, ref,
                      "검증 기록 없음 — " + ("문서 인용(숫자 근거 아님)" if doc else "보도 인용"), str(s.get("url") or ""), "", ", ".join(map(str, pg))])
     return rows
 
@@ -596,7 +596,7 @@ def visual_check_rows(spec: dict, claims: dict, pending=None, views: dict[int, s
             has_copy = any(S.copy_text(claims.get(str(c)) or {})[0] for c in ch.get("claims") or [])
             # '확인'은 사람이 대조한 일에만 쓴다(완성본 평가 기준 가8) — 프로그램과 에이전트가 한 일은 '대조'로 적는다.
             scope = ("값이 사본에 있는지는 프로그램이 대조" if has_copy else "값이 기록 observed·text 에 있는지는 프로그램이 대조") + \
-                " · 칸과 값의 짝은 다른 에이전트가 문장 대조로 봄" + (" · 세로축이 0에서 시작하지 않음" if ch.get("y_from_zero") is False else "")
+                " · 칸과 값의 짝은 문장 대조에서 봄" + (" · 세로축이 0에서 시작하지 않음" if ch.get("y_from_zero") is False else "")
             rows.append([pg, f"차트({'선' if ch.get('kind') == 'line' else '막대'})", f"{ch.get('title', '')} · 기록 {ids}",
                          f"단위 {ch.get('unit', '')} · 기간 {ch.get('period', '')}", "", scope])
         elif v == "capture":

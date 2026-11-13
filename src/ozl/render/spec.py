@@ -419,13 +419,15 @@ def short_source(cid: str, claim: dict, card: dict | None, labels: dict | None =
 
 
 def footnote_text(sl: dict, claims: dict, card: dict | None, labels: dict | None = None) -> str:
-    parts: list[str] = []
+    # 같은 출처는 한 번만 적고 기준 시점을 모은다(같은 문서가 꼬리 줄에 두 번 찍히지 않게 — 2026-11-13 덱 검토)
+    bases: dict[str, list[str]] = {}
     for cid in sl.get("claim_ids") or []:
         c = claims.get(str(cid)) or {}
         base = base_period_text((c.get("checks") or {}).get("base_period"))
-        label = short_source(str(cid), c, card, labels) + (f" · 기준 {base}" if base else "")
-        if label not in parts:
-            parts.append(label)
+        got = bases.setdefault(short_source(str(cid), c, card, labels), [])
+        if base and base not in got:
+            got.append(base)
+    parts = [src + (f" · 기준 {', '.join(b)}" if b else "") for src, b in bases.items()]
     refs = [str(x) for x in sl.get("refs") or []]
     # 카드 sources 의 등급이 T1·T2(기업·기관이 낸 문서)인 refs 는 '자료', 그 밖(보도·등급 모름)은 '보도'로 부른다
     # — 회사 문서를 보도로 읽히게 하지 않는다(2026-11-13 덱 검토). 숫자 근거가 아닌 것은 둘 다 같다.
