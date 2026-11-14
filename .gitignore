@@ -33,3 +33,6 @@ apps/web/.astro/
 apps/web/.pw-browsers/
 apps/web/test-results/
 apps/web/playwright-report/
+
+# 사용자가 여는 결과물 폴더(비공개 폴더로 가는 링크)
+/결과물
