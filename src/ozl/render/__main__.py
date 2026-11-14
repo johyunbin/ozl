@@ -43,6 +43,9 @@ def main(argv: list[str]) -> int:
     if argv and argv[0] in ("bundle", "progress"):   # 하위 명령은 각 모듈이 인자를 읽는다(_opts 는 사양 파일 명령 전용)
         from importlib import import_module
         return import_module(f"ozl.render.{argv[0]}").main(argv[1:])
+    if any(a in ("-h", "--help") for a in argv):   # 사양 파일을 읽기 전에 끝낸다
+        print(__doc__)
+        return 0
     pos, draft, export, dirs = _opts(argv)
     if len(pos) < 2 or pos[0] not in ("check", "build"):
         print(__doc__)

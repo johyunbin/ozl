@@ -7,22 +7,41 @@
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import json
+import os
 import pathlib
 import sqlite3
 import sys
 from datetime import datetime, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
-TRADING = pathlib.Path("/Users/hyunbin/Trading")
+# Trading 저장소 위치: 환경변수 OZL_TRADING_ROOT 가 있으면 그것, 없으면 홈 아래 Trading.
+TRADING = pathlib.Path(os.environ.get("OZL_TRADING_ROOT") or (pathlib.Path.home() / "Trading"))
 DB = TRADING / "trading.db"
 OUT = ROOT / "private" / "transcripts" / "trading_export"
 CHANNELS = ("syuka", "moneycomics", "alex")
 MIN_CHARS = 500
 
 
-def main() -> int:
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    ap = argparse.ArgumentParser(
+        prog="python -m ozl.transcribe.export_trading",
+        description=(
+            "Trading 원장(trading.db youtube_content, 읽기 전용)의 전사를 "
+            f"{OUT} 로 내보낸다(채널 {', '.join(CHANNELS)} · 증분). 인자 없이 돌린다."
+        ),
+    )
+    return ap.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    # --help 와 모르는 인자는 여기서 끝난다(본 동작인 내보내기 쓰기 전에). 2026-11-14.
+    _parse_args(argv)
+    if not DB.exists():
+        print(f"Trading DB 없음: {DB} (OZL_TRADING_ROOT 로 위치 지정)", file=sys.stderr)
+        return 1
     c = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     c.row_factory = sqlite3.Row
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -65,6 +84,9 @@ def main() -> int:
                 n_seg += bool(segs)
             idx.append(_idx_row(ch, row, text, has, segs))
         stats[ch] = {"written": n_new, "skipped": n_skip, "with_segments(new)": n_seg}
+    if not idx:
+        print("youtube_content 에 대상 채널 행이 없다 — index.csv 를 그대로 둔다", file=sys.stderr)
+        return 1
     with (OUT / "index.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(idx[0].keys()))
         w.writeheader()

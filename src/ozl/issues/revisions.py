@@ -27,7 +27,18 @@ from .reviews import (_findings, _full, _notes_ok, _same, add_review, missing_re
 REASON_BODY = "다시 만든 본문이 승인 때와 다르다"
 MSG_SAME_REV = "승인된 판과 내용이 다른데 판 번호가 같다 — 판 번호를 올린다"
 MSG_SLUG = "게시한 주소 이름은 바꾸지 않는다(옛 이름은 aliases 로)"
-MSG_REVIEW = "게시 대기인데 검토 조건(다른 모델의 문장 대조, 다른 계열의 해석 점검)을 채우지 못했다"
+MSG_REVIEW = ("게시 대기인데 검토 조건(다른 모델의 문장 대조, 다른 계열의 해석 점검)을 지금 내용으로 채우지 못했다"
+              "(검토 뒤에 내용이 바뀌었으면 검토가 풀린다). work_state 를 '검토 대기'로 내리고 검토를 다시 받는다")
+STALE_READY = "게시 대기 → 검토 대기로 본다"
+
+
+def shown_work_state(issue: dict, review: str) -> str:
+    """화면과 status 에 보일 작업 상태. '게시 대기'인데 지금 내용 해시로 검토가 채워지지 않았으면 '검토 대기'로 보인다
+    (검토 줄은 더한 때의 내용 해시에 묶이므로, 게시 대기로 올린 뒤 글이나 기록을 고치면 검토가 풀린다). 파일은 고치지 않는다."""
+    ws = issue.get("work_state")
+    if ws == "게시 대기" and review == "검토 대기":
+        return "검토 대기"
+    return ws or "작성 중"
 
 
 def rev_dir(issue_id: str, rev: int) -> pathlib.Path:
@@ -273,7 +284,10 @@ def status_rows(issue_ids=None) -> list[dict]:
             appr = "승인 뒤 고침"
         else:
             appr = "미승인"
+        review = review_state(issue, evs)
         rows.append({"id": iid, "rev": issue.get("revision"), "work_state": issue.get("work_state"), "content_hash": h,
-                     "approval": appr, "latest_public": latest, "review": review_state(issue, evs),
+                     "shown_state": shown_work_state(issue, review),
+                     "stale_ready": issue.get("work_state") == "게시 대기" and review == "검토 대기",
+                     "approval": appr, "latest_public": latest, "review": review,
                      "hidden_claims": rules.hidden_claims(issue)})
     return rows

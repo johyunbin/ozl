@@ -1,11 +1,17 @@
 ---
 name: ozl
-description: OZL 이슈 만들기와 운영 — "/ozl make [job_id]"(운영 화면에서 고른 이슈 한 건을 쓰기, 다른 모델의 문장 대조, 다른 계열의 해석 점검을 거쳐 게시 대기까지 만든다. 실행기에서는 검토 대기까지), "/ozl status". 옛 일일 데스크 절차(am, pick, build, verify, publish)는 저장소의 skills/ozl/SKILL.md 를 따른다.
+description: OZL 이슈 만들기와 운영 — "/ozl make [job_id]"(운영 화면에서 고른 이슈 한 건을 읽는 글(article.yaml)과 검증 기록으로 쓰고, 글 검사(article-check), 다른 Claude 모델의 문장 대조, 다른 계열의 해석 점검을 거쳐 게시 대기까지 만든다. 실행기에서는 검토 대기까지), "/ozl status". 옛 일일 데스크 절차(am, pick, build, verify, publish)는 저장소의 skills/ozl/SKILL.md 를 따른다.
 ---
 
 # /ozl make — 고른 이슈 한 건을 게시 대기까지
 
-이 문서는 길 안내다. 단계마다 누가, 무엇을 읽고, 무엇을 쓰고, 무엇이 되면 다음으로 가는지 적고, 자세한 지시는 `make/` 의 지시서에 둔다. 실제 이슈 여러 건을 초안부터 다른 계열 검토까지 여러 회차 돌린 절차를 옮겼다.
+이 문서는 길 안내다. 단계마다 누가, 무엇을 읽고, 무엇을 쓰고, 무엇이 되면 다음으로 가는지 적고, 자세한 지시는 `make/` 의 지시서에 둔다. 실제 이슈 여러 건을 초안부터 다른 계열 검토까지 여러 회차 돌린 절차를 옮겼고, 2026-11-14 에 정한 글 형식에 맞춰 고쳤다.
+
+**만드는 것은 두 층이다.**
+- **글(읽는 층)**: 독자가 읽는 `<자료 루트>/issues/<번호>/article.yaml` 한 파일. 칸, 검사, 글쓰기 규칙, 갱신의 정본은 글 형식 명세(`private/plan/글형식_명세_20261114.md`, 비공개 사본이 있는 기기에서만)이고 코드는 `src/ozl/issues/article.py`, 지침은 `agent/issues.md` 의 「글」이다. 사이트의 이슈 목록에는 글이 있는 이슈만 실린다.
+- **검증 기록(뒤쪽 층)**: `issue.yaml`(주장과 판정, 확인된 사실, 흐름, 입장), `evidence/`, `captures/`, `reviews/`. 지금처럼 쓴다. 판정 상세 화면(`/i/<slug>/check/`)이 이것을 보여 주고, 글의 출처(`sources`)는 가능하면 근거 번호(`evidence`)로 잇는다.
+- 글은 내용 해시(승인 지문)에 든다. 글을 고치면 검토와 승인이 풀린다. 글은 `issue.yaml` 안에 쓰지 않는다(`model.save_issue` 는 글을 떼어 내고 저장한다. 글은 `model.save_yaml(article.article_file(<번호>), …)` 로 저장한다).
+- 글쓰기 규칙(명세 4절)은 `make/01_draft.md` 의 「글 쓰기」에 옮겼다. 쓰는 사람, 대조하는 사람, 묶음을 만드는 사람이 모두 그 규칙으로 본다.
 
 - 작업 폴더는 `~/OZL`, 파이썬은 `~/OZL/.venv/bin/python`(아래 `PY`). 이 문서와 지시서의 명령 조각은 저장소에서 부르는 꼴(`.venv/bin/python …`)로 적었다. `PY` 를 명령으로 옮길 때는 절대 경로가 아니라 상대 꼴 `.venv/bin/python` 으로 쓴다. 실행기의 허용 패턴 `Bash(.venv/bin/python *)` 은 그 꼴로 시작하는 명령만 받는다. 실행기는 저장소에서 띄워지므로 그대로 부른다. 대화 세션에서 셸의 현재 폴더가 `~/OZL` 이 아니면 앞에 `cd ~/OZL && ` 를 붙인다. 규범은 `~/OZL/CLAUDE.md` 다. 모든 산문은 한국어로 쓴다.
 - 판정과 문장의 원칙: `make/principles.md`. 모든 단계가 같이 쓴다.
@@ -17,6 +23,7 @@ description: OZL 이슈 만들기와 운영 — "/ozl make [job_id]"(운영 화�
 
 **시험 루트에서 돌릴 때.**
 - 대기열 항목을 더하는 명령은 없다(`ozl.ops queue` 는 `list`, `show`, `set` 뿐이다). 대기열 없이 시험하면 1단계를 건너뛰고 2단계부터 하며(이때는 아래 인자 설명의 "대기 항목이 없으면 대기열이 비었다고 알리고 끝낸다"보다 이 줄이 앞선다. 시험을 맡긴 지시가 대상과 제목을 준다), 대기열 명령(`queue set`)은 부르지 않고 작업 폴더는 `<시험 루트>/make/<오늘 YYYYMMDD>-<슬러그>/` 로 한다. 이 폴더를 2단계 전에 만들고, 워크플로를 쓰면 `work` 인자에 이 경로를, `job` 은 비워 둔다.
+- `export --preview` 의 `--out` 은 시험 루트 안(또는 임시 폴더)이어야 한다. 밖으로 주면 "시험 자료는 시험 폴더에만 내보낸다"로 멈춘다.
 - `capture` 는 내부 주소(`127.0.0.1`, `localhost`, 사설 대역)를 받지 않는다. 그래서 시험용 로컬 서버의 문서는 `capture` 명령으로 받을 수 없다. 시험에서만 아래처럼 파이썬으로 `evidence.capture_evidence` 에 로컬 파일을 넣는 `fetcher` 를 준다. 근거 기록의 `source.url` 은 그대로 두고, 그 주소의 문서 대신 로컬 파일을 사본으로 저장한다. 실제 자료 루트에서는 쓰지 않는다.
 
 ```bash
@@ -40,14 +47,14 @@ EOF
 
 운영 서버 주소: `http://127.0.0.1:8765`(옛 주제 자료는 `http://127.0.0.1:8765/api/topic/<topic_id>`). 화제 엔진의 이슈 번호(`t…`)는 서버를 거치지 않고 `PY -m ozl.signals explain <번호> --json` 으로 읽는다(실행기의 허용 목록 `Bash(.venv/bin/python *)` 에 든다).
 
-인자: `make`(대기열에서 `대기` 인 가장 오래된 항목. 대기 항목이 없으면 "대기열이 비었다"고 알리고 끝낸다), `make <job_id>`(그 항목), `status`(`PY -m ozl.ops queue list` 와 `PY -m ozl.issues status` 를 보여 주기만 한다). 그 밖의 인자(am, pick, build, verify, publish)는 저장소의 `skills/ozl/SKILL.md` 를 읽고 그대로 따른다.
+인자: `make`(대기열에서 `대기` 인 가장 오래된 항목. 대기 항목이 없으면 "대기열이 비었다"고 알리고 끝낸다), `make <job_id>`(그 항목), `status`(`PY -m ozl.ops queue list` 와 `PY -m ozl.issues status` 를 보여 주기만 한다). 그 밖의 인자(am, pick, build, verify, publish, 옛 회차 렌더용 pm, weekly)는 저장소의 `skills/ozl/SKILL.md` 를 읽고 그대로 따른다. 그 절차는 옛 일일 데스크의 것이고 예약 루틴은 꺼져 있다.
 
 ## 0. 가드
 
 - 환경 변수 `OZL_OPS_RUNNER=1` 이면 실행기가 띄운 것이다. 이때는:
   - **Codex 를 부르지 않는다.** `codex`, `codex_smart.sh`, `codex exec`, `mm_request.py --surface codex`, `multimodel_request` 도구 모두 금지다. 실행기는 `multimodel_request` MCP 도구를 통째로 막는다(인자로 표면만 거를 수 없다).
   - **다른 계열의 해석 점검을 보내지 않는다**(6단계). 검토 묶음까지 만들고 이슈를 '검토 대기'로 둔 채 끝낸다.
-  - 실행기는 명령의 `--disallowedTools` 로 다음을 막는다: 승인 명령, 철회 명령, 공개 내보내기 명령, `ozl.ops token`, `private/ops/` 읽기, 발행 목록(`issues/manifest.json`) 직접 쓰기, 번호 대장 직접 쓰기, 고정 사본(`issues/*/revisions/`) 직접 쓰기, 운영 파일(`ops/`) 직접 쓰기. 막힌 것을 돌아가려 하지 않는다.
+  - 실행기는 명령의 `--disallowedTools` 로 다음을 막는다: 승인 명령, 철회 명령, 공개 내보내기 명령, `ozl.ops token`, `private/ops/` 읽기, 발행 목록(`issues/manifest.json`) 직접 쓰기, 번호 대장 직접 쓰기, 고정 사본(`issues/*/revisions/`) 직접 쓰기, 운영 파일(`ops/`) 직접 쓰기, 옛 카드와 클레임(`cards/`, `claims/`) 직접 쓰기, `approval.json` 과 `make_queue.json` 을 이름으로 가리키는 명령(`src/ozl/ops/runner.py` 의 `DISALLOWED`, `DESK_BLOCK`). 막힌 것을 돌아가려 하지 않는다.
   - 사용자에게 묻지 않는다. 막히면 `PY -m ozl.ops queue set <job_id> --state 멈춤 --note "<까닭 한 줄>"` 하고 끝낸다.
   - 쓰기는 `OZL_DESK_ROOT` 아래만 한다(없으면 `private/desk`). 코드, 설정, 문서, 스킬은 고치지 않는다.
 - 실행기든 대화든 **승인(`approve`)과 공개용 내보내기(`export --public`)는 하지 않는다.** 내림(`withdraw`)도 하지 않는다. 승인은 사용자가 운영 화면 `/approve` 에서 한다.
@@ -60,13 +67,13 @@ EOF
 | 단계 | 누가 | 지시서 | 다음으로 가는 조건 |
 |---|---|---|---|
 | 1 대기열에서 한 건 | 본 세션 | 이 문서 | 항목이 `실행 중` |
-| 2 쓰기 | 작성자(Claude Opus) | `make/01_draft.md` | 이슈 번호가 있고 `check` 가 재대조 오류 말고는 0건 |
-| 3 재대조와 문장 대조 | 검토자(작성자와 다른 Claude 모델, Sonnet) | `make/02_sentence_review.md` | 치명적과 중요 지적 0건, 검토 줄 더함 |
+| 2 쓰기(검증 기록과 글) | 작성자(Claude Opus) | `make/01_draft.md` | 이슈 번호가 있고, `article-check` 오류 0, `check --public` 이 재대조 오류 말고는 0건 |
+| 3 재대조와 문장 대조 | 검토자(작성자와 다른 Claude 모델, Sonnet) | `make/02_sentence_review.md` | 글과 검증 기록의 문장에 치명적과 중요 지적 0건, 검토 줄 더함 |
 | 4 고치기 | 작성자 | `make/03_fix.md` | 3단계를 다시 돌아 통과(최대 세 번) |
 | 5 검토 묶음 | 편집자(Opus) | `make/04_packet.md` | 묶음 파일과 사본 해시 |
 | 6 다른 계열의 해석 점검 | 본 세션(대화 세션만) | `make/05_external.md` | 답을 받아 기록 |
 | 7 고침 회차 | 작성자, 검토자, 편집자 | `make/06_revise.md` | 수정 확인 묶음을 다시 6단계로 |
-| 8 마무리 | 본 세션 | 이 문서 | 대기열 `끝남` |
+| 8 마무리 | 본 세션 | 이 문서 | `article-check` 오류 0, 검토 완료까지 빠진 것 없음이면 게시 대기, 대기열 `끝남` |
 
 - 실제로 잰 시간: 쓰기 8~15분, 문장 대조 10~20분, 고치기 한 번 5~10분, 묶음 3~5분, 해석 점검은 창구에 따라 수 분에서 수십 분, 고침 회차 한 바퀴 17~37분.
 - 문장 대조를 통과한 글에서도 다른 계열이 첫 해석 점검마다 새 문제를 찾았다. 한 번에 통과할 것으로 일정을 잡지 않는다.
@@ -88,19 +95,19 @@ EOF
 
 ### 2) 쓰기
 
-작성자(Opus)가 `make/01_draft.md` 와 `make/principles.md` 를 읽는다. 사건을 1차 자료로 확인하고, `PY -m ozl.issues new` 로 번호를 받아 `queue set <job_id> --state "실행 중" --issue <이슈 번호>` 로 적고, 주장 3~8개를 고정하고, 공식 문서마다 `robots.txt` 를 먼저 받은 뒤 `PY -m ozl.issues capture` 로 원문 사본을 받아 대목을 통째로 따오고, 이슈 기록을 파이썬으로 쓴다. 쓰는 것: `<자료 루트>/issues/<번호>/` 의 `issue.yaml`, `evidence/`, `captures/`, 작업 폴더의 `core_claims.md`, `timing.txt`, 미리보기. `PY -m ozl.issues check <번호> --public` 의 오류가 재대조 칸이 비어서 나는 것 말고는 0건이면 3단계로 간다. 사건을 1차 자료로 확인하지 못하면 이슈를 만들지 않고 `queue set <job_id> --state 멈춤 --note "사건을 1차 자료로 확인하지 못했다"` 하고 끝낸다.
+작성자(Opus)가 `make/01_draft.md` 와 `make/principles.md` 를 읽는다. 사건을 1차 자료로 확인하고, `PY -m ozl.issues article-new <slug> --category "<분야>" --title "<가제>"` 로 번호를 받아(번호, 폴더, 최소 `issue.yaml`, 빈 글 뼈대를 한 번에 쓴다. `new` 를 따로 부르지 않는다) `queue set <job_id> --state "실행 중" --issue <이슈 번호>` 로 적고, 주장 3~8개를 고정하고, 공식 문서마다 `robots.txt` 를 먼저 받은 뒤 `PY -m ozl.issues capture` 로 원문 사본을 받아 대목을 통째로 따오고, 이슈 기록을 파이썬으로 쓴다. 검증 기록을 다 쓴 뒤 그 기록이 받치는 만큼만 글(`article.yaml`)을 쓴다(`01_draft.md` 의 「글 쓰기」). 쓰는 것: `<자료 루트>/issues/<번호>/` 의 `issue.yaml`, `article.yaml`, `evidence/`, `captures/`, 작업 폴더의 `core_claims.md`, `timing.txt`, 미리보기. `PY -m ozl.issues article-check <번호>` 의 마지막 줄이 "오류 0, …"이고 `PY -m ozl.issues check <번호> --public` 의 오류가 재대조 칸이 비어서 나는 것 말고는 0건이면 3단계로 간다. 사건을 1차 자료로 확인하지 못하면 이슈를 만들지 않고 `queue set <job_id> --state 멈춤 --note "사건을 1차 자료로 확인하지 못했다"` 하고 끝낸다.
 
 ### 3) 재대조와 문장 대조
 
-작성자와 다른 Claude 모델(Sonnet)이 `make/02_sentence_review.md` 와 `make/principles.md` 를 읽는다. 판정을 가린 주장 목록과 원문 사본만으로 먼저 스스로 판정하고, 초안과 견준다. 공식 근거마다 사본에서 스스로 찾은 대목으로 재대조 칸을 채우고 `PY -m ozl.issues machine-verify` 를 돌린다. 모든 문장을 사본과 맞추고, 퍼진 곳의 기사를 열어 요지의 표현을 확인하고, 공개 제외와 보류인 주장의 내용이 새지 않았는지 본다. 쓰는 것: 재대조 칸, 작업 폴더의 맹검 판정, `reviews/sentence_<꼬리>.md`. 치명적과 중요 지적이 0건이고 `check` 가 통과하면 `review add --kind "문장 대조" --family anthropic --result 통과` 를 더하고 5단계로, 아니면 4단계로 간다.
+작성자와 다른 Claude 모델(Sonnet)이 `make/02_sentence_review.md` 와 `make/principles.md` 를 읽는다. 판정을 가린 주장 목록과 원문 사본만으로 먼저 스스로 판정하고, 초안과 견준다. 공식 근거마다 사본에서 스스로 찾은 대목으로 재대조 칸을 채우고 `PY -m ozl.issues machine-verify` 를 돌린다. 검증 기록과 글(`article.yaml`)의 모든 문장을 사본과 맞추고, 글의 각주마다 그 출처가 문장을 받치는지 보고, 퍼진 곳의 기사를 열어 요지의 표현을 확인하고, 공개 제외와 보류인 주장의 내용이 새지 않았는지 본다. 쓰는 것: 재대조 칸, 작업 폴더의 맹검 판정, `reviews/sentence_<꼬리>.md`. 치명적과 중요 지적이 0건이고 `check` 가 통과하면 `review add --kind "문장 대조" --family anthropic --result 통과` 를 더하고 5단계로, 아니면 4단계로 간다.
 
 ### 4) 고치기
 
-작성자가 `make/03_fix.md` 를 읽는다. 지적마다 원문 사본을 다시 열어 확인하고 고친다(사소한 것도). 지적이 틀렸으면 원문 대목을 대어 반박한다. 길이 상한 때문에 요건이나 단서를 빼지 않는다. 판정이 바뀌면 흐름, 지금까지 3줄, 제목, 숫자 표시, `basis_facts`, `scope` 를 따라 바꾼다. 쓰는 것: `issue.yaml` 과 근거 기록. 다시 3단계를 돈다. 세 번 고쳐도 지적이 남으면 묶음을 만들지 않고 8단계에서 '검토 대기'와 남은 지적을 적는다.
+작성자가 `make/03_fix.md` 를 읽는다. 지적마다 원문 사본을 다시 열어 확인하고 고친다(사소한 것도). 지적이 틀렸으면 원문 대목을 대어 반박한다. 길이 상한 때문에 요건이나 단서를 빼지 않는다. 판정이 바뀌면 흐름, 지금까지 3줄, 제목, 숫자 표시, `basis_facts`, `scope` 와 글의 요약, 본문, `status` 묶음, 각주를 따라 바꾼다. 쓰는 것: `issue.yaml`, `article.yaml`, 근거 기록. 고친 뒤 `article-check` 와 `check --public` 을 다시 돌린다. 다시 3단계를 돈다. 세 번 고쳐도 지적이 남으면 묶음을 만들지 않고 8단계에서 '검토 대기'와 남은 지적을 적는다.
 
 ### 5) 검토 묶음
 
-편집자(Opus)가 `make/04_packet.md` 를 읽는다. 미리보기(`PY -m ozl.issues export --preview --out <작업 폴더>/preview_<꼬리>`)에서 독자에게 보일 글 전부를 뽑아 1부로, 판정에 쓴 공식 문서의 대목을 2부로, 요청 소제목과 최종 판단 한 줄을 3부로 둔다. 숨긴 주장, 내부 번호, 경로, 모델 이름, 사용자 이름을 넣지 않고 다시 읽어 확인한다. 쓰는 것: `<작업 폴더>/packet_<꼬리>.md`, 수정 확인 회차면 `packet_<꼬리>_confirm.md`, 그리고 `PY -m ozl.issues snapshot <번호>` 의 해시를 적은 `packet_<꼬리>.hash`. 실행기면 8단계로, 대화 세션이면 6단계로 간다.
+편집자(Opus)가 `make/04_packet.md` 를 읽는다. 미리보기(`PY -m ozl.issues export --preview --out <작업 폴더>/preview_<꼬리>`)에서 독자에게 보일 글 전부(이슈의 `article` 묶음, 그리고 판정 상세 화면의 글)를 뽑아 1부로, 판정에 쓴 공식 문서의 대목을 2부로, 요청 소제목과 최종 판단 한 줄을 3부로 둔다. 숨긴 주장, 내부 번호, 경로, 모델 이름, 사용자 이름을 넣지 않고 다시 읽어 확인한다. 쓰는 것: `<작업 폴더>/packet_<꼬리>.md`, 수정 확인 회차면 `packet_<꼬리>_confirm.md`, 그리고 `PY -m ozl.issues snapshot <번호>` 의 해시를 적은 `packet_<꼬리>.hash`. 실행기면 8단계로, 대화 세션이면 6단계로 간다.
 
 ### 6) 다른 계열의 해석 점검 (대화 세션만)
 
@@ -112,7 +119,9 @@ EOF
 
 ### 8) 마무리
 
+- `PY -m ozl.issues article-check <번호>` 가 "오류 0"으로 끝나는지 본다. 글이 없거나 오류가 있으면 게시 대기로 올리지 않는다(글이 없는 이슈는 사이트 목록에 나오지 않는다).
 - `PY -m ozl.issues status <번호>` 를 본다. "검토 완료까지 빠진 것"이 없으면(다른 모델의 문장 대조와 다른 계열의 해석 점검이 지금 내용 해시로 통과) `work_state` 를 '게시 대기'로, 아니면 '검토 대기'로 둔다(파이썬으로 고친다. 이 칸은 내용 해시에 들어가지 않는다).
+- **게시 대기로 올린 뒤 글이나 기록을 고치면** 내용 해시가 바뀌어 검토가 풀린다. 그때는 `work_state` 를 '검토 대기'로 되돌리고 3단계(문장 대조)와 6단계(해석 점검)를 다시 받는다. `status` 는 이런 이슈를 "게시 대기 → 검토 대기로 본다"와 경고로 보이고, `check` 는 오류로 막는다.
 - `PY -m ozl.ops queue set <job_id> --state 끝남 --issue <번호>`. 검토 대기로 끝나면 `--note` 에 남은 것(예: "다른 계열 검토 대기", "문장 대조 지적 남음")을, 덱을 함께 원한 항목(`deck: true`)은 "덱은 따로"를 붙인다.
 - 작업 폴더에 기사 본문 파일이 남지 않았는지 본다. 기사 본문은 `01_draft.md` 6단계의 조각이 작업 폴더 안 임시 파일로 쓰고 같은 조각에서 지우므로, 남은 `articles_*.txt` 가 없어야 한다: `.venv/bin/python -c "import pathlib; print(sorted(map(str, pathlib.Path('<작업 폴더>').rglob('articles_*'))))"` 가 `[]` 를 찍는다. 남았으면 같은 꼴의 파이썬으로 지운다(실행기에는 `rm` 허용이 없다).
 - '게시 대기'로 올렸으면 승인 화면이 그 건을 어떻게 보이는지 본다(본 세션. 로그인하지 않고 읽기만 한다): `curl -s http://127.0.0.1:8765/approve` 의 글에서 그 이슈의 "점검" 줄이 "오류와 경고가 없다"인지. 운영 서버는 launchd 환경에서 돌아 터미널과 PATH 가 다르다. 터미널의 `check --public` 이 통과해도 서버에서는 걸릴 수 있다(2026-11-14 에 PDF 를 읽는 도구를 서버가 찾지 못해 게시 대기에 오른 이슈가 "점검에 걸림"으로 나왔다). 걸려 있으면 승인이 거부되니 까닭을 고치고 서버를 다시 띄운 뒤 다시 본다. 실행기 세션은 이 확인을 하지 않는다(검토 대기까지만 만든다).

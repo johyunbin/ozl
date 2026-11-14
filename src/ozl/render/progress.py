@@ -80,9 +80,13 @@ def save(card_id: str, st: dict) -> pathlib.Path:
 
 
 @contextlib.contextmanager
-def _locked(card_id: str):
-    """카드별 잠금 — 읽기 → 판정 → 저장을 한 덩어리로(두 세션이 같은 카드를 동시에 시작하거나 단계를 적어도 덮어쓰지 않게)."""
+def _locked(card_id: str, create: bool = False):
+    """카드별 잠금 — 읽기 → 판정 → 저장을 한 덩어리로(두 세션이 같은 카드를 동시에 시작하거나 단계를 적어도 덮어쓰지 않게).
+    create=False(시작 말고 모든 호출)이면 진행 기록 폴더가 없을 때 잠금 파일과 폴더를 만들지 않고 거부한다
+    (2026-11-14: 거부로 끝나는 --resume 이 빈 builds/<card_id>/state.lock 을 남겼다)."""
     lock = state_path(card_id).with_name("state.lock")
+    if not create and not lock.parent.is_dir():
+        raise ValueError(f"{card_id} 는 진행 중이 아니다(상태: 기록 없음) — --start")
     lock.parent.mkdir(parents=True, exist_ok=True)
     with open(lock, "a+") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
@@ -128,7 +132,7 @@ def start(card_id: str, by: str = "", force: bool = False, at: datetime | None =
     at = at or now()
     if not C.card_path(card_id).exists():
         raise ValueError(f"카드 {card_id} 가 없다")
-    with _locked(card_id):
+    with _locked(card_id, create=True):
         st = load(card_id)
         if lease_alive(st, at):
             raise ValueError(f"{card_id} 는 진행 중이다({st.get('by', '')} · {st['lease_until']} 까지) — 이어 받으려면 --resume")

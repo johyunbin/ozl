@@ -216,3 +216,19 @@ def test_progress_abandon_and_forced_mark_respect_lease(desk):
     with pytest.raises(ValueError, match="만료"):
         P.mark(CARD, "명제", at=late, by="세션-가", force=True)               # --force 로도 만료를 건너뛰지 않는다
     assert P.abandon(CARD, "지어낸 사유", at=t0 + timedelta(minutes=2), by="세션-가")["status"] == P.ABANDONED
+
+
+def test_progress_refusal_leaves_no_lock_file(desk):
+    """진행 기록이 없는 카드에 --resume 을 부르면 거부만 하고 builds/<card_id>/ 와 state.lock 을 만들지 않는다."""
+    C.save_yaml(C.card_path(CARD), _card())
+    with pytest.raises(ValueError, match="기록 없음"):
+        P.resume(CARD)
+    assert not P.state_path(CARD).parent.exists()
+    P.start(CARD)
+    assert P.state_path(CARD).with_name("state.lock").exists()
+
+
+def test_render_help_exits_before_reading_spec(capsys):
+    from ozl.render import __main__ as R
+    assert R.main(["check", "--help"]) == 0 and R.main(["build", "-h"]) == 0
+    assert "python -m ozl.render check" in capsys.readouterr().out

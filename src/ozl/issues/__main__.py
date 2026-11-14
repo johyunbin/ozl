@@ -267,8 +267,12 @@ def _status(a) -> int:
         print("이슈 기록이 없다")
     for r in rows:
         lp = f"공개 {r['latest_public']}판" if r["latest_public"] else "공개 판 없음"
-        print(f"{r['id']} {r['rev']}판 · {r['work_state']} · {r['approval']} · {lp} · {r['review']} · "
+        ws = f"{revisions.STALE_READY}" if r["stale_ready"] else r["work_state"]
+        print(f"{r['id']} {r['rev']}판 · {ws} · {r['approval']} · {lp} · {r['review']} · "
               f"숨긴 주장 {r['hidden_claims']}건 · 내용 해시 {r['content_hash']}")
+        if r["stale_ready"]:
+            print("  경고: 게시 대기인데 지금 내용 해시로 받은 검토가 모자란다(올린 뒤 내용이 바뀌면 검토가 풀린다). "
+                  "work_state 를 '검토 대기'로 내리고 문장 대조와 해석 점검을 다시 받는다")
         try:
             issue = model.load_issue(r["id"])
             miss = revisions.missing_reviews(issue, model.load_evidences(r["id"]))

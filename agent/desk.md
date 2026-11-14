@@ -27,6 +27,6 @@
 - 페이지 「OZL — 오늘의 즐길거리」 아래 DB 「OZL 소재 카드」(식별자와 속성 목록 = `private/notion.json`, 비공개). 루틴은 MCP(Notion 커넥터)로 upsert 와 상태 읽기를 한다 — 토큰 파일 없음. Notion 은 `card_id`+`revision` 이벤트만 전달한다 — 카드의 정본은 `private/desk/cards/`, 공개분의 정본은 git 의 `daily/`·`claims/` 다. Notion 에서 사용자가 `상태`를 바꾸면 그것이 채택, 보류, 반려 결정이다.
 
 ## 파일 규약
-- 일일 보고서 = 발행본 `daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(공개. 공개 이력이 있는 회차만 — 없는 회차는 렌더가 쓰지 않고 남은 파일을 지운다)과 전체본 `private/daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(비공개). 주간은 `daily/YYYY/weekly_YYYY-Www.md`. 카드 ID 는 `YYYY-MM-DD-{am|pm|wk}-NN`(불변).
+- 일일 보고서 = 발행본 `daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(공개. 공개 이력이 있는 회차만 — 없는 회차는 렌더가 쓰지 않고 남은 파일을 지운다)과 전체본 `private/daily/YYYY/MM/YYYY-MM-DD_{am,pm}.md`(비공개). 주간 회차는 2026-11-13 에 멈췄다(주간 발행본을 쓰는 코드는 없다). 카드 ID 는 `YYYY-MM-DD-{am|pm|wk}-NN`(불변).
 - 클레임 `claims/YYYY-MM-DD/<card_id>-cN.yaml`.
 - 지난 카드를 찾는 길: 카드 원장 `private/desk/ledger.csv`(비공개. `python -m ozl.research ledger` 가 쓰고, 채택과 발행 시각은 카드의 `history` 에서 뽑는다)와 발행 카드 색인 `daily/index.json`(공개. 렌더가 함께 쓰고, `publishable()` 통과분만 싣는다). `scripts/build_site.py` 가 색인으로 사이트 「기록」 쪽을 만들고, 색인이 가리키는 카드 자리표가 발행본에 없으면 빌드를 실패시킨다. 카드 원본이 없는 기기에서는 색인을 다시 쓰지 않는다(예외로 멈춘다).

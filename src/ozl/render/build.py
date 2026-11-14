@@ -1071,8 +1071,8 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
     ] + ([f"**{PIC.dropped_summary(dropped)}**", ""] if dropped else []) + [
         "## 장별 진행",
         "",
-        "| 쪽 | 단계 | 제목 | 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | 근거 | 그림 |",
-        "|---|---|---|---|---|---|---|---|",
+        "| 쪽 | 단계 | 제목과 말로만 할 핵심 문장 | 넘어가는 멘트 | 초 | 근거 | 그림 |",   # 제목 칸을 따로 두면 PDF 에서 글자 단위로 세로로 끊긴다
+        "|---|---|---|---|---|---|---|",
     ]
 
     def cell(x):
@@ -1084,7 +1084,8 @@ def running_sheet(spec: dict, card: dict, claims: dict, ts: str, pending: dict[i
         t += sec
         ids = ", ".join(str(c).rsplit("-", 1)[-1] + (f"「{C.GRADE_MACHINE}」" if str(c) in machine else "") for c in sl.get("claim_ids") or []) + (" [검증 대기]" if any(not str(c).startswith(S.WAIT_IMAGE) for c in pending.get(i, [])) else "")
         waits = {str(c)[len(S.WAIT_IMAGE):] for c in pending.get(i, []) if str(c).startswith(S.WAIT_IMAGE)}
-        lines.append(f"| {i} | {cell(sl.get('stage'))} | {cell(sl.get('title'))} | {cell(sl.get('spoken'))} | {cell(sl.get('transition'))} | {sec} | {ids} | {cell(visual_label(sl, waits=waits))} |")
+        head = f"**{cell(sl.get('title'))}** " if cell(sl.get('title')) else ""
+        lines.append(f"| {i} | {cell(sl.get('stage'))} | {head}{cell(sl.get('spoken'))} | {cell(sl.get('transition'))} | {sec} | {ids} | {cell(visual_label(sl, waits=waits))} |")
     charts_ = [(page_label(i, j), v["chart"]) for i, sl in enumerate(slides, 1) for j, v in S.slot_views(sl) if S.visual_of(v) == "chart"]
     if charts_:
         lines += ["", "## 차트", ""]

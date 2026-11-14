@@ -81,4 +81,4 @@ PY -m ozl.issues review add <번호> --kind "수정 확인" --by-model "<검토�
 
 ## 끝내기
 
-`PY -m ozl.issues status <번호>` 의 "검토 완료까지 빠진 것"이 비면 `work_state` 를 '게시 대기'로 바꾼다(파이썬으로. 이 칸은 내용 해시에 들어가지 않는다). 승인은 사용자가 운영 화면에서 한다.
+`PY -m ozl.issues article-check <번호>` 가 "오류 0"이고 `PY -m ozl.issues status <번호>` 의 "검토 완료까지 빠진 것"이 비면 `work_state` 를 '게시 대기'로 바꾼다(파이썬으로. 이 칸은 내용 해시에 들어가지 않는다). 그 뒤에 글이나 기록을 고치면 검토가 풀리므로 '검토 대기'로 되돌리고 다시 검토를 받는다(`SKILL.md` 8단계). 승인은 사용자가 운영 화면에서 한다.

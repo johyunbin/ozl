@@ -221,3 +221,15 @@ def test_generic_overlap_does_not_attach_news():
     post = item("가상반도체 3분기 영업이익 증가", "community", "bobae_best", "bobaedream", views=9000, votes=100, comments=30)
     other = item("가상식품 3분기 영업이익 증가", "news", "hk", outlet="가상경제")
     assert C.build([post, other])[0]["news"] == []
+
+
+def test_real_deck_without_sensitivity_warns():
+    d = copy.deepcopy(EXAMPLE)
+    d.pop("example")
+    d["brief_id"] = "2026-11-11-pm-b01"
+    d.pop("sensitivity", None)
+    err, warn = D.check(d, "2026-11-11-pm-b01")
+    assert err == [] and any("sensitivity 없음" in w for w in warn)
+    d["sensitivity"] = {"level": "GREEN", "reasons": []}
+    assert not any("sensitivity" in w for w in D.check(d, "2026-11-11-pm-b01")[1])
+    assert not any("sensitivity" in w for w in D.check(EXAMPLE)[1])      # 형식 예시는 묻지 않는다

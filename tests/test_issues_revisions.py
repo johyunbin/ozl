@@ -170,3 +170,20 @@ def test_edit_after_approval_needs_new_rev(real):
 def test_withdraw_needs_manifest_entry(desk):
     assert revisions.withdraw(I1, None, revisions.TEST_BY, "까닭")["code"] == 2
     assert revisions.withdraw(I1, None, "", "까닭")["code"] == 2
+
+
+# ── 게시 대기로 올린 뒤 내용이 바뀌면 검토가 풀린다: status 는 '검토 대기'로 보이고 경고하며, check 는 오류로 막는다 ──
+def test_stale_ready_shown_as_review_wait(desk, capsys):
+    ready(I1)
+    row = revisions.status_rows([I1])[0]
+    assert row["work_state"] == "게시 대기" and row["shown_state"] == "게시 대기" and not row["stale_ready"]
+    edit(I1, lambda i: i.__setitem__("what_new", i["what_new"].rstrip(".") + " 시험으로 고친 문장이다."))
+    row = revisions.status_rows([I1])[0]
+    assert row["work_state"] == "게시 대기"                    # 파일은 그대로 두고
+    assert row["review"] == "검토 대기" and row["stale_ready"] and row["shown_state"] == "검토 대기"
+    issue, evs = load(I1)
+    assert any(revisions.MSG_REVIEW in e for e in revisions.check_with_manifest(issue, evs)["errors"])
+    from ozl.issues.__main__ import main
+    assert main(["status", I1]) == 0
+    out = capsys.readouterr().out
+    assert revisions.STALE_READY in out and "경고:" in out

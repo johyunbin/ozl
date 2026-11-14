@@ -139,6 +139,8 @@ def _check(d: dict, path_stem: str | None) -> tuple[list[str], list[str]]:
     for k in ("headline", "updated_at", "category"):
         if not d.get(k):
             err.append(f"{k} 없음")
+    if not d.get("example") and not isinstance(d.get("sensitivity"), dict):
+        warn.append("sensitivity 없음 — 후보 파일의 민감 표시를 덱 최상위 sensitivity: {level, reasons} 로 옮긴다(skills/ozl-news 3단계)")
     if len(str(d.get("headline", ""))) > LIMITS["headline"]:
         warn.append(f"headline 이 {LIMITS['headline']}자를 넘는다")
     summ = d.get("summary") or []

@@ -200,10 +200,7 @@ def _preview_state(issue: dict, evs: dict, man: dict) -> str:
     lp = revisions.latest_public(issue["issue_id"], man)
     if lp is not None and (revisions.entry(man, "issue", issue["issue_id"], lp) or {}).get("content_hash") == digest.content_hash(issue, evs):
         return "게시"
-    ws = issue.get("work_state")
-    if ws == "게시 대기" and revisions.review_state(issue, evs) == "검토 대기":
-        return "검토 대기"
-    return ws or "작성 중"
+    return revisions.shown_work_state(issue, revisions.review_state(issue, evs))
 
 
 def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: list[str]) -> tuple[int, list[tuple[str, str]], dict]:
