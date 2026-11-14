@@ -428,6 +428,23 @@ class _TooBig(Exception):
     pass
 
 
+# launchd 로 뜬 운영 서버와 실행기의 PATH 에는 Homebrew 자리가 없다. PATH 에서 못 찾으면 흔한 설치 자리를 본다.
+# (2026-11-14: 셸에서는 통과하던 PDF 근거의 재검사가 운영 서버의 승인 화면에서는 "pdftotext 없음"으로 걸렸다.)
+PDFTOTEXT_DIRS = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin")
+
+
+def find_pdftotext() -> str | None:
+    """pdftotext 실행 파일의 경로. PATH 를 먼저 보고, 없으면 PDFTOTEXT_DIRS 를 차례로 본다. 못 찾으면 None."""
+    exe = shutil.which("pdftotext")
+    if exe:
+        return exe
+    for d in PDFTOTEXT_DIRS:
+        cand = os.path.join(d, "pdftotext")
+        if os.path.isfile(cand) and os.access(cand, os.X_OK):
+            return cand
+    return None
+
+
 def _pdftotext(exe: str, p: pathlib.Path, limit: int = MAX_PDF_TEXT, timeout: int = 120) -> str:
     """pdftotext 출력을 임시 파일로 받되 크기 상한을 넘으면 그 프로세스만 끝내고 멈춘다."""
     with tempfile.TemporaryDirectory(prefix="ozl-pdftext-") as td:
@@ -461,7 +478,7 @@ def extract_text(path, kind: str, charset: str = "") -> dict:
         if kind == "html":
             text = html_text(p.read_bytes(), charset)
         elif kind == "pdf":
-            exe = shutil.which("pdftotext")
+            exe = find_pdftotext()
             if not exe:
                 return {"ok": False, "text": "", "reason": "프로그램 대조 불가: pdftotext 없음"}
             text = _pdftotext(exe, p)
@@ -1203,7 +1220,7 @@ def _match_at(text: str, phrase: str, offset: int) -> tuple[dict | None, list[di
 
 def _pdf_words(pdf: pathlib.Path, page: int) -> tuple[float, float, list[tuple[float, float, float, float, str]]] | None:
     """pdftotext -bbox 로 한 쪽의 (쪽 폭, 쪽 높이, [(xMin, yMin, xMax, yMax, 낱말)]). 못 얻으면 None."""
-    exe = shutil.which("pdftotext")
+    exe = find_pdftotext()
     if not exe:
         return None
     with tempfile.TemporaryDirectory(prefix="ozl-bbox-") as td:

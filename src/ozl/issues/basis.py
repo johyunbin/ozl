@@ -55,7 +55,8 @@ def basis_errors(issue: dict) -> tuple[list[tuple[str, str]], list[tuple[str, st
                 elif not set(model.item_evidence_ids(f)) & links:
                     errs.append((f"{path}.basis_facts", f"판정을 받치는 사실({fid})의 근거가 이 주장의 근거 연결이나 "
                                                          "당사자 입장의 근거에 없다"))
-            if x.get("verdict") in ("확인", "사실과 다름") and not bf:
+            # 숨긴 주장(보류, 공개 제외)은 화면에 나가지 않는다 — 비어 나갈 줄이 없으니 알리지 않는다
+            if c.get("publish") == "게시 가능" and x.get("verdict") in ("확인", "사실과 다름") and not bf:
                 warns.append((f"{path}.basis_facts", MSG_BASIS_WARN))
         scope_blank = lambda v: cards._blank(v) or rules.norm(v) == rules.norm(model.NA)   # noqa: E731
         if c.get("verdict") in ("확인", "일부 맞음") and scope_blank(c.get("scope")):

@@ -359,6 +359,14 @@ def test_basis_party_position_evidence_ok_and_missing_warned(desk):
     assert has_w(warns(issue, evs), "claims.c5.parts.p2.basis_facts", "basis_facts")
 
 
+def test_basis_missing_not_warned_for_hidden_claim(desk):
+    """보류나 공개 제외로 숨긴 주장은 화면에 나가지 않는다. 판정을 받치는 사실이 비어도 알리지 않는다."""
+    issue, evs = load(I1)
+    del issue["claims"][0]["basis_facts"]
+    issue["claims"][0]["publish"] = "보류"
+    assert not has_w(warns(issue, evs), "claims.c1.basis_facts", "basis_facts")
+
+
 def test_basis_masked_with_fact(desk):
     issue, evs = load(I1)
     _elect(issue, ("f3",))
