@@ -12,17 +12,24 @@
 verdict() 는 줄의 값이 '불명'이고 policy 의 조건이 맞을 때만 '허용'을 돌려준다. '금지'는 어떤 policy 로도 풀리지 않는다.
 어느 쪽에서 나온 허용인지는 verdict_source() 가 알려 준다(보고서에 '운영 판단'이라고 밝히는 데 쓴다).
 
+사용자 결정(user_override): 대장이 허용하지 않는 쓰임을 사용자가 범위와 기한을 정해 직접 풀 수 있다. 비공개 파일
+(private/ops/ledger_overrides.yaml)에 적고, 손으로 돌리는 도구가 부르는 require() 만 이 파일을 본다. allowed() 와 verdict() 는
+보지 않으므로 자동 수집과 점수 계산은 대장의 판정만 따른다. 풀린 채로 요청할 때마다 그 사실을 표준 오류에 적는다.
+
 시험은 PATH 를 지어낸 대장 파일로 바꿔 끼운다(monkeypatch.setattr(ledger, "PATH", ...)) 또는 path 인자를 넘긴다.
 """
 from __future__ import annotations
 
+import datetime
 import pathlib
+import sys
 import threading
 
 import yaml
 
 PATH = pathlib.Path(__file__).resolve().parent / "sources_ledger.yaml"
 FEEDS_PATH = pathlib.Path(__file__).resolve().parent / "feeds.yaml"   # policy 의 scope: feeds 가 가리키는 피드 목록
+OVERRIDES_PATH = pathlib.Path(__file__).resolve().parents[3] / "private" / "ops" / "ledger_overrides.yaml"   # 사용자 결정(비공개)
 VERDICTS = ("허용", "금지", "불명")
 UNKNOWN = "불명"
 POLICY_USES = ("score_use", "store", "backup")   # 운영 판단이 열 수 있는 쓰임(점수, 비공개 보관, 비공개 백업). 수집, 공개, 수익은 원문 근거로만 연다
@@ -151,10 +158,48 @@ class Blocked(RuntimeError):
     """대장이 허용하지 않은 출처로 요청하려 했다."""
 
 
-def require(source_id: str, use: str = "collect", path: pathlib.Path | str | None = None) -> None:
-    """손으로 돌리는 도구가 요청 직전에 부른다. 허용이 아니면 Blocked 를 던진다(요청을 보내지 않는다)."""
-    if not allowed(source_id, use, path):
-        raise Blocked(f"{source_id}: {off_reason(source_id, use, path)} — 출처 대장(sources_ledger.yaml)이 허용하지 않아 요청하지 않는다")
+def _today() -> str:
+    return datetime.date.today().isoformat()
+
+
+def user_override(source_id: str, use: str = "collect", overrides_path: pathlib.Path | str | None = None,
+                  today: str | None = None) -> dict | None:
+    """사용자가 범위와 기한을 정해 직접 푼 결정. 조건을 모두 채운 줄만 돌려준다: uses 에 그 쓰임이 있고,
+    decided_by 가 '사용자'이고, decided_at 과 scope 가 적혀 있고, until(YYYY-MM-DD)이 오늘 이후다.
+    파일이 없거나 깨졌거나 칸이 하나라도 비면 None(풀리지 않는다)."""
+    p = pathlib.Path(overrides_path) if overrides_path is not None else OVERRIDES_PATH
+    try:
+        data = yaml.safe_load(p.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001 — 없음, 권한, 깨진 YAML 모두 '결정 없음'
+        return None
+    rules = data.get("overrides") if isinstance(data, dict) else None
+    rule = rules.get(str(source_id)) if isinstance(rules, dict) else None
+    if not isinstance(rule, dict):
+        return None
+    uses = rule.get("uses")
+    if not isinstance(uses, list) or use not in uses:
+        return None
+    if rule.get("decided_by") != "사용자" or not rule.get("decided_at") or not rule.get("scope"):
+        return None
+    until = str(rule.get("until") or "")
+    day = today or _today()
+    if len(until) != 10 or day > until:
+        return None
+    return rule
+
+
+def require(source_id: str, use: str = "collect", path: pathlib.Path | str | None = None,
+            overrides_path: pathlib.Path | str | None = None) -> None:
+    """손으로 돌리는 도구가 요청 직전에 부른다. 허용이 아니면 Blocked 를 던진다(요청을 보내지 않는다).
+    대장이 허용하지 않아도 사용자 결정(user_override)이 있으면 그 사실을 표준 오류에 적고 지나간다."""
+    if allowed(source_id, use, path):
+        return
+    rule = user_override(source_id, use, overrides_path)
+    if rule:
+        print(f"[ledger] {source_id}: 대장은 {verdict(source_id, use, path)}. 사용자 결정으로 진행한다 — "
+              f"{rule['scope']} (정한 때 {rule['decided_at']}, 기한 {rule['until']})", file=sys.stderr)
+        return
+    raise Blocked(f"{source_id}: {off_reason(source_id, use, path)} — 출처 대장(sources_ledger.yaml)이 허용하지 않아 요청하지 않는다")
 
 
 def scorable(off: set[str] | frozenset[str] = frozenset(), path: pathlib.Path | str | None = None):

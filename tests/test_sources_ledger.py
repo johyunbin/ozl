@@ -441,3 +441,52 @@ def test_real_ledger_policy_reaches_only_allowed_feeds():
     assert {u for _, u in opened} <= {"score_use", "store", "backup"}
     assert all(ledger._raw(L[i], "collect") == "허용" and i in ledger.feed_ids() for i, _ in opened)
     assert not any(ledger._raw(L[i], u) == "금지" for i, u in opened)
+
+
+# ── 사용자 결정(user_override) ───────────────────────────────────────
+def _write_override(tmp_path, rule):
+    p = tmp_path / "overrides.yaml"
+    p.write_text(yaml.safe_dump({"overrides": {"src_blocked": rule}}, allow_unicode=True), encoding="utf-8")
+    return p
+
+
+GOOD_RULE = {"uses": ["collect"], "decided_by": "사용자", "decided_at": "2026-01-02 03:04",
+             "scope": "지어낸 범위", "until": "2026-12-31"}
+
+
+def test_user_override_opens_require_only(tmp_path, monkeypatch, capsys):
+    write_ledger(tmp_path, {"src_blocked": {"collect": "금지", "score_use": "금지"}}, monkeypatch)
+    ov = _write_override(tmp_path, GOOD_RULE)
+    with pytest.raises(ledger.Blocked):
+        ledger.require("src_blocked")                                   # 결정 파일을 넘기지 않으면 막힌다
+    assert ledger.user_override("src_blocked", "collect", ov, today="2026-06-01") == GOOD_RULE
+    monkeypatch.setattr(ledger, "OVERRIDES_PATH", ov)
+    monkeypatch.setattr(ledger, "_today", lambda: "2026-06-01")
+    ledger.require("src_blocked")                                       # 지나간다
+    assert "사용자 결정으로 진행한다" in capsys.readouterr().err
+    assert ledger.allowed("src_blocked", "collect") is False            # 자동 수집이 묻는 쪽은 그대로 막힌다
+    assert ledger.verdict("src_blocked", "collect") == "금지"
+    with pytest.raises(ledger.Blocked):
+        ledger.require("src_blocked", "score_use")                      # 풀지 않은 쓰임은 막힌다
+
+
+@pytest.mark.parametrize("change", [
+    {"until": "2026-05-31"},            # 기한이 지남
+    {"until": ""},                      # 기한 없음
+    {"decided_by": "모델"},             # 사용자가 정한 것이 아님
+    {"scope": ""},                      # 범위 없음
+    {"decided_at": ""},                 # 정한 때 없음
+    {"uses": ["store"]},                # 다른 쓰임
+    {"uses": "collect"},                # 목록이 아님
+])
+def test_user_override_needs_every_field(tmp_path, change):
+    ov = _write_override(tmp_path, {**GOOD_RULE, **change})
+    assert ledger.user_override("src_blocked", "collect", ov, today="2026-06-01") is None
+
+
+def test_user_override_missing_or_broken_file(tmp_path):
+    assert ledger.user_override("src_blocked", "collect", tmp_path / "none.yaml") is None
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("overrides: [1, 2", encoding="utf-8")
+    assert ledger.user_override("src_blocked", "collect", bad) is None
+

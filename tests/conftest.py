@@ -28,3 +28,10 @@ def _permissive_ledger(request, monkeypatch):
     if hasattr(request.module, "REAL_LEDGER"):   # 옛 방식 — 표지로 바꾸라고 멈춘다
         raise RuntimeError(f"{request.module.__name__}: REAL_LEDGER 대신 pytestmark = pytest.mark.real_ledger 를 쓴다")
     monkeypatch.setattr(ledger, "load", lambda path=None: _AllowAll())
+
+
+@pytest.fixture(autouse=True)
+def _no_user_overrides(tmp_path_factory, monkeypatch):
+    """시험은 실제 사용자 결정 파일(private/ops/ledger_overrides.yaml)을 읽지 않는다."""
+    monkeypatch.setattr(ledger, "OVERRIDES_PATH", tmp_path_factory.getbasetemp() / "no_overrides.yaml")
+
