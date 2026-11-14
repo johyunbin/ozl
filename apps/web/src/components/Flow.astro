@@ -16,7 +16,9 @@ for (const g of b.verdicts.groups) for (const c of g.claims) for (const h of c.h
 rows.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
 const label = (f: Body["flow"][number]) => {
   if (f.event_date && f.report_date && f.event_date.slice(0, 10) !== f.report_date.slice(0, 10)) {
-    return `${fmtDate(f.event_date)} 일어남 · ${fmtDate(f.report_date)} 보도`;
+    // 앞으로 있을 일(종류가 '예정')은 아직 일어나지 않았다. '일어남'으로 적지 않는다.
+    const when = f.kind === "예정" ? "예정" : "일어남";
+    return `${fmtDate(f.event_date)} ${when} · ${fmtDate(f.report_date)} 보도`;
   }
   // 일어난 날을 확인하지 못한 항목은 보도된 날만 안다. 보도된 날을 일어난 날처럼 보이지 않게 밝혀 적는다.
   if (!f.event_date && f.report_date) return `${fmtDate(f.report_date)} 보도 · 일어난 날은 확인하지 못함`;
