@@ -52,9 +52,18 @@ def test_passage_image_has_only_the_passage_and_the_note(tmp_path):
 
 
 def test_passage_font_floor_and_failure():
-    mid = "가상의 섬 감자 수확량은 해마다 조금씩 늘어 왔다고 가상 통계청이 밝혔다. " * 9
-    p = _plan("", mid.strip(), "")
-    assert p is not None and 9 <= p[4] < 12                   # 길면 글자를 줄이되 9pt 아래로는 안 간다
+    # 글꼴마다 글자 폭이 달라(macOS 와 리눅스의 한글 글꼴) 같은 문장 수가 어느 크기에 들어가는지가 다르다.
+    # 문장 수를 늘려 가며 크기가 어떻게 줄어드는지를 본다 — 특정 문장 수에 특정 크기를 기대하지 않는다.
+    sent = "가상의 섬 감자 수확량은 해마다 조금씩 늘어 왔다고 가상 통계청이 밝혔다. "
+    sizes, p = [], None
+    for count in range(1, 80):
+        p = _plan("", (sent * count).strip(), "")
+        if p is None:
+            break
+        sizes.append(p[4])
+    assert sizes and p is None                                  # 짧으면 들어가고, 충분히 길면 실패한다
+    assert min(sizes) >= K.PASSAGE_PT[-1]                       # 줄이되 최소(9pt) 아래로는 안 간다
+    assert any(size < 12 for size in sizes)                     # 길면 12pt 아래로 줄인다
     assert _plan("", ("가상의 긴 문장이 이어진다. " * 200).strip(), "") is None    # 최소로도 안 들어가면 실패
 
 
