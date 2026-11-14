@@ -4,6 +4,7 @@
 """
 import hashlib
 import json
+import re
 import sqlite3
 
 import pytest
@@ -89,7 +90,8 @@ def test_case2_single_candidate(tmp_path):
     assert r["title"] == X and len(r["links"]) == 3 and r["links"][0]["kind"] == "news"
     assert b["zones"]["new"]["rows"] == ["t20300301-001"] and b["zones"]["ongoing"]["rows"] == []
     assert b["searches_unmatched"] == []
-    assert "500+" not in json.dumps(b, ensure_ascii=False)          # 검색량 원래 표기는 싣지 않는다
+    dump = re.sub(r"\d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2}", "", json.dumps(b, ensure_ascii=False))
+    assert "500+" not in dump          # 검색량 원래 표기는 싣지 않는다(계산 시각의 마이크로초가 우연히 500 으로 끝나도 걸리지 않게 시각은 뺀다)
     src = {s["kind"]: s for s in b["sources"]}
     assert src["검색"]["status"] == "성공" and src["위키백과"]["status"] == "꺼짐"
     assert src["언론"]["last_ok"] == "2030-03-01T13:05:00+09:00"
