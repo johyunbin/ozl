@@ -9,6 +9,14 @@
                                              # 계산은 늘 최신 판 계산이다. 1판 자료에 --schema-version 1 이면 '새 계산만 적용한 값'
     python -m ozl.syuka status
 
+3판(영상 → 토막, 지침 private/syuka/extract_guide_v3.md):
+    python -m ozl.syuka pilot-v3             # 시험 30편 → private/syuka/pilot30_v3.json
+    python -m ozl.syuka mark-v3 <video_id> [--start N --length M]
+                                             # 전사를 글자 위치·시각 표시와 함께 찍는다(토막 위치를 적을 때)
+    python -m ozl.syuka validate-v3 <파일>    # 검사. 오류를 한 줄씩(걸리면 종료 코드 1)
+    python -m ozl.syuka load-v3 <폴더>       # 검사를 통과한 파일을 v3_* 표에 넣는다(다시 돌려도 중복 없음)
+    python -m ozl.syuka find-v3 <낱말>       # 토막의 주제·질문·키워드·인물·기관·나라에서 찾아 올린 날 순으로
+
 1판의 원래 일치율 파일(1판 계산)은 private/syuka/agree.json 과 사본 agree_20261114_0602.json 이다. 덮어쓰지 않는다.
 """
 from __future__ import annotations
@@ -20,7 +28,7 @@ import re
 import sys
 from collections import Counter
 
-from . import agree, catalog, db, sample, schema
+from . import agree, catalog, db, db_v3, pilot, sample, schema, schema_v3
 
 def agree_out(version: int = schema.SCHEMA_VERSION) -> pathlib.Path:
     return db.DB_PATH.parent / f"agree_v{version}.json"
@@ -121,6 +129,129 @@ def cmd_status(con) -> int:
     return 0
 
 
+def v3_dir() -> pathlib.Path:
+    return db.DB_PATH.parent / schema_v3.EXTRACT_DIR
+
+
+def check_v3(con, path: pathlib.Path) -> tuple[dict | None, list[str]]:
+    """(파일 내용, 오류 목록). DB 의 videos 표에서 전사와 올린 날을 찾아 함께 검사한다."""
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        return None, [f"파일을 읽지 못했다: {e}"]
+    errs = []
+    vid = doc.get("video_id") if isinstance(doc, dict) else None
+    if isinstance(vid, str) and path.stem != vid:
+        errs.append(f"파일 이름: <video_id>.json 이어야 한다({path.name} ≠ {vid}.json)")
+    v = db.video(con, vid) if isinstance(vid, str) else None
+    transcript = None
+    if not v:
+        errs.append("video_id: videos 표에 없다(catalog 먼저)")
+    elif not v["has_transcript"]:
+        errs.append("video_id: 전사가 없는 영상이다")
+    else:
+        transcript = catalog.read_transcript(v["transcript_path"])
+    errs += schema_v3.validate_file(doc, transcript, v["upload_at"] if v else None)
+    return doc, errs
+
+
+def cmd_validate_v3(con, path: str) -> int:
+    doc, errs = check_v3(con, pathlib.Path(path))
+    if errs:
+        print("\n".join(errs))
+        return 1
+    print(f"통과 {doc['video_id']} · 토막 {doc['n_segments']}")
+    return 0
+
+
+def cmd_load_v3(con, folder: str) -> int:
+    d = pathlib.Path(folder)
+    files = sorted(d.glob("*.json")) if d.is_dir() else []
+    if not files:
+        print(f"JSON 파일이 없다: {d}", file=sys.stderr)
+        return 1
+    ok, bad = 0, 0
+    for f in files:
+        doc, errs = check_v3(con, f)
+        if errs:
+            bad += 1
+            print(f"걸림 {f.name} · 오류 {len(errs)}")
+            for e in errs:
+                print(f"  {e}")
+            continue
+        db_v3.put(con, doc)
+        ok += 1
+    c = db_v3.counts(con)
+    print(f"넣음 {ok} · 걸림 {bad} · 표: " + " · ".join(f"{t} {n}" for t, n in c.items()))
+    return 1 if bad else 0
+
+
+def cmd_find_v3(con, word: str) -> int:
+    rows = db_v3.find(con, word)
+    if not rows:
+        print(f"'{word}' 를 다룬 토막이 없다(3판 자료 {db_v3.counts(con)['v3_videos']}편 기준)")
+        return 0
+    for r in rows:
+        who = " · ".join(x for x in (r["main_person"], r["main_org"]) if x)
+        print(f"{(r['upload_at'] or '?')[:10]}  {r['video_id']} #{r['seg']}  {r['field']}  {r['topic_line']}"
+              + (f"  [{who}]" if who else "") + f"  ({', '.join(r['matched'])})")
+        for c in con.execute("SELECT point, value, unit, as_of FROM v3_claims WHERE video_id=? AND seg=? "
+                             "AND value IS NOT NULL ORDER BY i LIMIT 3", (r["video_id"], r["seg"])):
+            print(f"      {c['point']}: {c['value']}{c['unit'] or ''}" + (f" ({c['as_of']})" if c["as_of"] else ""))
+    print(f"토막 {len(rows)}개 · 영상 {len({r['video_id'] for r in rows})}편")
+    return 0
+
+
+def cmd_pilot_v3(con) -> int:
+    rows = [dict(r) for r in con.execute("SELECT * FROM videos")]
+    if not rows:
+        print("videos 표가 비었다 — 먼저 catalog", file=sys.stderr)
+        return 1
+    exclude = {v["video_id"] for v in json.loads(sample.OUT.read_text(encoding="utf-8"))["videos"]} if sample.OUT.exists() else set()
+    if not exclude:
+        print("표본 60편 파일이 없다 — 겹침을 피할 수 없어 멈춘다", file=sys.stderr)
+        return 1
+    picks = pilot.pick(rows, sample.load_tags(), exclude)
+    out = pilot.write(picks)
+    grid = Counter((r["upload_at"][:4], r["kind"]) for r in picks)
+    print(f"시험 {len(picks)}편 → {out} (표본과 겹침 {len({r['video_id'] for r in picks} & exclude)})")
+    for y in sorted({y for y, _ in grid}):
+        print(f"  {y} 본편 {grid[(y, '본편')]} · 생방송 전체 {grid[(y, '생방송 전체')]}")
+    print(f"  광고 표시 제목 {sum(r['ad_title'] for r in picks)}편")
+    return 0
+
+
+def cmd_mark_v3(con, video_id: str, every: int, start: int = 0, length: int | None = None) -> int:
+    v = db.video(con, video_id)
+    if not v or not v["has_transcript"]:
+        print("videos 표에 없거나 전사가 없는 영상이다", file=sys.stderr)
+        return 1
+    p = pathlib.Path(v["transcript_path"])
+    d = json.loads((p if p.is_absolute() else catalog.ROOT / p).read_text(encoding="utf-8"))
+    text = catalog.read_transcript(v["transcript_path"])
+    # 글자 위치 → 시각(다글로 segments 의 start). 유튜브 자막은 시각이 없다.
+    starts, pos = [], 0
+    for s in d.get("segments") or []:
+        t = s.get("text") or ""
+        i = text.find(t, pos) if t else -1
+        if i >= 0:
+            starts.append((i, s.get("start")))
+            pos = i + len(t)
+    stop = len(text) if length is None else min(len(text), start + length)
+    print(f"# {video_id} · 전사 {len(text)}자 · 출처 {v['transcript_source']} · 표시 {every}자마다 · 이번에 찍는 범위 {start}~{stop}")
+    j, out = 0, []
+    for a in range(start - start % every, stop, every):
+        while j + 1 < len(starts) and starts[j + 1][0] <= a:
+            j += 1
+        sec = starts[j][1] if starts and starts[j][0] <= a else None
+        tm = (f" · {int(sec) // 3600}:{int(sec) % 3600 // 60:02d}:{int(sec) % 60:02d} ({int(sec)}초)"
+              if isinstance(sec, (int, float)) else "")
+        out.append(f"\n⟦글자 {a}{tm}⟧\n{text[max(a, start):min(a + every, stop)]}")
+    print("".join(out))
+    print(f"\n⟦끝 · 글자 {len(text)}⟧" if stop >= len(text) else f"\n⟦여기까지 {stop} · 다음은 --start {stop}⟧")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m ozl.syuka")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -133,6 +264,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("models", nargs="*", default=["opus", "sonnet"])
     p.add_argument("--schema-version", type=int, default=schema.SCHEMA_VERSION, choices=sorted(schema.EXTRACT_DIRS))
     sub.add_parser("status")
+    sub.add_parser("pilot-v3")
+    p = sub.add_parser("mark-v3")
+    p.add_argument("video_id")
+    p.add_argument("--every", type=int, default=2000)
+    p.add_argument("--start", type=int, default=0)
+    p.add_argument("--length", type=int, default=None)
+    p = sub.add_parser("validate-v3")
+    p.add_argument("path")
+    p = sub.add_parser("load-v3")
+    p.add_argument("folder")
+    p = sub.add_parser("find-v3")
+    p.add_argument("word")
     a = ap.parse_args(argv)
     con = db.connect(db.DB_PATH)
     try:
@@ -146,6 +289,16 @@ def main(argv: list[str] | None = None) -> int:
             if len(a.models) != 2:
                 ap.error("agree 는 모델 두 개")
             return cmd_agree(con, *a.models, version=a.schema_version)
+        if a.cmd == "pilot-v3":
+            return cmd_pilot_v3(con)
+        if a.cmd == "mark-v3":
+            return cmd_mark_v3(con, a.video_id, max(200, a.every), max(0, a.start), a.length)
+        if a.cmd == "validate-v3":
+            return cmd_validate_v3(con, a.path)
+        if a.cmd == "load-v3":
+            return cmd_load_v3(con, a.folder)
+        if a.cmd == "find-v3":
+            return cmd_find_v3(con, a.word)
         return cmd_status(con)
     finally:
         con.close()
