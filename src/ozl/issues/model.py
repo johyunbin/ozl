@@ -41,7 +41,9 @@ ISSUE_FIELDS = ("issue_id", "slug", "aliases", "revision", "split_from", "merged
                 "reason", "publish", "sensitive", "election", "syuka_deck", "event_check", "titles", "rev_line", "what_new",
                 "why_matters", "so_far", "so_far_refs", "numbers", "facts", "claims", "flow", "stances", "open_questions",
                 "spillover", "figures", "reviews", "corrections", "production", "topic_state", "trend", "work_state", "history",
-                "identifiers")
+                "identifiers", "article")
+# article(2026-11-14 더함) = 읽는 층의 글. issue.yaml 에 쓰지 않고 같은 폴더의 article.yaml 에 두며, load_issue 가 붙여 읽고
+# save_issue 가 떼어 낸다. 승인 고정 사본(revisions/rN/issue.yaml)에는 함께 든다. 없으면 지문에서 빠진다(digest.OPTIONAL_TOP).
 # identifiers(구현에서 더함) = 이름 속 숫자 표기(KTX-1, 제2형)의 목록. 덱 사양의 identifiers 와 같은 뜻(numbers.identifier_error).
 # 비어 있거나 없으면 지문에서 빠진다(digest.issue_view) — 이 칸이 생기기 전의 이슈의 내용 해시가 바뀌지 않게.
 REQUIRED = ("issue_id", "slug", "revision", "category", "keywords", "example", "publish", "sensitive", "syuka_deck",
@@ -73,12 +75,24 @@ def save_yaml(p, d: dict) -> None:
     paths.write_atomic(pathlib.Path(p), dump_yaml(d))
 
 
+ARTICLE_KEY = "article"
+ARTICLE_FILE = "article.yaml"
+
+
 def load_issue(issue_id: str) -> dict:
-    return load_yaml(paths.issue_file(issue_id))
+    """작업본 issue.yaml. 같은 폴더에 article.yaml 이 있으면 issue['article'] 로 붙인다(글이 지문과 검사에 들게)."""
+    d = load_yaml(paths.issue_file(issue_id))
+    if ARTICLE_KEY in d:
+        raise ValueError(f"issue.yaml 에 article 칸을 두지 않는다 — 글은 {ARTICLE_FILE} 에 쓴다: {issue_id}")
+    p = paths.issue_dir(issue_id) / ARTICLE_FILE
+    if p.is_file():
+        d[ARTICLE_KEY] = load_yaml(p)
+    return d
 
 
 def save_issue(issue: dict) -> None:
-    save_yaml(paths.issue_file(issue["issue_id"]), issue)
+    """작업본 issue.yaml 을 쓴다. 붙여 읽은 글(article)은 쓰지 않는다(글은 article.yaml 에만 있다)."""
+    save_yaml(paths.issue_file(issue["issue_id"]), {k: v for k, v in issue.items() if k != ARTICLE_KEY})
 
 
 def load_evidences(issue_id: str, folder=None) -> dict[str, dict]:

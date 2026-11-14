@@ -17,6 +17,7 @@ from ozl.issues import body as B  # noqa: E402
 from ozl.issues import export, mask, model, paths, revisions, style, units  # noqa: E402
 from test_issues_check import I1, I2, desk, load  # noqa: E402,F401
 from test_issues_revisions import approve, claim, edit, ready, real  # noqa: E402,F401
+from test_issues_article import write as write_article  # noqa: E402  (이슈 목록에는 글이 있는 이슈만 실린다)
 
 SLUG1, SLUG2 = "hanbit-bus-fare-400", "nuri-battery-recall"
 
@@ -43,6 +44,7 @@ def file_bytes(*ps):
 
 
 def test_preview_marks_states(real, tmp_path):
+    write_article(I1), write_article(I2)
     ready(I1)
     assert approve(I1)["code"] == 0
     edit(I2, lambda i: i.update(work_state="게시 대기"))
@@ -72,6 +74,7 @@ def test_public_only_manifest(real, contact, tmp_path):
 
 
 def test_excluded_content_not_in_public(real, contact, tmp_path, monkeypatch):
+    write_article(I2)
     ready(I2)
     assert approve(I2)["code"] == 0
     out = tmp_path / "pub"
@@ -208,6 +211,7 @@ def test_test_out_dir_guard(desk, tmp_path):
 
 
 def test_example_flag(real, contact, tmp_path):
+    write_article(I1)
     ready(I1)
     assert approve(I1)["code"] == 0
     assert run(tmp_path / "pub")["code"] == 0

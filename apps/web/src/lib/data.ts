@@ -37,6 +37,22 @@ export type Body = {
   spillover: { issues: string[]; similar_cases: { text: string; url: string }[] };
   figures: Figure[]; sources: Source[]; corrections: Correction[]; ai_notice: string;
   trend: Trend | null; trend_now: Trend | null; internal: Internal | null;
+  /** 읽는 층의 글(명세 2절의 article.yaml 칸 그대로). 없으면 이 이슈는 사이트에 나오지 않는다. */
+  article: Article | null;
+};
+
+// ---------- 글(읽는 층) ----------
+export type ArtNumber = { value: string; unit: string; label: string; refs: number[] };
+export type ArtPoint = { head: string; text: string };
+export type ArtNews = { date: string; label: string; planned: boolean; new: boolean; items: string[] };
+export type ArtView = { topic: string; sides: { who: string; text: string }[] };
+export type ArtSource = { n: number; kind: string; publisher: string; title: string; date: string; url: string; evidence: string };
+export type Article = {
+  slug: string; category: string; state: string; started: string; as_of: string; title: string; dek: string;
+  summary: string[]; numbers: ArtNumber[]; what: string[]; why: { lead: string; points: ArtPoint[] } | null;
+  news: ArtNews[]; earlier: ArtNews[];
+  status: { confirmed: string[]; reported: string[]; alleged: string[]; unknown: string[] };
+  views: ArtView[]; next: ArtPoint[]; sources: ArtSource[]; changes: { at: string; what: string }[];
 };
 export type IndexRow = {
   id: string; slug: string; title: string; topic_state: string; rev: number | null; rev_at: string; rev_line: string;
@@ -62,8 +78,13 @@ export type Issue = { slug: string; latest: Body; revs: Map<number, Body>; taken
 export type Site = {
   meta: Meta; index: IndexRow[]; issues: Map<string, Issue>; days: Map<string, Day>; keywords: Map<string, Keyword>;
   corrections: Correction[]; takedowns: { id: string; rev: number | null; at: string }[]; aliases: Record<string, string[]>;
+  /** 첫 화면 "지금 가장 큰 이야기"의 줄 차례(선택 파일 stories.json). 없으면 빈 목록이고 글만 as_of 최신순으로 그린다. */
+  stories: Story[];
   warnings: string[];
 };
+/** slug 가 있으면 그 글의 줄. 없으면 글이 없는 화제 줄(state: "정리 중" | "기사 묶음"). */
+export type Story = { slug: string; title: string; dek: string; state: string; started: string; as_of: string; outlets: number | null };
+export const STORY_STATES = ["정리 중", "기사 묶음"];
 
 /**
  * 자료에서 온 주소를 href 에 넣어도 되는지. http://, https:// 로 시작하는 것만 돌려주고 나머지(javascript:, data:, 상대 경로 등)는 undefined.
@@ -224,6 +245,48 @@ function trend(v: unknown, w: string): Trend | null {
   return { score: n(v, "score", w), bars7: bars, asof: str(v, "asof", w), formula_version: n(v, "formula_version", w) };
 }
 
+function artNews(o: O, w: string): ArtNews {
+  return { date: dateStr(o, "date", w), label: str(o, "label", w), planned: bool(o, "planned"), new: bool(o, "new"), items: strs(o, "items", w) };
+}
+function artPoints(o: O, k: string, w: string): ArtPoint[] {
+  return objs(o, k, w).map((p, i) => ({ head: str(p, "head", `${w}.${k}[${i}]`), text: str(p, "text", `${w}.${k}[${i}]`) })).filter((p) => p.head || p.text);
+}
+/** 글 묶음. 칸이 비면 빈 값으로 두고, 화면은 빈 구역을 그리지 않는다. 필수 칸 검사는 내보내기 쪽(article-check)이 한다. */
+function article(o: O, w: string, slug: string): Article | null {
+  const title = str(o, "title", w);
+  if (!title) {
+    warn(`${w}: title 이 없어 글로 읽지 않는다`);
+    return null;
+  }
+  const st = sub(o, "status", w);
+  const why = isObj(o["why"]) ? (o["why"] as O) : null;
+  return {
+    slug, category: str(o, "category", w), state: str(o, "state", w), started: dateStr(o, "started", w), as_of: dateStr(o, "as_of", w),
+    title, dek: str(o, "dek", w), summary: strs(o, "summary", w),
+    numbers: objs(o, "numbers", w).map((x, i) => {
+      const nw = `${w}.numbers[${i}]`;
+      return { value: str(x, "value", nw), unit: str(x, "unit", nw), label: str(x, "label", nw),
+        refs: arr(x, "refs", nw).filter((r): r is number => typeof r === "number" && Number.isInteger(r)) };
+    }).filter((x) => x.value),
+    what: arr(o, "what", w).map((x) => (typeof x === "string" ? x : isObj(x) ? str(x, "text", `${w}.what`) : "")).filter((x) => x.trim() !== ""),
+    why: why ? { lead: str(why, "lead", `${w}.why`), points: artPoints(why, "points", `${w}.why`) } : null,
+    news: objs(o, "news", w).map((x, i) => artNews(x, `${w}.news[${i}]`)).filter((x) => x.items.length),
+    earlier: objs(o, "earlier", w).map((x, i) => artNews(x, `${w}.earlier[${i}]`)).filter((x) => x.items.length),
+    status: { confirmed: strs(st, "confirmed", `${w}.status`), reported: strs(st, "reported", `${w}.status`),
+      alleged: strs(st, "alleged", `${w}.status`), unknown: strs(st, "unknown", `${w}.status`) },
+    views: objs(o, "views", w).map((v, i) => ({ topic: str(v, "topic", `${w}.views[${i}]`),
+      sides: objs(v, "sides", `${w}.views[${i}]`).map((s, j) => ({ who: str(s, "who", `${w}.views[${i}].sides[${j}]`), text: str(s, "text", `${w}.views[${i}].sides[${j}]`) })).filter((s) => s.text) }))
+      .filter((v) => v.sides.length),
+    next: artPoints(o, "next", w),
+    sources: objs(o, "sources", w).map((x, i) => {
+      const sw = `${w}.sources[${i}]`;
+      return { n: n(x, "n", sw) ?? i + 1, kind: str(x, "kind", sw), publisher: str(x, "publisher", sw), title: str(x, "title", sw),
+        date: dateStr(x, "date", sw), url: safeHref(str(x, "url", sw)) ?? "", evidence: str(x, "evidence", sw) };
+    }),
+    changes: objs(o, "changes", w).map((c, i) => ({ at: str(c, "at", `${w}.changes[${i}]`), what: str(c, "what", `${w}.changes[${i}]`) })).filter((c) => c.what),
+  };
+}
+
 function body(raw: unknown, file: string): Body | null {
   if (!isObj(raw)) {
     warn(`${file}: 본문이 사전이 아니다`);
@@ -272,6 +335,7 @@ function body(raw: unknown, file: string): Body | null {
     // 공개용에서는 읽어 들이지 않는다(출력 자체가 없게).
     trend_now: IS_PUBLIC ? null : trend(raw["trend_now"], `${w}.trend_now`),
     internal: null,
+    article: isObj(raw["article"]) ? article(raw["article"] as O, `${w}.article`, slug) : null,
   };
   if (!IS_PUBLIC && isObj(raw["internal"])) {
     const it = raw["internal"] as O;
@@ -400,6 +464,11 @@ export function loadSite(): Site {
         if (b) revs.set(Number(mm[1]), b);
       }
     }
+    // 글이 없는 이슈는 사이트에 내지 않는다(명세 1절). 옛 화면으로도 만들지 않는다.
+    if (!latest.article) {
+      warn(`issues/${row.slug}.json: 글(article)이 없어 사이트에 내지 않는다`);
+      continue;
+    }
     const takenDown = new Set(takedowns.filter((t) => t.id === latest.id && t.rev !== null).map((t) => t.rev as number));
     issues.set(row.slug, { slug: row.slug, latest, revs, takenDown });
   }
@@ -455,12 +524,25 @@ export function loadSite(): Site {
   const aliases: Record<string, string[]> = {};
   if (isObj(araw)) for (const [k, v] of Object.entries(araw)) if (Array.isArray(v)) aliases[k] = v.filter((x) => typeof x === "string");
 
+  // stories.json(첫 화면의 화제 줄 차례, 선택)
+  const sraw = readJson("stories.json");
+  const stories: Story[] = (isObj(sraw) ? objs(sraw, "items", "stories.json") : []).map((x, i) => {
+    const w = `stories.json items[${i}]`;
+    return { slug: str(x, "slug", w), title: str(x, "title", w), dek: str(x, "dek", w), state: str(x, "state", w),
+      started: dateStr(x, "started", w), as_of: dateStr(x, "as_of", w), outlets: n(x, "outlets", w) };
+  }).filter((x, i) => {
+    if (x.slug) return issues.has(x.slug);
+    if (x.title && x.dek && STORY_STATES.includes(x.state)) return true;
+    warn(`stories.json items[${i}]: 글이 없는 줄은 title, dek, state(${STORY_STATES.join(", ")})가 있어야 한다`);
+    return false;
+  });
+
   // 옛 주소가 지금 이슈의 주소와 같으면 만들지 않는다.
   for (const is of issues.values()) {
     for (const a of is.latest.aliases) if (issues.has(a)) warn(`${is.slug}: 옛 주소 ${a} 가 지금 있는 이슈의 주소와 같아 안내 쪽을 만들지 않는다`);
   }
 
-  cache = { meta, index, issues, days, keywords: kws, corrections, takedowns, aliases, warnings };
+  cache = { meta, index, issues, days, keywords: kws, corrections, takedowns, aliases, stories, warnings };
   try {
     const dir = path.join(process.cwd(), ".astro");
     fs.mkdirSync(dir, { recursive: true });

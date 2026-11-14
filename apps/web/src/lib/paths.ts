@@ -28,3 +28,5 @@ export const keywordSlugUrl = (slug: string) => url(`k/${encodeURI(slug)}/`);
 export const cardsUrl = (slug: string) => url(`i/${slug}/cards/`);
 /** 카드 그림 전용 화면(미리보기 빌드에만 있다). */
 export const cardsPrintUrl = (slug: string) => url(`i/${slug}/cards/print/`);
+/** 검증 상세(옛 판정 화면). 글 꼬리말에서만 링크한다(명세 1절). */
+export const checkUrl = (slug: string) => url(`i/${slug}/check/`);

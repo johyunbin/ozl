@@ -32,11 +32,14 @@ main.wrap { padding-top: var(--sp-5); padding-bottom: var(--sp-7); }
 main:focus { outline: none; }
 
 /* 머리 줄 */
-.site-header { border-bottom: 1px solid var(--rule); }
-.site-header .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; min-height: 48px; gap: 0 var(--sp-4); }
-.site-header .brand { font-weight: 700; font-size: var(--fs-lg); color: var(--text); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+.site-header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--rule); }
+.site-header .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; min-height: var(--header-h); gap: 0 var(--sp-4); }
+.site-header .brand { font-weight: 800; font-size: 1.125rem; letter-spacing: 0.02em; color: var(--text); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 .site-header nav { display: flex; gap: var(--sp-4); }
-.site-header nav a { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-sm); }
+.site-header nav a { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-xs); color: var(--muted); text-decoration: none; }
+.site-header nav a:hover { color: var(--text); }
+/* 머리 줄이 붙어 있으므로 쪽 안 링크로 간 곳이 그 밑에 가리지 않게 */
+[id] { scroll-margin-top: calc(var(--header-h) + var(--sp-3)); }
 
 
 /* 바닥 */
@@ -129,5 +132,6 @@ html[data-view="short"] [data-short="hide"] { display: none; }
   .two-col > .main-col, .two-col > .col-main { min-width: 0; }
   .only-wide { display: block; }
   .only-narrow { display: none; }
-  .two-col > aside.side { position: sticky; top: var(--sp-4); max-height: calc(100vh - 2 * var(--sp-4)); overflow-y: auto; padding-bottom: var(--sp-4); }
+  /* 머리 줄도 붙어 있으므로 그 밑에서 멈춘다(위에 두면 옆 칸 첫 줄이 머리 줄 뒤에 가린다) */
+  .two-col > aside.side { position: sticky; top: calc(var(--header-h) + var(--sp-4)); max-height: calc(100vh - var(--header-h) - 2 * var(--sp-4)); overflow-y: auto; padding-bottom: var(--sp-4); }
 }

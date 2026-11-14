@@ -1,28 +1,55 @@
-/* 색, 글자, 간격 토큰(설계 3절). 어두운 화면은 따로 정한 값이다. */
+/* 색, 글자, 간격 토큰(설계 3절). 값은 2026-11-14 확인한 시안(이슈 화면, 첫 화면)에서 옮겼다.
+   밝은 바탕이 기본이고, 어두운 바탕은 기기 설정을 따른다. 본문 글자와 바탕의 대비는 4.5:1 이상으로 맞췄다(DESIGN.md 3절 표). */
 :root {
   color-scheme: light;
-  --bg: #faf8f3;
-  --surface: #f1ede3;
-  --text: #1b1b1b;
-  --muted: #5c5850;
-  --accent: #0b5a73;
+  --bg: #ffffff;
+  --surface: #f5f6f8;
+  --text: #16181d;
+  --muted: #5b6472;
+  --accent: #1f4fd8;
   --v-confirmed: #1f6438;
   --v-partial: #7a4f00;
   --v-false: #8e2a1c;
   --v-unknown: #565b61;
-  --rule-strong: #8a8478;
-  --rule: #d8d2c5;
-  --heat-1: #ece6d8;
-  --heat-2: #dcd3c0;
+  --rule-strong: #7f8590;
+  --rule: #e6e8ec;
+  --heat-1: #eceef2;
+  --heat-2: #d9dde3;
+
+  /* 글의 "어디까지 확인됐나" 네 묶음과 첫 화면의 상태 표시 */
+  --st-ok: #16794a;
+  --st-ok-bg: #e9f6ef;
+  --st-report: #1f4fd8;
+  --st-report-bg: #eaf0fe;
+  --st-alleg: #a14a07;
+  --st-alleg-bg: #fdf1e1;
+  --st-unk: #5b6472;
+  --st-unk-bg: #eff1f4;
+  --st-wait: #8a6100;
+  --st-wait-bg: #fdf3d7;
+  /* 새 소식과 진행 중 표시. --hot 은 글자색, --hot-dot 은 점(장식), 꼬리표는 --badge-bg 위에 --badge-text */
+  --hot: #c8282e;
+  --hot-dot: #e5484d;
+  --badge-bg: #c8282e;
+  --badge-text: #ffffff;
 
   --font-body: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
   --font-title: var(--font-body);
 
-  --fs-xs: 0.8125rem;
-  --fs-sm: 0.9375rem;
-  --fs-md: 1.0625rem;
-  --fs-lg: 1.25rem;
+  --fs-2xs: 0.75rem;     /* 12px 꼬리표 */
+  --fs-xs: 0.8125rem;    /* 13px 메타 줄 */
+  --fs-sm: 0.9375rem;    /* 15px */
+  --fs-src: 0.90625rem;  /* 14.5px 출처, 접힌 글 */
+  --fs-body-sm: 1.03125rem; /* 16.5px 요약, 새 소식 */
+  --fs-md: 1.0625rem;    /* 17px 본문 */
+  --fs-lg: 1.25rem;      /* 20px 구역 제목 */
   --fs-xl: 1.5rem;
+  --fs-h1: 1.6875rem;    /* 27px, 560px 이상 31px */
+  --fs-num: 1.625rem;    /* 26px 핵심 숫자 */
+  --lh-body: 1.75;
+
+  --radius: 14px;
+  --radius-sm: 4px;
 
   --sp-1: 4px;
   --sp-2: 8px;
@@ -34,48 +61,79 @@
 
   --gutter: 16px;
   --measure: 40rem;
+  --header-h: 52px;
+}
+
+@media (min-width: 560px) {
+  :root { --fs-h1: 1.9375rem; --gutter: 20px; }
 }
 
 @media (min-width: 768px) {
   :root {
-    --fs-lg: 1.3125rem;
     --fs-xl: 1.75rem;
-    --gutter: 24px;
   }
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #14161a;
-    --surface: #23272e;
-    --text: #e8e6e1;
-    --muted: #b5b1a9;
-    --accent: #79c6db;
+    --bg: #101216;
+    --surface: #181b21;
+    --text: #eceef2;
+    --muted: #9aa3b2;
+    --accent: #8fb0ff;
     --v-confirmed: #7fd39a;
     --v-partial: #e8c06a;
     --v-false: #f29483;
     --v-unknown: #c3c7cd;
-    --rule-strong: #7d828a;
-    --rule: #2f333a;
-    --heat-1: #242830;
-    --heat-2: #30353e;
+    --rule-strong: #6b7380;
+    --rule: #272b33;
+    --heat-1: #1f232b;
+    --heat-2: #2b3038;
+    --st-ok: #5fd09a;
+    --st-ok-bg: #13281f;
+    --st-report: #8fb0ff;
+    --st-report-bg: #16213d;
+    --st-alleg: #f0b46a;
+    --st-alleg-bg: #33240f;
+    --st-unk: #a2a9b6;
+    --st-unk-bg: #1f232b;
+    --st-wait: #f0c060;
+    --st-wait-bg: #33290f;
+    --hot: #ff6b70;
+    --hot-dot: #ff6b70;
+    --badge-bg: #ff6b70;
+    --badge-text: #101216;
   }
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #14161a;
-  --surface: #23272e;
-  --text: #e8e6e1;
-  --muted: #b5b1a9;
-  --accent: #79c6db;
+  --bg: #101216;
+  --surface: #181b21;
+  --text: #eceef2;
+  --muted: #9aa3b2;
+  --accent: #8fb0ff;
   --v-confirmed: #7fd39a;
   --v-partial: #e8c06a;
   --v-false: #f29483;
   --v-unknown: #c3c7cd;
-  --rule-strong: #7d828a;
-  --rule: #2f333a;
-  --heat-1: #242830;
-  --heat-2: #30353e;
+  --rule-strong: #6b7380;
+  --rule: #272b33;
+  --heat-1: #1f232b;
+  --heat-2: #2b3038;
+  --st-ok: #5fd09a;
+  --st-ok-bg: #13281f;
+  --st-report: #8fb0ff;
+  --st-report-bg: #16213d;
+  --st-alleg: #f0b46a;
+  --st-alleg-bg: #33240f;
+  --st-unk: #a2a9b6;
+  --st-unk-bg: #1f232b;
+  --st-wait: #f0c060;
+  --st-wait-bg: #33290f;
+  --hot: #ff6b70;
+  --hot-dot: #ff6b70;
+  --badge-bg: #ff6b70;
+  --badge-text: #101216;
 }

@@ -15,9 +15,9 @@ from . import model
 DIGEST_FIELDS = ("issue_id", "slug", "aliases", "revision", "split_from", "merged_into", "category", "keywords", "example",
                  "reason", "publish", "sensitive", "election", "syuka_deck", "event_check", "titles", "rev_line", "what_new",
                  "why_matters", "so_far", "so_far_refs", "numbers", "facts", "claims", "flow", "stances", "open_questions",
-                 "spillover", "figures", "corrections", "production", "identifiers")
+                 "spillover", "figures", "corrections", "production", "identifiers", "article")
 # 나중에 더한 칸 — 없거나 비어 있으면 지문 계산에서 뺀다(그 칸이 생기기 전 이슈의 내용 해시와 검토 기록이 그대로 맞게).
-OPTIONAL_TOP = ("identifiers",)
+OPTIONAL_TOP = ("identifiers", "article")      # article = 읽는 층의 글(article.yaml). 글이 없는 이슈의 지문은 예전과 같다
 OPTIONAL_CLAIM = ("basis_facts",)               # 주장과 작은 주장 안의 칸
 DIGEST_SKIP = ("topic_state", "trend", "work_state", "history", "reviews")
 BODY_SKIP = ("header", "footer", "trend", "trend_now", "internal")
@@ -75,8 +75,14 @@ def issue_view(issue: dict) -> dict:
     return v
 
 
+def _cited_ids(issue: dict) -> list[str]:
+    """지문과 고정 사본이 담는 근거 번호 — 검증 기록이 인용한 것과 글의 출처가 이어진 것."""
+    from .article import evidence_ids
+    return sorted(set(model.cited_evidence_ids(issue)) | set(evidence_ids(issue.get("article"))))
+
+
 def cited(issue: dict, evidences: dict) -> list[str]:
-    return sorted(set(model.cited_evidence_ids(issue)))
+    return _cited_ids(issue)
 
 
 def content_hash(issue: dict, evidences: dict) -> str:
@@ -112,7 +118,7 @@ def snapshot_hash(snap) -> str:
         return ""
     iv = issue_view(snap["issue"])
     evs = snap.get("evidence") or {}
-    rows = [evs[e] if e in evs else {"evidence_id": e, "missing": True} for e in sorted(set(model.cited_evidence_ids(iv)))]
+    rows = [evs[e] if e in evs else {"evidence_id": e, "missing": True} for e in _cited_ids(iv)]
     return _canon([iv, rows])
 
 

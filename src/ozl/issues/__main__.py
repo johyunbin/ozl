@@ -13,6 +13,8 @@
     withdraw 대상 [--rev N] --by 이름 --reason 까닭
     status [번호 …] [--json]
     links [--json] [--write-map]                                      0 누락 0건, 1 누락 있음
+    article-check 번호 [--json]                                       글(article.yaml) 검사. 0 오류 없음, 1 오류, 2 사용 오류·글 없음
+    article-new slug --category 분야 --title 제목 [--date YYYY-MM-DD]   번호를 받아 폴더, 최소 issue.yaml, 빈 글 뼈대를 쓴다
 """
 from __future__ import annotations
 
@@ -25,6 +27,7 @@ import yaml
 
 from ozl.research import cards
 
+from . import article as ART
 from . import digest, export, ids, links, model, numbers, paths, revisions, units
 from . import evidence as EV
 
@@ -72,16 +75,19 @@ def _exempt_note(iid: str) -> str:
         return ""
 
 
+def _taken_slugs() -> set:
+    taken: set = set()
+    for i in model.all_issue_ids():
+        x = model.load_issue(i)
+        taken |= {x.get("slug")} | {s for s in (x.get("aliases") or []) if isinstance(x.get("aliases"), list)}
+    return taken | {e.get("slug") for e in revisions.load_manifest()["entries"] if e.get("unit") == "issue"}
+
+
 def _new(a) -> int:
     if ids.slug_error(a.slug):
         return _err(ids.slug_error(a.slug))
     with paths.lock():                              # 쓰는 이름 확인부터 번호 받기·뼈대 저장까지 한 잠금 안에서(같은 이름 두 건 방지)
-        taken: set = set()
-        for i in model.all_issue_ids():
-            x = model.load_issue(i)
-            taken |= {x.get("slug")} | {s for s in (x.get("aliases") or []) if isinstance(x.get("aliases"), list)}
-        taken |= {e.get("slug") for e in revisions.load_manifest()["entries"] if e.get("unit") == "issue"}
-        if a.slug in taken:
+        if a.slug in _taken_slugs():
             return _err(f"이미 쓰는 주소 이름이다: {a.slug}")
         try:
             iid = ids.next_issue_ids_locked(a.date)[0]
@@ -90,6 +96,49 @@ def _new(a) -> int:
         model.save_issue(model.skeleton(iid, a.slug, example=a.example, title=a.title or "", now=cards.now_kst()))
     print(iid)
     return 0
+
+
+def _article_new(a) -> int:
+    """글만 있는 이슈 — 발급 대장에서 번호를 받아 폴더, 최소 issue.yaml(new 와 같은 뼈대), 빈 article.yaml 을 쓴다."""
+    if ids.slug_error(a.slug):
+        return _err(ids.slug_error(a.slug))
+    if not a.category.strip() or not a.title.strip():
+        return _err("--category 와 --title 을 적는다")
+    now = cards.now_kst()
+    date = a.date or now[:10]
+    with paths.lock():
+        if a.slug in _taken_slugs():
+            return _err(f"이미 쓰는 주소 이름이다: {a.slug}")
+        try:
+            iid = ids.next_issue_ids_locked(date)[0]
+        except ValueError as e:
+            return _err(str(e))
+        if ART.article_file(iid).exists():
+            return _err(f"글이 이미 있다: {ART.article_file(iid)}")
+        model.save_issue(model.skeleton(iid, a.slug, title=a.title.strip()[:model.LIMITS["titles.chosen"]], now=now))
+        model.save_yaml(ART.article_file(iid), ART.skeleton(iid, a.slug, a.category.strip(), a.title.strip(), now))
+    print(iid)
+    return 0
+
+
+def _article_check(a) -> int:
+    if not ids.issue_id_ok(a.issue):
+        return _err(f"이슈 번호 꼴이 아니다: {a.issue}")
+    if not paths.issue_dir(a.issue).is_dir():
+        return _err(f"이슈 폴더가 없다: {a.issue}")
+    try:
+        r = ART.check_issue_article(a.issue)
+    except (OSError, ValueError) as e:
+        return _err(f"{a.issue} article.yaml: 읽지 못했다 — {e}")
+    if r["missing"]:
+        return _err(f"글이 없다: {ART.article_file(a.issue)}")
+    if a.json:
+        print(json.dumps({k: r[k] for k in ("errors", "warnings")}, ensure_ascii=False, indent=1))
+    else:
+        for line in r["errors"] + r["warnings"]:
+            print(line)
+        print(f"오류 {len(r['errors'])}, 경고 {len(r['warnings'])}")
+    return 1 if r["errors"] else 0
 
 
 def _ids(a) -> int:
@@ -315,11 +364,20 @@ def _parser() -> argparse.ArgumentParser:
     c = sub.add_parser("links")
     c.add_argument("--json", action="store_true")
     c.add_argument("--write-map", action="store_true")
+    c = sub.add_parser("article-check", help="글(article.yaml) 검사")
+    c.add_argument("issue")
+    c.add_argument("--json", action="store_true")
+    c = sub.add_parser("article-new", help="번호를 받아 글만 있는 이슈의 뼈대를 쓴다")
+    c.add_argument("slug")
+    c.add_argument("--category", required=True)
+    c.add_argument("--title", required=True)
+    c.add_argument("--date", help="번호의 날짜(없으면 오늘, KST)")
     return ap
 
 
 HANDLERS = {"check": _check, "new": _new, "ids": _ids, "hash": _hash, "capture": _capture, "machine-verify": _machine,
-            "review": _review, "snapshot": _snapshot, "approve": _approve, "export": _export, "withdraw": _withdraw, "status": _status, "links": _links}
+            "review": _review, "snapshot": _snapshot, "approve": _approve, "export": _export, "withdraw": _withdraw, "status": _status, "links": _links,
+            "article-check": _article_check, "article-new": _article_new}
 
 
 def main(argv=None) -> int:

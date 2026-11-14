@@ -7,8 +7,15 @@
 - 절차: `.claude/skills/ozl/SKILL.md`(`/ozl make [job_id]`, `/ozl status`)와 단계별 지시서 `.claude/skills/ozl/make/`.
 - 판정과 문장의 원칙 20가지: `.claude/skills/ozl/make/principles.md`. 쓰기, 재대조와 문장 대조, 고치기가 모두 이 파일을 쓴다.
 - 기록의 형식과 판정 규칙의 정본은 코드다: `src/ozl/issues/`(판정과 근거 조건의 조합표는 `rules.py`). 설계 문서는 `private/plan/issues_spec_20261114.md` 3절.
-- 명령은 `.venv/bin/python -m ozl.issues --help` 에 있는 것만 쓴다: `new`, `ids`, `capture`, `machine-verify`, `check`, `review add`, `snapshot`, `hash`, `status`, `links`, `export`, `approve`, `withdraw`.
+- 명령은 `.venv/bin/python -m ozl.issues --help` 에 있는 것만 쓴다: `new`, `ids`, `capture`, `machine-verify`, `check`, `review add`, `snapshot`, `hash`, `status`, `links`, `export`, `approve`, `withdraw`, `article-check`, `article-new`.
 - 지어낸 예시 기록: `tests/fixtures/issues/`.
+
+## 글(읽는 층)
+- 독자가 읽는 글은 이슈마다 `<자료 루트>/issues/<이슈 번호>/article.yaml` 한 파일이다. 위의 기록(`issue.yaml`, `evidence/`, `captures/`, `reviews/`)은 뒤쪽 층으로 그대로 두고, 글의 출처(`sources`)는 가능하면 근거 번호(`evidence`)로 잇는다.
+- 칸, 검사, 글쓰기 규칙, 갱신 방법의 정본은 글 형식 명세(`private/plan/` 의 `글형식_명세_20261114.md`)다. 코드는 `src/ozl/issues/article.py`.
+- 명령: `python -m ozl.issues article-new <slug> --category "…" --title "…" [--date YYYY-MM-DD]`(번호를 받아 폴더, 최소 `issue.yaml`, 빈 글 뼈대를 쓴다), `python -m ozl.issues article-check <이슈 번호>`(오류가 있으면 종료 코드 1, 마지막 줄 "오류 N, 경고 M"). `check` 도 글이 있으면 같은 검사를 함께 한다.
+- 글은 승인 지문에 들고 승인한 판의 고정 사본에 함께 남는다. 글을 고치면 승인과 검토가 풀린다. 사이트 자료의 이슈 목록(`index.json`)에는 글이 있는 이슈만 실린다.
+- `issue.yaml` 안에 `article` 칸을 쓰지 않는다(읽기가 멈춘다).
 
 ## 판정 넷
 - 판정은 확인, 일부 맞음, 사실과 다름, 확인 못 함 넷이다. 작은 주장(`parts`)의 판정은 확인, 사실과 다름, 확인 못 함 셋이다. '확인 못 함'은 거짓이라는 뜻이 아니고, 화면에도 그렇게 적는다.

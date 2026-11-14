@@ -1,0 +1,43 @@
+---
+// 첫 화면 "지금 가장 큰 이야기"의 한 줄(시안 home.html). 글이 있으면 "정리됨"과 글 링크,
+// 글이 없는 화제 줄(stories.json)이면 "정리 중" 이나 "기사 묶음"으로 링크 없이 그린다.
+import { issueUrl } from "../lib/paths";
+import ExampleTag from "./ExampleTag.astro";
+
+interface Props {
+  n: number; title: string; dek: string; state: string; slug?: string; field?: string;
+  running?: string; hasNew?: boolean; outlets?: number | null; example?: boolean;
+}
+const { n, title, dek, state, slug, field, running, hasNew = false, outlets = null, example = false } = Astro.props;
+const cls = state === "정리됨" ? "ok" : state === "정리 중" ? "wait" : "raw";
+---
+<li class="story" data-field={field || undefined}>
+  <span class="n num" aria-hidden="true">{n}</span>
+  <div class="body">
+    <h3><ExampleTag show={example} />{slug ? <a href={issueUrl(slug)}>{title}</a> : title}</h3>
+    {dek && <p class="dek">{dek}</p>}
+    <p class="m">
+      <span class={`st ${cls}`}>{state}</span>
+      {running && <span>{running}</span>}
+      {outlets !== null && outlets > 0 && <span>오늘 <span class="num">{outlets}</span>개 매체</span>}
+      {hasNew && (slug ? <a class="up" href={`${issueUrl(slug)}#news`}>새 소식</a> : <span class="up">새 소식</span>)}
+    </p>
+  </div>
+</li>
+<style>
+  .story { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px 10px; padding: 15px 0; border-bottom: 1px solid var(--rule); }
+  .n { font-size: 1.3125rem; font-weight: 800; line-height: 1.3; color: var(--muted); }
+  .story:first-child .n { color: var(--hot); }
+  h3 { font-size: 1.09375rem; line-height: 1.42; margin: 0 0 var(--sp-1); font-weight: 800; letter-spacing: -0.01em; }
+  h3 a { color: var(--text); text-decoration: none; }
+  h3 a:hover { text-decoration: underline; text-decoration-thickness: 1px; }
+  .dek { margin: 0 0 var(--sp-2); font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
+  .m { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 0.78125rem; color: var(--muted); }
+  .st { font-weight: 700; border-radius: 5px; padding: 1px 7px; font-size: var(--fs-2xs); }
+  .st.ok { background: var(--st-ok-bg); color: var(--st-ok); }
+  .st.wait { background: var(--st-wait-bg); color: var(--st-wait); }
+  .st.raw { background: var(--st-unk-bg); color: var(--muted); }
+  .up { color: var(--hot); font-weight: 700; }
+  a.up { text-decoration: none; display: inline-flex; align-items: center; min-height: 24px; }
+  a.up:hover { text-decoration: underline; }
+</style>

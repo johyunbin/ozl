@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 from ozl.research import cards
 
-from . import evidence as EV
+from . import article as ART, evidence as EV
 from . import basis, dates, fields, idents, ids, model, numbers, rules, style
 from .allegation import _allegation_errors, _crime_exempt
 
@@ -361,8 +361,8 @@ def check_issue(issue: dict, evidences: dict, public: bool = False, articles=(),
     _lists(a, issue, evidences)
     copy_errs: dict[str, list[str]] = {}
     a.e += fields.issue_field_errors(issue) + fields.sentence_errors(issue) + dates.date_errors(issue, evidences)
-    b_errs, b_warns = basis.basis_errors(issue)
-    a.e += b_errs
+    (b_errs, b_warns), (art_e, art_w) = basis.basis_errors(issue), ART.issue_findings(issue, evidences)   # art = 붙은 글(명세 3절)
+    a.e += b_errs + art_e
     for eid, ev in evidences.items():
         a.e += [(f"evidence.{eid}.{k}", m) for k, m in EV.structure_errors(ev, iid, eid)]
         a.e += [(f"evidence.{eid}.{k}", m) for k, m in fields.evidence_field_errors(ev)]
@@ -379,7 +379,7 @@ def check_issue(issue: dict, evidences: dict, public: bool = False, articles=(),
         a.e += ids.ledger_errors(issue, list(evidences), ids.load_ledger() if ledger is None else ledger)
     except (ValueError, json.JSONDecodeError, OSError) as e:
         a.add("issue_id", f"발급 대장을 읽지 못했다: {e}")
-    warns = style.copy20_warnings(issue, evidences, articles) + style.cause_warnings(issue) + dates.flow_warnings(issue) + b_warns \
+    warns = art_w + style.copy20_warnings(issue, evidences, articles) + style.cause_warnings(issue) + dates.flow_warnings(issue) + b_warns \
         + basis.recheck_warnings(issue, evidences)
     errors = list(dict.fromkeys(f"{iid} {p}: {m}" for p, m in a.e))
     return {"errors": errors, "warnings": [f"경고 {iid} {p}: {m}" for p, m in warns]}

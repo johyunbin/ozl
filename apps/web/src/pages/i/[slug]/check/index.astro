@@ -1,0 +1,23 @@
+---
+// 검증 상세(옛 판정 화면, 명세 1절). 글의 꼬리말 "이 글은 이렇게 만들었습니다" 안에서만 링크한다.
+import Base from "../../../../layouts/Base.astro";
+import IssueBody from "../../../../components/IssueBody.astro";
+import { loadSite, type Issue } from "../../../../lib/data";
+import { issueUrl } from "../../../../lib/paths";
+
+export function getStaticPaths() {
+  const site = loadSite();
+  return [...site.issues.values()].map((is) => ({ params: { slug: is.slug }, props: { issue: is } }));
+}
+const { issue } = Astro.props as { issue: Issue };
+const site = loadSite();
+const b = issue.latest;
+const title = b.article?.title || b.title;
+---
+<Base title={`검증 상세 · ${title}`} description={b.so_far.join(" ")} wide>
+  <p class="back"><a href={issueUrl(issue.slug)}>← 글로 돌아가기</a></p>
+  <IssueBody site={site} issue={issue} b={b} fixed={false} index={false} kicker="검증 상세" />
+</Base>
+<style>
+  .back a { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-sm); }
+</style>

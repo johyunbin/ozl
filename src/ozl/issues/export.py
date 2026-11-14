@@ -18,6 +18,7 @@ import tempfile
 from ozl.research import capture as K
 from ozl.research import cards
 
+from . import article as ART
 from . import body as B
 from . import digest, mask, model, paths, revisions, rules, style, units
 
@@ -92,11 +93,17 @@ def _dump(root: pathlib.Path, rel: str, obj) -> None:
     p.write_text(json.dumps(obj, ensure_ascii=False, indent=1, default=str) + "\n", encoding="utf-8")
 
 
+def _with_article(b: dict, issue: dict) -> dict:
+    """이슈 JSON 에 글(article.yaml)을 싣는다 — 정해진 칸만, 출처의 근거 기록 번호는 뺀다. 글이 없으면 article 은 null."""
+    b["article"] = ART.public_view(issue.get(model.ARTICLE_KEY))
+    return b
+
+
 def _index_row(b: dict, issue: dict | None, extra: dict | None = None) -> dict:
     row = {"id": b["id"], "slug": b["slug"], "title": b["title"], "topic_state": (issue or {}).get("topic_state"),
            "rev": b["rev"], "rev_at": b["rev_at"], "rev_line": b["rev_line"], "verdict_summary": B.verdict_summary(b),
            "hidden_claims": b["verdicts"]["hidden_claims"], "sensitive": b["sensitive"], "example": b["example"],
-           "category": b["category"], "keywords": b["keywords"]}
+           "category": b["category"], "keywords": b["keywords"], "article": ART.index_view(b.get("article"))}
     row.update(extra or {})
     return row
 
@@ -226,6 +233,7 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
             if not _slug_free(iid, revs[-1][1]):
                 continue
             for rev, b, fi, appr in revs:
+                _with_article(b, fi)                # 글은 고정 사본(승인한 판)의 것
                 _dump(tmp, f"issues/{b['slug']}/r/{rev}.json", b)
                 hidden += B.hidden_texts(fi)
                 feed.append({"slug": b["slug"], "rev": rev, "at": appr.get("approved_at"), "kind": _feed_kind(fi, rev, revisions.fixed_first_rev(man, iid, rev)),
@@ -237,7 +245,8 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
             lb = dict(b, trend_now=model.clean_trend(work.get("trend")) if work else b.get("trend"))
             latest[iid] = lb
             _dump(tmp, f"issues/{b['slug']}.json", lb)
-            index.append(_index_row(b, {"topic_state": model.clean_topic_state((work or fi).get("topic_state"))}))
+            if lb.get("article"):                   # 글이 없는 이슈는 이슈 목록에 싣지 않는다(명세 1절)
+                index.append(_index_row(lb, {"topic_state": model.clean_topic_state((work or fi).get("topic_state"))}))
     else:
         for iid in model.all_issue_ids():
             issue, evs = model.load_issue(iid), model.load_evidences(iid)
@@ -253,11 +262,13 @@ def _build(mode: str, tmp: pathlib.Path, man: dict, now, contact: str, msgs: lis
                                         if isinstance(it, dict) and not rules.item_public(issue, it)],
                              "errors": r["errors"], "warnings": r["warnings"]}
             b["trend_now"] = model.clean_trend(issue.get("trend"))
+            _with_article(b, issue)
             if not _slug_free(iid, b):
                 continue
             latest[iid] = b
             _dump(tmp, f"issues/{b['slug']}.json", b)
-            index.append(_index_row(b, {"topic_state": model.clean_topic_state(issue.get("topic_state"))}, {"publish_state": state}))
+            if b["article"]:                        # 글이 없는 이슈는 이슈 목록에 싣지 않는다(명세 1절)
+                index.append(_index_row(b, {"topic_state": model.clean_topic_state(issue.get("topic_state"))}, {"publish_state": state}))
     for b in latest.values():
         search.append({"slug": b["slug"], "rev": b["rev"], "title": b["title"], "keywords": b["keywords"], "aliases": b["aliases"],
                        "so_far": b["so_far"]})

@@ -1,125 +1,176 @@
 ---
-import { safeHref } from "../lib/data";
-// 첫 화면(설계 1-3).
+// 첫 화면(시안 home.html, 명세 6절). 지금 가장 큰 이야기 → 새 소식이 붙은 이야기 → 다가오는 일 → 날짜로 보기.
+// 분야 칩은 스크립트 없이 라디오 단추와 :has() 로 거른다. 스크립트나 :has() 가 없어도 전체 목록이 보인다.
 import Base from "../layouts/Base.astro";
-import TopicRow from "../components/TopicRow.astro";
-import PreTopicRow from "../components/PreTopicRow.astro";
-import DateNav from "../components/DateNav.astro";
-import VerdictSummary from "../components/VerdictSummary.astro";
-import ExampleTag from "../components/ExampleTag.astro";
+import StoryRow from "../components/StoryRow.astro";
 import OpsBox from "../components/OpsBox.astro";
-import { readerTopics, topicOps } from "../lib/ops";
-import { latestTopicDay, loadSite, sortedDates, visibleTopics } from "../lib/data";
+import { loadSite, sortedDates } from "../lib/data";
 import { IS_PREVIEW } from "../lib/mode";
-import { fmtClock, fmtDate, fmtDateTime, fmtDateWeek } from "../lib/format";
-import { dayUrl, issueUrl, monthUrl, url } from "../lib/paths";
+import { articles, field, newsLabel, plain, runningLabel, timeKey } from "../lib/article";
+import { fmtMonthDay, weekday } from "../lib/format";
+import { dayUrl, issueUrl, monthUrl } from "../lib/paths";
 
 const site = loadSite();
-const day = latestTopicDay(site);
-const t = day?.topics ?? null;
-const dates = sortedDates(site);
-const at = day ? dates.indexOf(day.date) : -1;
-const prev1 = at > 0 ? dates[at - 1] : undefined;
-const prev2 = at > 1 ? dates[at - 2] : undefined;
-const pre = t ? t.pre.filter((p) => !p.excluded.length) : [];
-const allRecords = [...site.index].filter((r) => site.issues.has(r.slug)).sort((a, b) => b.rev_at.localeCompare(a.rev_at));
-// 첫 화면 용량이 기록 수에 따라 늘지 않게 최근 것만 둔다. 나머지는 날짜 쪽과 달력에서 찾는다.
-const RECENT = 30;
-const records = allRecords.slice(0, RECENT);
+const arts = articles(site);
+const bySlug = new Map(arts.map((x) => [x.slug, x]));
+
+// 분야: 글에 있는 것만, 처음 나온 차례로. 화면의 data-field 에는 번호(f0, f1 …)를 쓴다.
+const fields = [...new Set(arts.map((x) => field(x.a.category)).filter(Boolean))];
+const fid = (category: string) => {
+  const i = fields.indexOf(field(category));
+  return i >= 0 ? `f${i}` : undefined;
+};
+
+// 줄 차례: stories.json 이 있으면 그 차례(글 줄과 글이 없는 화제 줄), 거기 없는 글은 뒤에 as_of 최신순으로.
+type Row = { kind: "art"; slug: string } | { kind: "topic"; s: (typeof site.stories)[number] };
+const rows: Row[] = [];
+const used = new Set<string>();
+for (const s of site.stories) {
+  if (s.slug) {
+    if (used.has(s.slug)) continue;
+    used.add(s.slug);
+    rows.push({ kind: "art", slug: s.slug });
+  } else rows.push({ kind: "topic", s });
+}
+for (const x of arts) if (!used.has(x.slug)) rows.push({ kind: "art", slug: x.slug });
+
+const fresh = arts
+  .map((x) => ({ x, n: x.a.news.find((n) => n.new && !n.planned) }))
+  .filter((v) => v.n)
+  .sort((p, q) => timeKey(q.n!.date) - timeKey(p.n!.date));
+const upcoming = arts
+  .flatMap((x) => x.a.news.filter((n) => n.planned).flatMap((n) => n.items.map((t) => ({ x, n, t: plain(t) }))))
+  .sort((p, q) => timeKey(p.n.date) - timeKey(q.n.date));
+const dates = sortedDates(site).slice().reverse().slice(0, 7);
+const dayCount = (d: string) => {
+  const v = site.days.get(d);
+  if (!v) return 0;
+  const shown = new Set(v.records.map((r) => r.slug).filter((s) => site.issues.has(s)));
+  return shown.size;
+};
 const lastMonth = sortedDates(site).at(-1)?.slice(0, 7);
-const newVis = t ? visibleTopics(site, t.new, IS_PREVIEW, `${day!.date} 새로 뜬 것`) : [];
-const ongoingVis = t ? visibleTopics(site, t.ongoing, IS_PREVIEW, `${day!.date} 이어지는 것`) : [];
-// 독자 화면에는 공개 기록이 있는 이슈만. 정리 전 빈 항목, 작업 상태, 수집 실패는 운영 정보 상자로.
-const newItems = readerTopics(site, newVis).slice(0, 4);
-const ongoingItems = readerTopics(site, ongoingVis).slice(0, 6);
-const ops = topicOps(site, t, [...newVis, ...ongoingVis]);
-const recOps = IS_PREVIEW && !t ? records.filter((r) => r.publish_state && r.publish_state !== "게시").map((r) => `${r.publish_state}: ${r.title}`) : [];
-const INTRO = "그날 화제가 된 일에서 떠도는 주장마다 판정과 근거를 붙여 기록한다.";
+
+// 미리보기의 운영 정보: 글마다의 작업 상태(게시 전인 것만).
+const ops = IS_PREVIEW
+  ? arts.map((x) => [site.issues.get(x.slug)!.latest.internal?.publish_state ?? "", x.a.title]).filter(([s]) => s && s !== "게시").map(([s, t]) => `${s}: ${t}`)
+  : [];
+const filterCss = fields
+  .map((_, i) => `.home:has(#fc-${i}:checked) [data-filter] > :not([data-field="f${i}"]){display:none}`)
+  .join("\n");
+const LEAD = "오늘 사람들이 이야기하는 일을 모아, 확인된 것과 아직 아닌 것을 나눠 정리합니다.";
 ---
-<Base title="" description={INTRO} wide>
-  <OpsBox slot="ops" items={[...ops, ...recOps]} />
-  <h1 class="sr-only">OZL 오늘의 이슈 기록</h1>
-  <p class="intro">{INTRO}</p>
-  {t && day ? (
-    <>
-      <p class="base-line xs muted num">
-        {fmtDateWeek(day.date)}
-        {fmtClock(t.line.updated_at) && <><span class="sep" />{fmtClock(t.line.updated_at)} 갱신</>}
-        {t.line.source_kinds_ok.length > 0 && <><span class="sep" />출처 {t.line.source_kinds_ok.length}종 기준</>}
-      </p>
+<Base title="" description={LEAD}>
+  <OpsBox slot="ops" items={ops} />
+  <Fragment slot="head">{fields.length > 0 && <style is:inline set:html={filterCss}></style>}</Fragment>
+  <div class="home">
+    <h1 class="sr-only">OZL 오늘의 이야기</h1>
+    <p class="lead-line">{LEAD}</p>
 
-      <div class="two-col">
-      <div class="col-main">
-      <section class="section first" aria-labelledby="new-h">
-        <h2 id="new-h">오늘 새로 뜬 것</h2>
-        {newItems.length ? <ol class="rows">{newItems.map((it) => <TopicRow item={it} site={site} />)}</ol>
-          : <p class="empty">{t.empty_note.new || "오늘 새로 정리한 이슈가 없다."}</p>}
-      </section>
+    {fields.length > 0 && (
+      <fieldset class="chips">
+        <legend class="sr-only">분야로 거르기</legend>
+        <input type="radio" name="field" id="fc-all" checked />
+        <label for="fc-all">전체</label>
+        {fields.map((f, i) => (
+          <>
+            <input type="radio" name="field" id={`fc-${i}`} />
+            <label for={`fc-${i}`}>{f}</label>
+          </>
+        ))}
+      </fieldset>
+    )}
 
-      <section class="section" aria-labelledby="ongoing-h">
-        <h2 id="ongoing-h">며칠째 이어지는 것</h2>
-        {ongoingItems.length ? <ol class="rows">{ongoingItems.map((it) => <TopicRow item={it} site={site} />)}</ol>
-          : <p class="empty">{t.empty_note.ongoing || "며칠째 이어지는 이슈가 없다."}</p>}
-      </section>
+    <section aria-labelledby="big-h">
+      <h2 id="big-h">지금 가장 큰 이야기</h2>
+      <p class="hint">{site.stories.length ? "화제가 큰 순서대로 놓았습니다." : "최근에 고친 글이 위에 옵니다."}</p>
+      {rows.length ? (
+        <ol class="rank" data-filter>
+          {rows.map((r, i) => {
+            if (r.kind === "topic") {
+              return <StoryRow n={i + 1} title={r.s.title} dek={r.s.dek} state={r.s.state} outlets={r.s.outlets} />;
+            }
+            const x = bySlug.get(r.slug)!;
+            return (
+              <StoryRow n={i + 1} slug={x.slug} title={x.a.title} dek={plain(x.a.dek)} state="정리됨" field={fid(x.a.category)}
+                running={x.a.state === "진행 중" ? runningLabel(x.a) : x.a.state} hasNew={x.a.news.some((n) => n.new)} example={x.example} />
+            );
+          })}
+        </ol>
+      ) : <p class="empty">아직 정리한 이야기가 없습니다.</p>}
+    </section>
 
-      </div>
-      <aside class="col-side" aria-label="다가오는 일과 정리 전 화제">
-      <section class="section" aria-labelledby="up-h">
-        <h2 id="up-h">다가오는 일</h2>
-        {t.upcoming.length ? (
-          <ul class="rows">{t.upcoming.map((u) => <li><span class="num">{fmtDateWeek(u.date)}</span> {safeHref(u.url) ? <a href={safeHref(u.url)} rel="noopener">{u.what}</a> : u.what}</li>)}</ul>
-        ) : <p class="empty">{t.empty_note.upcoming || "날짜가 정해진 일정이 없다."}</p>}
+    {fresh.length > 0 && (
+      <section aria-labelledby="fresh-h">
+        <h2 id="fresh-h">새 소식이 붙은 이야기</h2>
+        <p class="hint">전에 읽은 이야기에 무엇이 더해졌는지만 봅니다.</p>
+        <ul class="cards" data-filter>
+          {fresh.map(({ x, n }) => (
+            <li data-field={fid(x.a.category)}>
+              <a class="card" href={`${issueUrl(x.slug)}#news`}>
+                <span class="k">{newsLabel(n!)} 추가</span>
+                <b>{x.a.title}</b>
+                <span class="t">{plain(n!.items[0])}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
+    )}
 
-      <section class="section" aria-labelledby="pre-h">
-        <h2 id="pre-h">정리 전 화제</h2>
-        <p class="lead">일어난 일과 그 출처만 적었다. 떠도는 주장의 사실 여부는 아직 정리 전이다.</p>
-        {pre.length ? <ul class="rows">{pre.map((p) => <PreTopicRow p={p} />)}</ul>
-          : <p class="empty">{t.empty_note.pre || "정리 전 화제가 없다."}</p>}
+    {upcoming.length > 0 && (
+      <section aria-labelledby="soon-h">
+        <h2 id="soon-h">다가오는 일</h2>
+        <ul class="soon" data-filter>
+          {upcoming.map(({ x, n, t: text }) => (
+            <li data-field={fid(x.a.category)}>
+              <time datetime={n.date || undefined}>{fmtMonthDay(n.date) || newsLabel(n)}</time>
+              <a href={`${issueUrl(x.slug)}#news`}>{text}</a>
+            </li>
+          ))}
+        </ul>
       </section>
-      </aside>
-      </div>
+    )}
 
-      <section class="section">
-        <h2 class="sr-only">날짜 이동</h2>
-        <DateNav items={[
-          { label: "어제", href: prev1 ? dayUrl(prev1) : undefined },
-          { label: "그제", href: prev2 ? dayUrl(prev2) : undefined },
-          { label: "날짜 고르기", href: monthUrl(day.date.slice(0, 7)) },
-        ]} />
+    {dates.length > 0 && (
+      <section aria-labelledby="days-h">
+        <h2 id="days-h">날짜로 보기</h2>
+        <p class="hint">그날 무엇이 화제였는지 되짚어 봅니다.</p>
+        <ul class="days">
+          {dates.map((d, i) => (
+            <li><a href={dayUrl(d)}><b>{fmtMonthDay(d)}</b><span>{i === 0 ? "가장 최근" : weekday(d) + "요일"}{dayCount(d) > 0 && <> · <span class="num">{dayCount(d)}</span>건</>}</span></a></li>
+          ))}
+          {lastMonth && <li><a href={monthUrl(lastMonth)}><b>달력</b><span>다른 날짜 고르기</span></a></li>}
+        </ul>
       </section>
-    </>
-  ) : (
-    <>
-      <p class="first-empty">아직 공개한 화제 목록이 없다.</p>
-      {records.length ? (
-        <section class="section" aria-labelledby="rec-h">
-          <h2 id="rec-h">OZL 기록</h2>
-          <ol class="rows">
-            {records.map((r) => (
-              <li>
-                <p class="row-title"><ExampleTag show={r.example} /><a href={issueUrl(r.slug)}>{r.title}</a></p>
-                <p class="row-sub num">{r.rev !== null && `${r.rev}판`}{fmtDateTime(r.rev_at) && ` · ${fmtDateTime(r.rev_at)}`}</p>
-                <p class="row-line"><VerdictSummary summary={r.verdict_summary} /></p>
-              </li>
-            ))}
-          </ol>
-          {allRecords.length > records.length && (
-            <p class="small more">최근 <span class="num">{records.length}</span>건만 보인다. 지난 기록은 {lastMonth ? <a href={monthUrl(lastMonth)}>달력</a> : "달력"}과 <a href={url("search/")}>검색</a>에서 찾는다.</p>
-          )}
-        </section>
-      ) : (
-        <p class="empty">아직 공개한 기록이 없다. 판정 기준과 편집 원칙은 <a href={url("about/")}>소개</a>에서 볼 수 있다.</p>
-      )}
-    </>
-  )}
+    )}
+
+    <p class="how">공식 문서와 언론 보도를 모아 AI 도구로 정리하고, 공개 전에 사람이 읽고 승인합니다.</p>
+  </div>
 </Base>
 <style>
-  .intro { font-size: var(--fs-md); font-weight: 600; }
-  .base-line { margin-top: var(--sp-2); }
-  .section.first { margin-top: var(--sp-5); }
-  @media (min-width: 1100px) { .col-side > .section:first-child { margin-top: var(--sp-5); } }
-  .first-empty { margin-top: var(--sp-4); }
-  .more { margin-top: var(--sp-4); }
-  .more a { display: inline-block; padding: 10px 0; }
+  .home { font-size: var(--fs-body-sm); line-height: 1.65; }
+  .lead-line { font-size: var(--fs-sm); color: var(--muted); margin: 0 0 22px; }
+  .chips { display: flex; gap: var(--sp-2); flex-wrap: wrap; border: 0; padding: 0 0 var(--sp-1); margin: 0 0 20px; min-width: 0; }
+  .chips input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+  .chips label { flex: none; display: inline-flex; align-items: center; min-height: 36px; font-size: 0.84375rem; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 0 var(--sp-3); color: var(--muted); cursor: pointer; }
+  .chips input:checked + label { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 700; }
+  .chips input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+  h2 { font-size: 1.1875rem; font-weight: 800; margin: 30px 0 var(--sp-1); letter-spacing: -0.01em; }
+  .hint { font-size: var(--fs-xs); color: var(--muted); margin: 0 0 var(--sp-3); }
+  .cards { display: grid; gap: 10px; }
+  .card { display: block; border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px var(--sp-4); color: var(--text); text-decoration: none; }
+  .card:hover { border-color: var(--rule-strong); }
+  .card .k { display: block; font-size: 0.78125rem; font-weight: 700; color: var(--hot); margin-bottom: 2px; }
+  .card b { display: block; font-size: 1rem; line-height: 1.45; margin-bottom: var(--sp-1); }
+  .card .t { font-size: var(--fs-src); color: var(--muted); line-height: 1.55; display: block; }
+  .soon li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 0.96875rem; }
+  .soon time { font-weight: 800; font-size: 0.875rem; color: var(--accent); line-height: 1.75; }
+  .soon a { color: var(--text); text-decoration: none; }
+  .soon a:hover { text-decoration: underline; }
+  .days { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: 10px; }
+  .days a { display: block; border: 1px solid var(--rule); border-radius: 10px; padding: var(--sp-2) var(--sp-3); font-size: 0.875rem; color: var(--text); text-decoration: none; }
+  .days a:hover { border-color: var(--rule-strong); }
+  .days b { display: block; font-size: var(--fs-sm); }
+  .days span { font-size: var(--fs-2xs); color: var(--muted); }
+  .how { margin-top: 34px; font-size: var(--fs-xs); color: var(--muted); }
 </style>

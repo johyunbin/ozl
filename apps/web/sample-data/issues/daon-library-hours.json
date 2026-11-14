@@ -310,5 +310,85 @@
   ],
   "asof": "2099-01-02 08:00",
   "formula_version": 1
+ },
+ "article": {
+  "schema": 1,
+  "issue_id": "i20981231-01",
+  "slug": "daon-library-hours",
+  "category": "지역 · 생활",
+  "state": "진행 중",
+  "started": "2098-12-02",
+  "as_of": "2099-01-02 08:00",
+  "title": "다온구 도서관 밤 10시 운영, 예산은 석 달치만 잡혀 있다",
+  "dek": "운영은 1월부터 시작했다. 구가 밝힌 예산이 1년치가 아니라는 점이 뒤늦게 알려졌다.",
+  "summary": [
+   "다온구 구립도서관 세 곳이 1월부터 밤 10시까지 문을 연다.",
+   "구가 \"운영 예산 확보\"라고 밝힌 금액은 석 달치였다.",
+   "4월 이후 운영을 이어 갈지는 추가 예산 심사에 달렸다."
+  ],
+  "numbers": [],
+  "what": [
+   {
+    "text": "다온구는 12월 2일 구립도서관 세 곳의 운영 시간을 밤 10시까지 늘린다고 발표했다.[^1]"
+   },
+   {
+    "text": "구의회 예산서를 보면 이 사업에 잡힌 돈은 1월부터 3월까지의 인건비다.[^2] 구는 추가 예산을 4월 전에 요청하겠다고 했다.[^1]"
+   }
+  ],
+  "why": null,
+  "news": [
+   {
+    "date": "2099-01-02",
+    "label": "1월 2일",
+    "items": [
+     "밤 운영이 시작됐다.[^1]"
+    ]
+   }
+  ],
+  "earlier": [],
+  "status": {
+   "confirmed": [
+    "1월부터 3월까지의 인건비가 예산에 잡혀 있다.[^2]"
+   ],
+   "reported": [],
+   "alleged": [],
+   "unknown": [
+    "4월 이후의 운영."
+   ]
+  },
+  "views": [],
+  "next": [
+   {
+    "head": "추가 예산 심사.",
+    "text": "구의회가 4월 전에 심사할지."
+   },
+   {
+    "head": "이용자 수.",
+    "text": "밤 시간 이용자 집계가 나오는지."
+   }
+  ],
+  "sources": [
+   {
+    "n": 1,
+    "kind": "공식",
+    "publisher": "다온구",
+    "title": "구립도서관 운영 시간 연장 안내",
+    "date": "2098-12-02",
+    "url": "https://daon-gu.example/notice/library-hours",
+    "evidence": null
+   },
+   {
+    "n": 2,
+    "kind": "공식",
+    "publisher": "다온구의회",
+    "title": "2099년 예산서",
+    "date": "2098-12-15",
+    "url": "https://daon-council.example/budget/2099",
+    "evidence": null
+   }
+  ],
+  "figure": null,
+  "related_syuka": [],
+  "changes": []
  }
 }

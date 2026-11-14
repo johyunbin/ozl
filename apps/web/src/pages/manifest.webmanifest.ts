@@ -11,8 +11,8 @@ export function GET() {
     scope: url(),
     id: url(),
     display: "standalone",
-    background_color: "#faf8f3",
-    theme_color: "#faf8f3",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     icons: [
       { src: url("icons/icon.svg"), sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: url("icons/icon-192.png"), sizes: "192x192", type: "image/png", purpose: "any" },

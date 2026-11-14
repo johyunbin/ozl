@@ -414,10 +414,10 @@ try {
     await ctx.close();
   }
 
-  // ---- 8. 60자 제목(첫 화면 · 이슈 화면) ----
+  // ---- 8. 긴 제목(첫 화면 · 이슈 화면). 이슈 화면의 제목은 글(article)의 제목이다(명세 2절, 45자까지) ----
   {
-    const idx = JSON.parse(fs.readFileSync(path.join(WEB_ROOT, "sample-data/index.json"), "utf-8"));
-    const want = (idx.issues || []).find((i) => i.slug === "garam-reservoir-levee")?.title || "";
+    const iss = JSON.parse(fs.readFileSync(path.join(WEB_ROOT, "sample-data/issues/garam-reservoir-levee.json"), "utf-8"));
+    const want = iss.article?.title || iss.title || "";
     const ctx = await browser.newContext({ viewport: { width: 390, height: HEIGHT } });
     const page = await ctx.newPage();
     await page.goto(at(""), { waitUntil: "networkidle" });

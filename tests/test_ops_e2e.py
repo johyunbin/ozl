@@ -94,7 +94,7 @@ def test_pick_to_published(ops, desk, tmp_path, monkeypatch):
     assert I1 not in ids
     prev = export.export("preview", desk / "out_prev")
     assert prev["code"] in (0, 4), prev
-    ids = [r["id"] for r in json.loads((desk / "out_prev" / "index.json").read_text())["issues"]]
-    assert I1 in ids
+    # 이슈 목록(index.json)에는 글(article.yaml)이 있는 이슈만 실린다 — 글이 없는 이 이슈는 이슈 자료 파일로 본다
+    assert (desk / "out_prev" / "issues" / f"{model.load_issue(I1)['slug']}.json").is_file()
     assert json.loads((desk / "out_prev" / "meta.json").read_text())["test"] is True
     # ⑥ 실제 폴더 지문은 real_untouched 가 모듈 끝에서 본다

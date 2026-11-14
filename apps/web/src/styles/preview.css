@@ -3,12 +3,12 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --preview: #e8c46a; } }
 :root[data-theme="dark"] { --preview: #e8c46a; }
 
-.preview-bar { background: var(--surface); color: var(--preview); font-size: var(--fs-xs); line-height: 1.5; padding: var(--sp-2) 0; }
+.preview-bar { background: var(--surface); color: var(--preview); font-size: var(--fs-2xs); line-height: 1.5; padding: var(--sp-1) 0; }
 .tag.status { color: var(--preview); }
 .pending, .draft { color: var(--preview); }
 
 .ops-wrap { padding-top: var(--sp-2); }
-.ops { background: var(--surface); color: var(--preview); font-size: var(--fs-sm); padding: 0 var(--sp-3); border-left: 2px solid var(--preview); }
-.ops summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
+.ops { background: var(--surface); color: var(--preview); font-size: var(--fs-xs); padding: 0 var(--sp-3); border-left: 2px solid var(--preview); border-radius: var(--radius-sm); }
+.ops summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; font-weight: 600; }
 .ops ul { padding-bottom: var(--sp-2); }
 .ops li { padding: var(--sp-1) 0; }

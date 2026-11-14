@@ -1,0 +1,257 @@
+---
+// 이슈 화면의 글(명세 2절, 시안 issue_ai_glasses.html). 블록 순서:
+// 분야, 상태, 기준 시각 → 제목 → 한 줄 설명 → 세 줄 요약 → 핵심 숫자 → 무슨 일인가 → 왜 이렇게 커졌나
+// → 새로 나온 소식(예정은 점선) → 그 전에 있었던 일(접힘) → 어디까지 확인됐나(빈 묶음은 내지 않음)
+// → 엇갈리는 시각 → 앞으로 볼 것 → 출처 → 이 글은 이렇게 만들었습니다(접힘).
+import type { Article } from "../lib/data";
+import { fmtAsOf, newsLabel, plain, runningLabel, sourceNumbers, splitNews, srcId, withNotes } from "../lib/article";
+import { fmtDate, parseTime } from "../lib/format";
+import { checkUrl, url } from "../lib/paths";
+import ExampleTag from "./ExampleTag.astro";
+
+interface Props { a: Article; slug: string; example: boolean; refYear: number | null }
+const { a, slug, example, refYear } = Astro.props;
+const known = sourceNumbers(a);
+const h = (t: string) => withNotes(t, known);
+const running = runningLabel(a);
+const asOf = fmtAsOf(a.as_of, refYear);
+const { shown, earlier } = splitNews(a);
+const groups = [
+  { key: "ok", title: "확인된 것", note: "공식 문서에 있거나 당사자가 인정했다", items: a.status.confirmed },
+  { key: "rp", title: "보도로 전해진 것", note: "공식 문서는 아직 보지 못했다", items: a.status.reported },
+  { key: "al", title: "의혹 단계인 것", note: "사실로 볼 근거가 없다", items: a.status.alleged },
+  { key: "uk", title: "아직 모르는 것", note: "", items: a.status.unknown },
+].filter((g) => g.items.length);
+const srcDate = (d: string) => {
+  const p = parseTime(d);
+  return p ? (refYear !== null && p.y !== refYear ? fmtDate(d) : `${p.m}월 ${p.d}일`) : "";
+};
+const srcText = (s: Article["sources"][number]) => {
+  const d = srcDate(s.date);
+  if (s.title) return [s.publisher, `「${s.title}」`, d].filter(Boolean).join(", ");
+  return [s.publisher, d ? `${d}${s.kind === "보도" ? " 보도" : ""}` : ""].filter(Boolean).join(", ");
+};
+const tl = (n: Article["news"][number]) => ["tl-item", n.planned && "next", n.new && "new"].filter(Boolean).join(" ");
+---
+<article class="art" data-pagefind-body>
+  <slot name="index" />
+  {a.category && <span data-pagefind-filter={`분야:${a.category}`}></span>}
+  <span data-pagefind-meta={`title:${a.title}`}></span>
+  {a.category && <span data-pagefind-meta={`category:${a.category}`}></span>}
+  <span data-pagefind-meta={`summary:${plain(a.dek)}`}></span>
+  {example && <span data-pagefind-meta="example:예시"></span>}
+
+  <p class="meta">
+    {a.category && <span class="cat">{a.category}</span>}
+    {a.state && (
+      <span class:list={["state", { live: a.state === "진행 중" }]}>
+        {a.state === "진행 중" && <i aria-hidden="true"></i>}{a.state}{running && <> · {running}</>}
+      </span>
+    )}
+    {asOf && <span class="num">{asOf} 기준</span>}
+  </p>
+  <h1><ExampleTag show={example} />{a.title}</h1>
+  {a.dek && <p class="dek">{a.dek}</p>}
+
+  {a.summary.length > 0 && (
+    <section class="sum" aria-labelledby="sum-h">
+      <h2 id="sum-h">세 줄 요약</h2>
+      <ol>{a.summary.map((t) => <li set:html={h(t)} />)}</ol>
+    </section>
+  )}
+
+  {a.numbers.length > 0 && (
+    <section class="nums" aria-label="핵심 숫자">
+      <ul>
+        {a.numbers.map((x) => (
+          <li class="num-box">
+            <b class="num">{x.value}{x.unit && <small> {x.unit}</small>}</b>
+            <span>{x.label}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  {a.what.length > 0 && (
+    <section aria-labelledby="what">
+      <h2 class="sec" id="what">무슨 일인가</h2>
+      {a.what.map((t) => <p set:html={h(t)} />)}
+    </section>
+  )}
+
+  {a.why && (a.why.lead || a.why.points.length > 0) && (
+    <section aria-labelledby="why">
+      <h2 class="sec" id="why">왜 이렇게 커졌나</h2>
+      {a.why.lead && <p set:html={h(a.why.lead)} />}
+      {a.why.points.length > 0 && (
+        <ul class="points">{a.why.points.map((p) => <li>{p.head && <b>{p.head}</b>}{p.head && " "}<Fragment set:html={h(p.text)} /></li>)}</ul>
+      )}
+    </section>
+  )}
+
+  {(shown.length > 0 || earlier.length > 0) && (
+    <section aria-labelledby="news">
+      <h2 class="sec" id="news">새로 나온 소식</h2>
+      {shown.length > 0 && (
+        <ol class="tl">
+          {shown.map((n) => (
+            <li class={tl(n)}>
+              <p class="tl-date"><time datetime={n.date || undefined}>{newsLabel(n)}</time>{n.new && <span class="badge">새 소식</span>}</p>
+              {n.items.map((t) => <p set:html={h(t)} />)}
+            </li>
+          ))}
+        </ol>
+      )}
+      {earlier.length > 0 && (
+        <details class="older">
+          <summary>그 전에 있었던 일 보기</summary>
+          <ol class="tl">
+            {earlier.map((n) => (
+              <li class="tl-item">
+                <p class="tl-date"><time datetime={n.date || undefined}>{newsLabel(n)}</time></p>
+                {n.items.map((t) => <p set:html={h(t)} />)}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+    </section>
+  )}
+
+  {groups.length > 0 && (
+    <section aria-labelledby="status">
+      <h2 class="sec" id="status">어디까지 확인됐나</h2>
+      {groups.map((g) => (
+        <section class={`st ${g.key}`} aria-label={g.title}>
+          <h3>{g.title}{g.note && <small>{g.note}</small>}</h3>
+          <ul>{g.items.map((t) => <li set:html={h(t)} />)}</ul>
+        </section>
+      ))}
+    </section>
+  )}
+
+  {a.views.length > 0 && (
+    <section aria-labelledby="views">
+      <h2 class="sec" id="views">엇갈리는 시각</h2>
+      <div class="vs">
+        {a.views.map((v) => (
+          <div class="vcard">
+            {v.topic && <h3>{v.topic}</h3>}
+            <div class="row">
+              {v.sides.map((s) => <div class="side">{s.who && <b>{s.who}</b>}<Fragment set:html={h(s.text)} /></div>)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {a.next.length > 0 && (
+    <section aria-labelledby="next">
+      <h2 class="sec" id="next">앞으로 볼 것</h2>
+      <ul class="points">{a.next.map((p) => <li>{p.head && <b>{p.head}</b>}{p.head && " "}<Fragment set:html={h(p.text)} /></li>)}</ul>
+    </section>
+  )}
+</article>
+
+{a.sources.length > 0 && (
+  <section aria-labelledby="src" data-pagefind-ignore>
+    <h2 class="sec" id="src">출처</h2>
+    <ol class="src">
+      {a.sources.map((s) => (
+        <li id={srcId(s.n)}>
+          <span class="n num" aria-hidden="true">{s.n}</span>
+          <span class="sr-only">{`출처 ${s.n}. `}</span>
+          {s.kind && <span class="k">{s.kind}</span>}
+          {s.url ? <a href={s.url} rel="noopener">{srcText(s)}</a> : <span>{srcText(s)}</span>}
+        </li>
+      ))}
+    </ol>
+  </section>
+)}
+
+<details class="about" data-pagefind-ignore>
+  <summary>이 글은 이렇게 만들었습니다</summary>
+  <p>공식 문서와 언론 보도를 모아 AI 도구로 정리했고, 공개 전에 사람이 읽고 승인합니다. 공식 문서에서 확인한 내용과 보도로만 전해진 내용, 의혹 단계의 주장을 구분해 적습니다. 일반인은 이름과 신상을 적지 않습니다.</p>
+  {a.changes.length > 0 ? (
+    <>
+      <h3>고친 기록</h3>
+      <ul class="changes">{a.changes.map((c) => <li><span class="num">{fmtAsOf(c.at, refYear) || c.at}</span> {plain(c.what)}</li>)}</ul>
+    </>
+  ) : <p>사실을 바로잡은 기록은 아직 없습니다.</p>}
+  <p>틀린 곳이 있으면 <a href={url("report/")}>알려 주세요</a>. 고친 내용은 이 자리에 날짜와 함께 남깁니다.</p>
+  <p><a href={checkUrl(slug)}>주장마다 근거를 대조한 검증 상세 보기</a></p>
+</details>
+
+<style>
+  .art { font-size: var(--fs-md); line-height: var(--lh-body); }
+  .art p { margin: 0 0 var(--sp-4); }
+  .meta { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-3); align-items: center; font-size: var(--fs-xs); line-height: 1.5; color: var(--muted); margin: 0 0 10px !important; }
+  .cat { font-weight: 700; color: var(--accent); }
+  .state { display: inline-flex; align-items: center; gap: 6px; }
+  .state i { width: 7px; height: 7px; border-radius: 50%; background: var(--hot-dot); display: inline-block; }
+  h1 { font-size: var(--fs-h1); line-height: 1.38; letter-spacing: -0.01em; margin: 0 0 var(--sp-3); font-weight: 800; }
+  h1 :global(.tag) { font-size: var(--fs-xs); vertical-align: 0.35em; }
+  .dek { font-size: var(--fs-md); color: var(--muted); line-height: 1.65; margin-bottom: 22px !important; }
+  .sum { background: var(--surface); border-radius: var(--radius); padding: 18px 18px var(--sp-2); margin: 0 0 22px; }
+  .sum h2 { font-size: var(--fs-xs); font-weight: 700; color: var(--muted); margin: 0 0 10px; letter-spacing: 0.04em; }
+  .sum ol { counter-reset: s; }
+  .sum li { counter-increment: s; position: relative; padding: 0 0 var(--sp-3) 30px; font-size: var(--fs-body-sm); line-height: 1.65; }
+  .sum li::before { content: counter(s); position: absolute; left: 0; top: 2px; width: 21px; height: 21px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: var(--fs-2xs); font-weight: 700; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .nums ul { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 30px; }
+  .num-box { border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px 14px var(--sp-3); min-width: 0; }
+  .num-box b { display: block; font-size: var(--fs-num); line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; }
+  .num-box b small { font-size: var(--fs-sm); font-weight: 600; color: var(--muted); }
+  .num-box span { display: block; font-size: var(--fs-xs); color: var(--muted); line-height: 1.45; margin-top: 6px; }
+  .sec { font-size: var(--fs-lg); font-weight: 800; margin: 38px 0 var(--sp-3); padding-top: 22px; border-top: 1px solid var(--rule); letter-spacing: -0.01em; line-height: 1.45; }
+  .art :global(sup.fn) { font-size: 0.6875rem; line-height: 0; font-weight: 600; color: var(--accent); padding: 0 1px; }
+  .art :global(sup.fn a) { color: var(--accent); text-decoration: none; padding: 0 1px; }
+  .art :global(sup.fn a:hover) { text-decoration: underline; }
+  .art :global(sup.fn .fn-sep) { margin-right: 1px; }
+  .points { list-style: disc; padding-left: 20px; margin: 0 0 var(--sp-4); }
+  .points li { margin-bottom: 10px; }
+  .tl { margin: 0; padding: 0 0 0 2px; }
+  .tl-item { position: relative; padding: 0 0 20px 22px; border-left: 2px solid var(--rule); margin-left: 6px; }
+  .tl-item:last-child { padding-bottom: var(--sp-1); }
+  .tl-item::before { content: ""; position: absolute; left: -7px; top: 8px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); border: 2px solid var(--muted); }
+  .tl-item.new::before { border-color: var(--hot-dot); background: var(--hot-dot); }
+  .tl-item.next { border-left-style: dashed; }
+  .tl-item.next::before { border-style: dashed; }
+  .tl .tl-date { font-size: 0.84375rem; font-weight: 700; color: var(--muted); margin: 0 0 2px; line-height: 1.6; }
+  .badge { display: inline-block; font-size: var(--fs-2xs); font-weight: 700; color: var(--badge-text); background: var(--badge-bg); border-radius: var(--radius-sm); padding: 0 6px; margin-left: 6px; line-height: 18px; vertical-align: 1px; }
+  .tl p:not(.tl-date) { margin: 0 0 6px; font-size: var(--fs-body-sm); line-height: 1.65; }
+  .older { margin-top: var(--sp-1); }
+  .older summary, .about summary { cursor: pointer; display: flex; align-items: center; min-height: 44px; }
+  .older summary { font-size: var(--fs-src); color: var(--accent); font-weight: 600; padding: 0 0 0 28px; margin-bottom: var(--sp-2); }
+  .st { border-radius: var(--radius); padding: var(--sp-4) var(--sp-4) 6px; margin: 0 0 var(--sp-3); }
+  .st h3 { font-size: var(--fs-src); margin: 0 0 10px; font-weight: 800; display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sp-2); line-height: 1.5; }
+  .st h3 small { font-weight: 500; font-size: 0.78125rem; }
+  .st ul { list-style: disc; padding-left: 18px; margin: 0 0 var(--sp-2); }
+  .st li { font-size: 1rem; line-height: 1.65; margin-bottom: var(--sp-2); }
+  .st.ok { background: var(--st-ok-bg); } .st.ok h3 { color: var(--st-ok); }
+  .st.rp { background: var(--st-report-bg); } .st.rp h3 { color: var(--st-report); }
+  .st.al { background: var(--st-alleg-bg); } .st.al h3 { color: var(--st-alleg); }
+  .st.uk { background: var(--st-unk-bg); } .st.uk h3 { color: var(--st-unk); }
+  .vs { display: grid; gap: 10px; margin-bottom: 14px; }
+  .vcard { border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px var(--sp-4); }
+  .vcard h3 { font-size: 0.96875rem; margin: 0 0 var(--sp-2); font-weight: 800; }
+  .vcard .row { display: grid; grid-template-columns: 1fr; gap: var(--sp-2); }
+  .vcard .side { font-size: 0.96875rem; line-height: 1.65; min-width: 0; }
+  .vcard .side b { display: block; font-size: 0.78125rem; color: var(--muted); font-weight: 700; margin-bottom: 1px; }
+  .src { margin: 0; padding: 0; }
+  .src li { position: relative; padding: 0 0 10px 30px; font-size: var(--fs-src); line-height: 1.55; color: var(--muted); }
+  .src .n { position: absolute; left: 0; top: 0; font-size: var(--fs-2xs); font-weight: 700; color: var(--accent); width: 22px; text-align: right; line-height: 1.9; }
+  .src li:target { background: var(--surface); border-radius: var(--radius-sm); }
+  .src a { color: var(--text); text-decoration: underline; text-decoration-color: var(--rule-strong); text-underline-offset: 3px; }
+  .src .k { font-size: 0.71875rem; font-weight: 700; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); padding: 0 5px; margin-right: 6px; white-space: nowrap; color: var(--text); }
+  .about { margin-top: 28px; border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--sp-1) var(--sp-4); }
+  .about summary { font-weight: 700; font-size: var(--fs-sm); }
+  .about p, .about li { font-size: var(--fs-src); color: var(--muted); line-height: 1.65; margin: 0 0 var(--sp-3); }
+  .about h3 { font-size: var(--fs-src); font-weight: 700; margin: 0 0 var(--sp-1); }
+  .about a { display: inline-block; padding: 4px 0; }
+  @media (min-width: 560px) {
+    .nums ul { grid-template-columns: repeat(4, 1fr); }
+    .vcard .row { grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+  }
+</style>

@@ -23,6 +23,7 @@ from test_issues_check import (I1, I2, add_official, claim, desk, doc_of, errors
                                new_claim)
 from test_issues_hardening import _approved, _day, _elect, _resync  # noqa: E402
 from test_issues_revisions import add_review, approve, edit, ready, real  # noqa: E402,F401
+from test_issues_article import write as write_article  # noqa: E402
 
 E1, E2, E3 = I1 + "-e1", I1 + "-e2", I1 + "-e3"
 F1, F2, F3, F4 = I2 + "-e1", I2 + "-e2", I2 + "-e3", I2 + "-e4"
@@ -58,6 +59,7 @@ def test_trend_shape_checked(desk):
 
 
 def test_export_trend_and_topic_state_sanitized(real, contact, tmp_path):
+    write_article(I1)                                   # 이슈 목록에는 글이 있는 이슈만 실린다
     ready(I1)
     assert approve(I1)["code"] == 0
     sp = revisions.rev_dir(I1, 1) / "score.json"

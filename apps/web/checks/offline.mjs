@@ -100,7 +100,9 @@ try {
     for (const k of await caches.keys()) for (const r of await (await caches.open(k)).keys()) out.push(`${k} ${new URL(r.url).pathname}`);
     return out;
   });
-  const title = (slug) => JSON.parse(fs.readFileSync(path.join(dataA, "issues", `${slug}.json`), "utf-8")).title;
+  // 이슈 화면의 제목은 글(article)의 제목이다. 고정판(r/<판>)은 옛 판정 화면이라 그 판의 제목이다.
+  const title = (slug) => { const d = JSON.parse(fs.readFileSync(path.join(dataA, "issues", `${slug}.json`), "utf-8")); return d.article?.title || d.title; };
+  const revTitle = (slug, r) => JSON.parse(fs.readFileSync(path.join(dataA, "issues", slug, "r", `${r}.json`), "utf-8")).title;
   const h1 = async () => (await page.locator("h1").first().innerText()).replace(/\s+/g, " ").replace(/^예시\s*/, "").trim();
   const band = async () => (await page.locator("[data-offline-band]").count()) ? await page.locator("[data-offline-band]").innerText() : "";
   const offline = async (v) => { srv.setOffline(v); await ctx.setOffline(v); };
@@ -157,7 +159,7 @@ try {
     note: `내린 이슈 쪽 제목 "${dH1}", 카드 쪽 제목 "${dCardsH1}", 띠 "${dBand}" · 캐시에 남은 내린 이슈 ${after.filter((p) => p.includes(DOWN)).length}건`,
     h1: dH1, cards_h1: dCardsH1, band: dBand,
   });
-  step("(라-2) 내리지 않은 이슈의 저장분은 남는다", keepH1 === title(KEEP) && keepBand.startsWith("연결이 없어") && keepRevH1 === title(KEEP), {
+  step("(라-2) 내리지 않은 이슈의 저장분은 남는다", keepH1 === title(KEEP) && keepBand.startsWith("연결이 없어") && keepRevH1 === revTitle(KEEP, 2), {
     note: `최신판 "${keepH1}" · 2판 "${keepRevH1}"`,
   });
   await offline(false);

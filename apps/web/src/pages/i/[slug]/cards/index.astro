@@ -7,7 +7,7 @@ import RevisionMark from "../../../../components/RevisionMark.astro";
 import ViewToggle from "../../../../components/ViewToggle.astro";
 import { loadSite, type Issue } from "../../../../lib/data";
 import { deckFor } from "../../../../lib/cards";
-import { issueUrl } from "../../../../lib/paths";
+import { checkUrl, issueUrl } from "../../../../lib/paths";
 
 export function getStaticPaths() {
   const site = loadSite();
@@ -24,9 +24,9 @@ const total = deck.cards.length;
   <h1><ExampleTag show={b.example} />{b.title}</h1>
   <div class="rev-row">
     <RevisionMark rev={b.rev} at={b.rev_at} />
-    <ViewToggle issueHref={issueUrl(issue.slug)} current="cards" />
+    <ViewToggle issueHref={checkUrl(issue.slug)} current="cards" />
   </div>
-  <p class="small muted lead-line">카드 <span class="num">{total}</span>장. <span data-deck-hint hidden>옆으로 넘기거나 이전, 다음 단추와 좌우 화살표 키로 넘긴다.</span><span data-deck-nohint>차례로 아래에 이어 둔다.</span> 근거 문서의 주소와 정정 기록은 <a href={issueUrl(issue.slug)}>이슈 화면</a>에 있다.</p>
+  <p class="small muted lead-line">카드 <span class="num">{total}</span>장. <span data-deck-hint hidden>옆으로 넘기거나 이전, 다음 단추와 좌우 화살표 키로 넘긴다.</span><span data-deck-nohint>차례로 아래에 이어 둔다.</span> 근거 문서의 주소와 정정 기록은 <a href={checkUrl(issue.slug)}>검증 상세</a>에 있다. <a href={issueUrl(issue.slug)}>글로 돌아가기</a></p>
 
   <div class="deck" data-deck data-total={total}>
     <div class="deck-view" data-deck-view role="region" aria-label={`카드 ${total}장`}>

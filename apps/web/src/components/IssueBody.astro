@@ -7,7 +7,7 @@
 import type { Body, Issue, Site } from "../lib/data";
 import { pickTrend, revNumbers, safeHref } from "../lib/data";
 import { fmtDate } from "../lib/format";
-import { cardsUrl, issueUrl, keywordUrl, keywordSlug, revUrl, url } from "../lib/paths";
+import { cardsUrl, checkUrl, issueUrl, keywordUrl, keywordSlug, revUrl, url } from "../lib/paths";
 import { summaryText } from "../lib/verdicts";
 import ViewToggle from "./ViewToggle.astro";
 import CorrectionNote from "./CorrectionNote.astro";
@@ -26,8 +26,10 @@ import AiNotice from "./AiNotice.astro";
 import IndexOnly from "./IndexOnly.astro";
 import { isVerdict } from "../lib/verdicts";
 
-interface Props { site: Site; issue: Issue; b: Body; fixed: boolean }
-const { site, issue, b, fixed } = Astro.props;
+// index: 검색 색인에 넣을지(기본은 최신판만). 검증 상세 화면은 글이 색인되므로 넣지 않는다.
+// kicker: 제목 위에 붙이는 머리(검증 상세 화면의 "검증 상세").
+interface Props { site: Site; issue: Issue; b: Body; fixed: boolean; index?: boolean; kicker?: string }
+const { site, issue, b, fixed, index, kicker } = Astro.props;
 const revs = revNumbers(issue);
 const latestRev = issue.latest.rev;
 const { trend } = pickTrend(issue, b, fixed);
@@ -37,7 +39,7 @@ const showOpen = b.open_questions.length || spillIssues.length || b.spillover.si
 const takenDownRevs = [...issue.takenDown].filter((r) => !issue.revs.has(r));
 const allRevs = [...new Set([...revs, ...takenDownRevs])].sort((a, c) => a - c);
 const keywords = b.keywords.filter((k) => site.keywords.has(keywordSlug(k)));
-const pagefind = !fixed;
+const pagefind = index ?? !fixed;
 const nCorr = b.corrections.filter((c) => c.kind === "정정").length;
 const nVerdict = b.corrections.filter((c) => c.kind === "판정 변경").length;
 
@@ -69,7 +71,7 @@ const later = fixed && b.rev !== null && latestRev !== null && b.rev < latestRev
       <div class="rev-band small" data-pagefind-ignore>
         {b.rev === latestRev
           ? <p>이 판이 지금의 최신판이다.</p>
-          : <p>지난 판이다. 지금은 <span class="num">{latestRev}</span>판까지 나왔다. <a href={issueUrl(issue.slug)}>최신판 보기</a></p>}
+          : <p>지난 판이다. 지금은 <span class="num">{latestRev}</span>판까지 나왔다. <a href={checkUrl(issue.slug)}>최신판 보기</a></p>}
         {later.length > 0 && (
           <>
             <p class="band-h">이 판 뒤에 바뀐 것 <span class="num">{later.length}</span>건</p>
@@ -87,7 +89,7 @@ const later = fixed && b.rev !== null && latestRev !== null && b.rev < latestRev
         )}
       </div>
     )}
-    <h1><ExampleTag show={b.example} />{b.title}</h1>
+    <h1>{kicker && <span class="kicker">{kicker}</span>}<ExampleTag show={b.example} />{b.title}</h1>
     <div class="rev-row">
       <RevisionMark rev={b.rev} at={b.rev_at} older={!fixed && revs.length >= 2} />
       <ViewToggle cardsHref={fixed ? undefined : cardsUrl(issue.slug)} />
@@ -168,7 +170,7 @@ const later = fixed && b.rev !== null && latestRev !== null && b.rev < latestRev
   {corrections.length ? (
     <ul class="rows">{corrections.map((c) => <li><p class="xs muted">{c.rev !== null && `${c.rev}판`}</p><CorrectionNote c={c} /></li>)}</ul>
   ) : <p class="small">{fixed ? "이 판까지의 정정 0건" : "정정 0건"}<span class="sep" /><a href={url("corrections/")}>정정 목록</a></p>}
-  {later.length > 0 && <p class="small">이 판 뒤의 정정과 판정 변경 <span class="num">{later.length}</span>건은 <a href={`${issueUrl(issue.slug)}#corrections`}>최신판의 정정 기록</a>에 있다.</p>}
+  {later.length > 0 && <p class="small">이 판 뒤의 정정과 판정 변경 <span class="num">{later.length}</span>건은 <a href={`${checkUrl(issue.slug)}#corrections`}>최신판의 정정 기록</a>에 있다.</p>}
 
   <h3 id="revisions">판 목록</h3>
   {allRevs.length ? (
@@ -214,6 +216,7 @@ const later = fixed && b.rev !== null && latestRev !== null && b.rev < latestRev
   .rev-band .band-h { font-weight: 700; margin-top: var(--sp-2); }
   .rev-band li { padding: var(--sp-1) 0; }
   h1 { margin-top: var(--sp-4); }
+  .kicker { display: block; font-size: var(--fs-sm); color: var(--muted); font-weight: 700; margin-bottom: var(--sp-1); }
   h1 :global(.tag) { font-size: var(--fs-xs); vertical-align: 0.35em; }
   .notice { margin-top: var(--sp-2); padding: var(--sp-1) 0 var(--sp-1) var(--sp-3); border-left: 2px solid var(--rule-strong); }
   .notice.bad { border-left: 4px solid var(--v-false); }
