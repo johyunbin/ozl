@@ -4,7 +4,7 @@ import type { Claim } from "../lib/data";
 import { fmtDate, sentences } from "../lib/format";
 import VerdictMark from "./VerdictMark.astro";
 import SourceList from "./SourceList.astro";
-import { docsHead, evidenceLine, PRESS_HEAD } from "../lib/cards";
+import { basisHead, docsHead, evidenceLine, PRESS_HEAD } from "../lib/cards";
 interface Props { c: Claim; currentRev: number | null; anchor?: string }
 const { c, currentRev, anchor } = Astro.props;
 const isFalse = c.verdict === "사실과 다름";
@@ -43,7 +43,7 @@ const scopeSplit = scopeLines.length >= 3;
     </summary>
     {hasMore && (
       <div class="more">
-        {c.basis.length > 0 && <div class="basis"><p class="mh">근거가 말하는 것</p><ul class="dots">{c.basis.map((x) => <li>{x}</li>)}</ul></div>}
+        {c.basis.length > 0 && <div class="basis"><p class="mh">{basisHead(c.verdict)}</p><ul class="dots">{c.basis.map((x) => <li>{x}</li>)}</ul></div>}
         {c.parts.length > 0 && (
           <div><p class="mh">나눠 본 판정</p>
             <ul class="parts">{c.parts.map((p) => <li><VerdictMark verdict={p.verdict} /> {p.core && <span class="tag">핵심</span>}{p.gist}

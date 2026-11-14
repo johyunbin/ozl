@@ -73,6 +73,11 @@ export const NO_OFFICIAL = "판정에 쓴 공식 근거 없음";
 export const DOCS_HEAD = "근거 문서";
 export const DOCS_HEAD_UNVERIFIED = "살펴본 공식 문서";
 export const docsHead = (verdict: string) => (verdict === "확인 못 함" ? DOCS_HEAD_UNVERIFIED : DOCS_HEAD);
+/** 주장에 이어 둔 확인된 사실의 머리말. '확인 못 함'에서는 그 사실이 판정을 받치는 근거가 아니라
+ * 주장과 관련해 확인된 것일 뿐이므로 근거라고 부르지 않는다. */
+export const BASIS_HEAD = "근거가 말하는 것";
+export const BASIS_HEAD_UNVERIFIED = "관련해서 확인된 것";
+export const basisHead = (verdict: string) => (verdict === "확인 못 함" ? BASIS_HEAD_UNVERIFIED : BASIS_HEAD);
 
 /** 판정 밑 근거 줄의 글. 공식 근거가 없고 보도만 있으면 NO_OFFICIAL, 둘 다 없으면 빈 글(줄을 그리지 않는다).
  *  '확인 못 함'이면 근거 줄을 그리지 않는다. 판정하지 못한 까닭은 사유 줄이 말하고, "공식 근거 없음"을 덧붙이면
@@ -291,7 +296,7 @@ function claimBlocks(c: Claim): Block[] {
   if (c.scope) out.push({ t: "scope", text: c.scope, inPart: false });
   // 판정을 받치는 확인된 사실 문장(자료의 basis). 없으면 그리지 않는다.
   if (c.basis.length) {
-    out.push({ t: "h", text: "근거가 말하는 것" });
+    out.push({ t: "h", text: basisHead(c.verdict) });
     for (const x of c.basis) out.push({ t: "li", text: x });
   }
   if (c.parts.length) {
