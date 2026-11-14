@@ -19,7 +19,7 @@ policy:
     when: {collect: 허용}     # 수집이 허용으로 확인된 피드에만
     uses: [score_use, store, backup]
     decided: "2026-11-14 04:10 KST. 계획 5-1절(언론사 RSS 는 쓴다)의 결정을 따랐다"
-    note: "언론사와 기관이 공식으로 내놓은 RSS 의 제목, 요약, 링크를 받아 건수를 세고 비공개로 보관한다. 공개 화면에는 매체 이름과 링크만 싣는다. 명시 허락을 확인한 것은 아니다(금지 조항도 찾지 못했다). 수익을 내기 전에는 commercial 이 금지인 매체를 따로 정리해야 한다. 사용자가 끌 수 있다."
+    note: "언론사와 기관이 공식으로 내놓은 RSS 의 제목, 요약, 링크를 받아 건수를 세고 비공개로 보관한다. 공개 화면에는 매체 이름과 링크만 싣는다. 명시 허락을 확인한 것은 아니다(금지 조항도 찾지 못했다). commercial 이 금지인 매체는 영리 목적 이용이 생기기 전에 따로 정리해야 한다. 사용자가 끌 수 있다."
 sources:
   # ── 국내 언론 RSS
   yna_economy:
@@ -657,7 +657,7 @@ sources:
     publish: 불명
     commercial: 불명
     backup: 불명
-    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다 2026-11-14 08:33 다른 모델의 재대조: 금지 조항은 없고 공식 제공 수단이나 점수 사용과 보관의 명시 허락은 없다(도움말 4365538 은 RSS 를 직접 말하지 않는다). 그래서 수집만 허용으로 두고 점수 사용과 보관은 불명으로 고쳤다. 건수 집계와 비공개 보관은 운영 판단(policy.rss_counting)으로 쓴다."
+    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다. 2026-11-14 08:33 다른 모델의 재대조: 금지 조항은 없고 공식 제공 수단이나 점수 사용과 보관의 명시 허락은 없다(도움말 4365538 은 RSS 를 직접 말하지 않는다). 그래서 수집만 허용으로 두고 점수 사용과 보관은 불명으로 고쳤다. 건수 집계와 비공개 보관은 운영 판단(policy.rss_counting)으로 쓴다."
     evidence: ["https://trends.google.com/robots.txt", "https://policies.google.com/terms?hl=ko", "https://support.google.com/trends/answer/4365538?hl=en", "https://support.google.com/trends/answer/3076011?hl=en"]
     verified: 직접
   trends_us:
@@ -674,12 +674,12 @@ sources:
   google_trends_rss_kr:
     name: 구글 급상승 검색어(한국) RSS
     collect: 허용
-    score_use: 허용
-    store: 허용
+    score_use: 불명
+    store: 불명
     publish: 불명
     commercial: 불명
     backup: 불명
-    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다"
+    basis: "구글이 Trending Now 의 내보내기 수단으로 RSS 를 공식 제공한다(도움말 3076011). robots 는 /trending/rss 를 막지 않고, Google 약관의 자동 접근 금지는 robots 같은 기계 판독 지침을 어기는 경우에 한정된다. 도움말 4365538 은 약관 범위 안의 Trends 데이터 재사용을 'Data source: Google Trends' 출처 표기 조건으로 허용한다. 검색어와 대략의 검색량 등급에 한한다. 자동으로 정기 수집해도 된다는 명시 문장은 없고 금지 조항을 반대로 읽은 해석이다(2026-11-14 04:03 재확인). 공개 화면에 원값을 싣는 것과 수익 이용, 피드 안의 기사 제목과 사진은 따로 확인하지 못했다. trends_kr 과 같은 출처다. 2026-11-14 08:33 의 재대조에 따라 점수 사용과 보관을 불명으로 맞췄다(2026-11-14 11:50)"
     evidence: ["https://trends.google.com/robots.txt", "https://trends.google.com/trending/rss?geo=KR", "https://policies.google.com/terms?hl=ko", "https://support.google.com/trends/answer/4365538?hl=en", "https://support.google.com/trends/answer/3076011?hl=en"]
     verified: 직접
   wikipedia_pageviews_ko:
@@ -715,7 +715,7 @@ sources:
     commercial: 금지
     backup: 불명
     agent_read: 불명
-    basis: "robots 는 /rss.php 를 막지 않음. 약관 제13조②가 사전 승낙 없는 영리 목적 이용과 제3자 제공을 금지(공개 화면 게재는 제3자 제공으로 본다). 비공개 단서로 쓰는 것은 수익화 계획 때문에 확정하지 못함"
+    basis: "robots 는 /rss.php 를 막지 않음. 약관 제13조②가 사전 승낙 없는 영리 목적 이용과 제3자 제공을 금지(공개 화면 게재는 제3자 제공으로 본다). 비공개 단서로 쓰는 것은 영리 목적 이용에 해당하는지 확정하지 못함"
     evidence: ["https://m.ppomppu.co.kr/new/bbs_view.php?id=regulation&no=4", "https://www.ppomppu.co.kr/robots.txt", "https://www.ppomppu.co.kr/rss.php?id=freeboard"]
     verified: 직접
   ppomppu_issue:

@@ -45,7 +45,7 @@ SOURCES: list[dict] = [
               "것을 막는다(영리 여부 구분 없음). robots.txt 전체 허용(Amazonbot 만 차단). 제목은 비공개 신호 계산에만 쓰고 밖으로 내보내지 않는다."},
     {"id": "ppomppu_free", "source": "ppomppu", "outlet": "뽐뿌 자유게시판", "url": "https://www.ppomppu.co.kr/rss.php?id=freeboard",
      "parser": "ppomppu", "section": "자유게시판", "enabled": False,
-     "terms": "허용(공식 RSS) — 사이트가 RSS 를 내놓고 있다. 이용약관에 자동 수집 조항 없음. 제13조②가 사전 승낙 없는 영리 목적 이용과 "
+     "terms": "불명(공식 RSS 는 있음) — 사이트가 RSS 를 내놓고 있다. 이용약관에 자동 수집 조항 없음. 제13조②가 사전 승낙 없는 영리 목적 이용과 "
               "제3자 제공을 막는다. robots.txt 는 /rss.php 를 막지 않는다."},
     {"id": "ppomppu_issue", "source": "ppomppu", "outlet": "뽐뿌 정치자유게시판", "url": "https://www.ppomppu.co.kr/rss.php?id=issue",
      "parser": "ppomppu", "section": "정치자유게시판", "politics": True, "enabled": False,

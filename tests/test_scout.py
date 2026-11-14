@@ -14,8 +14,8 @@ from ozl.research import sensitive  # noqa: E402
 LEVELS = [
     # 해외 정치는 GREEN — 표지가 낱말 바로 앞에 없어도 같은 글에 있고 국내 표지가 없으면 푼다
     ("가상국 증시 급등, 민주당의 상원 장악 전망에 기술주 강세", "GREEN"),
-    ("프랑스 중도 진영 지지율 선두…대선 구도 요동", "GREEN"),
-    ("美하원, 국방장관 탄핵소추안 표결 무산", "GREEN"),
+    ("프랑스 중도 연합 지지율 1위…대선 판세 요동", "GREEN"),
+    ("美하원, 재무장관 탄핵소추안 표결 연기", "GREEN"),
     # '민주당'은 나라 이름만으로는 풀지 않는다
     ("민주당, 미국 관세 협상 결과 두고 정부 비판", "RED"),
     ("국민의힘·민주당, 미국 반도체 보조금 대응 놓고 여야 공방", "RED"),
@@ -32,14 +32,14 @@ LEVELS = [
     ("부정청약 354건 적발…징역형 선고 비율 늘어", "YELLOW"),
     ("트럼프 측근 1심 유죄…항소 방침", "YELLOW"),
     # 더한 갈래
-    ("가상 그룹 회장 불륜 의혹에 주가 급락", "RED"),
-    ("Chief executive resigns after alleged affair with executive", "RED"),
+    ("가상 배우 불륜 의혹에 소속사 해명", "RED"),
+    ("Fictional studio head denies rumored affair with a staff member", "RED"),
     ("이혼율 10년 만에 최저…혼인 건수는 반등", "GREEN"),
     ("가상 재벌 빈소에 조문 행렬", "RED"),
-    ("비만약 복용 뒤 시신경 이상 보고 늘어", "GREEN"),
+    ("혈압약 복용 뒤 어지럼 보고 늘어", "GREEN"),
     ("중수청 출범 앞두고 검찰개혁 공방 격화", "RED"),
     ("자살 예방 상담전화, 채무 상담과 연계", "YELLOW"),
-    ("AI 안경 써 보니…사생활 침해 우려는 숙제", "GREEN"),
+    ("스마트 초인종 써 보니…사생활 침해 우려는 숙제", "GREEN"),
     # 정부 발언의 정책 내용, 선거 제도·관리, 젠더 갈등은 YELLOW
     ("李대통령 \"노숙인 지원금 정보 잘못 알려져\"", "YELLOW"),
     ("이란 대통령 \"전쟁도 평화도 아닌 상황 끝내야\"", "GREEN"),
@@ -89,7 +89,7 @@ REVIEW = [
     ("대통령실, 수출 기업 지원 확대 방안 발표", "YELLOW"),
     ("청와대, 반도체 연구개발 지원 계획 발표", "YELLOW"),
     ("이재명 대통령, 미국 관세 협상 결과 보고받아", "YELLOW"),
-    ("가상자산 과세 2년 유예 여야 잠정 합의", "YELLOW"),
+    ("코인 과세 3년 유예 여야 잠정 합의", "YELLOW"),
     # 사망자·유족
     ("가상시 공장 화재로 노동자 2명 사망…유족 오열", "RED"),
     ("가상 참사 희생자 추모식", "RED"),
@@ -158,9 +158,9 @@ def test_context_from_other_titles_never_releases_a_criminal_case():
 
 def test_summary_only_hit_is_yellow_not_red():
     """RED 는 제목에 근거가 있을 때만. 요약에만 민감 낱말이 있으면 YELLOW 로 표시하고 사유에 적는다."""
-    r = sensitive.classify_item("가상 기업 다음 주 상장", "한편 다른 가상 그룹 회장의 불륜 의혹 보도도 이어졌다")
+    r = sensitive.classify_item("가상 기업 다음 주 상장", "한편 다른 가상 배우의 불륜 의혹 보도도 이어졌다")
     assert r["level"] == "YELLOW" and "요약에만" in r["reasons"][0]
-    assert sensitive.classify_item("가상 그룹 회장 불륜 의혹", "주가가 급락했다")["level"] == "RED"
+    assert sensitive.classify_item("가상 배우 불륜 의혹", "소속사가 해명했다")["level"] == "RED"
     assert sensitive.classify_item("가상 지수 강보합 마감", "")["level"] == "GREEN"
     # 요약의 해외 표지는 제목의 정치 낱말을 푸는 근거가 된다
     assert sensitive.classify_item("민주당 압승 전망에 가상 지수 4% 급등", "중간선거 개표 초반 상원 판세")["level"] == "GREEN"

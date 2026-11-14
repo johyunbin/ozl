@@ -65,7 +65,7 @@ def test_identifier_does_not_exempt_other_quantity(desk):
     assert has(errors(issue, evs), "why_matters", "숫자 '12'의 종류")
 
 
-@pytest.mark.parametrize("bad", ["12개", "3개월", "49", "6병", "30만 원대", "30만", "요금 400원", "", 7])
+@pytest.mark.parametrize("bad", ["12개", "3주", "4시간", "49", "6대", "40만 원대", "40만", "요금 400원", "", 7])
 def test_identifier_rejects_quantity_forms(desk, bad):
     issue, evs = load(I1)
     issue["identifiers"] = [bad]

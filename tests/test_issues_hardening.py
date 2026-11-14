@@ -177,7 +177,7 @@ def test_korean_numerals_rejected(desk, phrase):
 
 # ── 제목의 의혹 ───────────────────────────────────────────────────────
 @pytest.mark.parametrize("title", ["누리전자가 결함을 알고도 한 달 넘게", "보조 배터리 결함 은폐", "누리전자 임원 부정행위",
-                                   "회수 자료 조작", "누리전자 대표 음주운전", "AI 안경과 시험 부정행위"])
+                                   "회수 자료 조작", "누리전자 대표 음주운전", "누리전자 채용 시험 부정행위"])
 def test_allegation_title(desk, title):
     issue, evs = load(I2)
     issue["titles"]["candidates"][0]["text"] = issue["titles"]["chosen"] = title

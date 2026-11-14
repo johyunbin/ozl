@@ -4,7 +4,7 @@
 
 ## 영상 자료 받기
 - 다글로 제출: 동시 1건, 완료 후 다음, 간격 ≥ 60초, 일일 상한(초기 100), 402/429 즉시 중단. Trading 데몬 우선(계정 락 `~/.cache/daglo_submit.lock`). 다글로 인증은 `~/Trading` 모듈이 관리한다(호출만).
-- Whisper: `nice -n 19`, 1프로세스, 메모리 상한. yt-dlp: sleep 간격, 프레임용 영상은 추출 후 삭제.
+- Whisper: `nice -n 19`, 1프로세스, 메모리 상한. yt-dlp: sleep 간격, 프레임용 영상은 추출 후 삭제. 2026-11-14 부터 출처 대장의 `youtube_video_download` 가 금지라 영상 내려받기는 코드에서 막혀 있다(`ledger.require`). 다시 열려면 대장의 판정이 먼저 바뀌어야 한다.
 - 영상 목록과 전사 자료 DB 는 `python -m ozl.syuka`(`catalog`, `sample`, `put`, `agree`, `status`)가 다룬다.
 
 ## 슬라이드 분석 파이프라인 (Phase 2A 정본 · 2026-11-10)

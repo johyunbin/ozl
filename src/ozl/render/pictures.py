@@ -22,7 +22,7 @@
 
 판정(설계 5-7절 그림 종류 표를 그대로 옮겼다 — KIND_RULES):
   쓴다 / 원형 그대로만 / 허락 기록이 있을 때만 원형으로 / 연습용 판(초안 모드)에서만 / 쓰지 않는다.
-  상업적 이용이 안 되는 그림은 종류와 상관없이 쓰지 않는다(수익 계획). 변경이 안 되는 그림을 고쳐 썼으면 실패다.
+  상업적 이용이 안 되는 그림은 종류와 상관없이 쓰지 않는다(우리 방침). 변경이 안 되는 그림을 고쳐 썼으면 실패다.
   밈은 엄격 모드에서 실패가 아니라 빠진다(drop_memes — 빌드 출력과 러닝시트에 뺀 것을 적는다).
 
 못 하는 것: 칸이 채워졌는지, 칸끼리 맞는지만 본다. 역검색을 실제로 했는지, 라이선스 주장이 사실인지는 사람이 본다.
@@ -86,8 +86,8 @@ KIND_RULES: dict[str, Rule] = {
     "밈": Rule(DRAFT_ONLY, "원출처와 라이선스가 확인된 것만, 연습용 판에서만"),
     "통신사·언론사 사진": Rule(NEVER, "우리 방침"),
     "방송 화면 캡처": Rule(NEVER, "우리 방침"),
-    "공공누리 2유형": Rule(NEVER, "상업적 이용 금지 — 수익 계획이 있다"),
-    "공공누리 4유형": Rule(NEVER, "상업적 이용과 변경 금지 — 수익 계획이 있다"),
+    "공공누리 2유형": Rule(NEVER, "상업적 이용 금지 조건이 붙어 있다 — 우리 방침"),
+    "공공누리 4유형": Rule(NEVER, "상업적 이용과 변경 금지 조건이 붙어 있다 — 우리 방침"),
     "실존 인물 AI 그림": Rule(NEVER),
     "사실처럼 보이는 AI 장면": Rule(NEVER),
 }
@@ -251,7 +251,7 @@ def judge(e: dict, draft: bool = False) -> tuple[str, list[str], list[str]]:
     verdict = rule.verdict
     if e.get("commercial_ok") is False:
         verdict = NEVER
-        why.append("상업적 이용이 안 되는 그림이다 — 수익 계획이 있어 쓰지 않는다")
+        why.append("상업적 이용이 안 되는 그림이다 — 우리 방침으로 쓰지 않는다")
     if rule.verdict == NEVER:
         why.append(f"'{kind}' 는 쓰지 않는다" + (f"({rule.note})" if rule.note else ""))
     if e.get("checked_at") not in (None, "") and not _checked_at_ok(e.get("checked_at")):
